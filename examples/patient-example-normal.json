@@ -1,0 +1,35 @@
+{
+  "resourceType": "Patient",
+  "meta": {
+    "profile": [
+      "https://senaite.com/modelling/fhir/StructureDefinition/SenaitePatient"
+    ]
+  },
+  "id": "example-normal",
+  "identifier": [
+    {
+      "use": "official",
+      "system": "http://hospital.senaite.com/patients",
+      "value": "12345"
+    }
+  ],
+  "name": [
+    {
+      "family": "Smith",
+      "given": [
+        "John"
+      ]
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1980-01-01",
+  "maritalStatus": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+        "code": "M",
+        "display": "Married"
+      }
+    ]
+  }
+}

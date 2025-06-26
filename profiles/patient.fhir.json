@@ -1,0 +1,116 @@
+{
+    "resourceType": "StructureDefinition",
+    "url": "https://example.org/fhir/StructureDefinition/SenaitePatient",
+    "name": "SenaitePatient",
+    "status": "draft",
+    "fhirVersion": "4.3.0",
+    "kind": "resource",
+    "abstract": false,
+    "type": "Patient",
+    "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Patient",
+    "derivation": "constraint",
+    "differential": {
+        "element":  [
+            {
+                "id": "Patient.extension:estimatedDateBirth",
+                "path": "Patient.extension",
+                "sliceName": "estimatedDateBirth",
+                "type":  [
+                    {
+                        "code": "Extension",
+                        "profile":  [
+                            "https://senaite.com/modelling/fhir/StructureDefinition/EstimatedDateBirth"
+                        ]
+                    }
+                ]
+            },
+            {
+                "id": "Patient.identifier",
+                "path": "Patient.identifier",
+                "min": 1,
+                "max": "1"
+            },
+            {
+                "id": "Patient.identifier.use",
+                "path": "Patient.identifier.use",
+                "min": 1
+            },
+            {
+                "id": "Patient.identifier.period",
+                "path": "Patient.identifier.period",
+                "max": "0"
+            },
+            {
+                "id": "Patient.identifier.assigner",
+                "path": "Patient.identifier.assigner",
+                "max": "0"
+            },
+            {
+                "id": "Patient.name",
+                "path": "Patient.name",
+                "min": 1
+            },
+            {
+                "id": "Patient.telecom.period",
+                "path": "Patient.telecom.period",
+                "max": "0"
+            },
+            {
+                "id": "Patient.gender",
+                "path": "Patient.gender",
+                "min": 1
+            },
+            {
+                "id": "Patient.birthDate",
+                "path": "Patient.birthDate",
+                "min": 1
+            },
+            {
+                "id": "Patient.deceased[x]",
+                "path": "Patient.deceased[x]",
+                "type":  [
+                    {
+                        "code": "dateTime"
+                    }
+                ]
+            },
+            {
+                "id": "Patient.maritalStatus",
+                "path": "Patient.maritalStatus",
+                "binding": {
+                    "strength": "required"
+                }
+            },
+            {
+                "id": "Patient.multipleBirth[x]",
+                "path": "Patient.multipleBirth[x]",
+                "max": "0"
+            },
+            {
+                "id": "Patient.photo",
+                "path": "Patient.photo",
+                "max": "0"
+            },
+            {
+                "id": "Patient.contact",
+                "path": "Patient.contact",
+                "max": "0"
+            },
+            {
+                "id": "Patient.communication",
+                "path": "Patient.communication",
+                "max": "0"
+            },
+            {
+                "id": "Patient.generalPractitioner",
+                "path": "Patient.generalPractitioner",
+                "max": "0"
+            },
+            {
+                "id": "Patient.managingOrganization",
+                "path": "Patient.managingOrganization",
+                "max": "0"
+            }
+        ]
+    }
+}

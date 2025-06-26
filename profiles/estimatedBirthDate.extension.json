@@ -1,0 +1,31 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "estimatedBirthDate",
+  "url": "http://example.org/fhir/StructureDefinition/estimatedBirthDate",
+  "version": "1.0.0",
+  "name": "EstimatedBirthDate",
+  "status": "draft",
+  "date": "2025-06-26",
+  "publisher": "Your Organization",
+  "description": "Boolean extension to indicate if the birthDate is estimated.",
+  "fhirVersion": "4.0.1",
+  "kind": "complex-type",
+  "abstract": false,
+  "type": "Extension",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Extension",
+        "path": "Extension"
+      },
+      {
+        "id": "Extension.valueBoolean",
+        "path": "Extension.valueBoolean",
+        "min": 1,
+        "max": "1"
+      }
+    ]
+  }
+}
