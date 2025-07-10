@@ -74,11 +74,15 @@ publisher:
 # │ input/includes. To use a provided input/includes/menu.xml file, delete the "menu"              │
 # │ property below.                                                                                │
 # ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+# See menu.xml
 menu:
   Home: index.html
   Supported Workflows: supported-workflows.html
   Project Management: project-management.html
-  Artifacts: artifacts.html
+  Profiles: artifacts.html#1
+  Extensions: artifacts.html#2
+  Examples: artifacts.html#3
+  Encodings: encodings.html
 
 # ╭───────────────────────────Less Common Implementation Guide Properties──────────────────────────╮
 # │  Uncomment the properties below to configure additional properties on the ImplementationGuide  │

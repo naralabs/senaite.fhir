@@ -1,6 +1,7 @@
-![Senaite Logo](senaite_product_logo.png)
-<p>
-</p>
+
+<div align="center">
+  <img src="senaite_product_logo.png" alt="Senaite Logo" class="image-centered" />
+</div>
 
 # Introduction
 The purpose of this Implementation Guide is to explain the process of integrating [SENAITE LIMS](https://www.senaite.com/) into a digital human or animal health ecosystem using the standard Fast Health Interoperability Resources (FHIR) version r4B.
