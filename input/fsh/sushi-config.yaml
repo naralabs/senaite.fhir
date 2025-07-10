@@ -1,0 +1,9 @@
+canonical: https://senaite.com/modeling/fhir
+fhirVersion: 4.3.0
+FSHOnly: true
+applyExtensionMetadataToRoot: false
+id: senaite.modeling.fhir
+name: SENAITE FHIR Models
+status: draft
+version: "0.01"
+  
