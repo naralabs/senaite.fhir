@@ -41,11 +41,11 @@ They include:
   Mappings between SENAITE internal data models and FHIR resources.
 
 ## 🚀 Getting Started
-### Precoditions
+### Prerequisites
 - Need the latest java runtime installed
 - Jekyll Installed
 - Sushi installed as described [here](https://github.com/FHIR/sushi?tab=readme-ov-file#installation-for-sushi-users)
-
+### Installation
 1. Clone this repository:
    ```bash
    git clone https://github.com/your-org/senaite-fhir.git
