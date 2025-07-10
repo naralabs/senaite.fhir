@@ -50,11 +50,9 @@ They include:
    ```bash
    git clone https://github.com/your-org/senaite-fhir.git
 2. Set up the Implementation Guide Publisher
-  ```bash
-  ./_updatePublisher.sh
-  ```
+    ```bash
+    ./_updatePublisher.sh
 3. Generate the Implementation Guide
-  ```bash
-   ./_genonce.sh
-   ```
+    ```bash
+    ./_genonce.sh
 If you then navigate to the output: `output/index.html` this is the implementation guide.
