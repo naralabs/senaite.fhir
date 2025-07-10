@@ -22,55 +22,39 @@ Key integration workflows include:
 ---
 
 ## 📦 Repository Contents
+The Repository uses [FHIR ShortHand (FSH)](https://build.fhir.org/ig/HL7/fhir-shorthand/) using the [SUSHI](https://github.com/FHIR/sushi) but it still contains all the FSH details on:
 
-- `profiles/`  
+
+- **profiles** (See: `input/fsh/input/fsh/profiles`)  
   Custom FHIR profiles for resources like `Patient`, `ServiceRequest`, `DiagnosticReport`, etc.
 
-- `examples/`  
+- **examples** (See: `input/fsh/input/fsh/instances`)  
   Sample FHIR resource payloads for typical SENAITE workflows.
 
-- `workflows/`  
+### Documentation
+The MD files that are converted into the SENAITE Implementation Guide are available: `input/pagecontent`
+They include:
+- **[Workflows](input/pagecontent/supported-workflows.md)**
   Sequence diagrams and documentation outlining supported integration workflows.
 
-- `mappings/`  
+- **[Project Management](input/pagecontent/project-management.md)**  
   Mappings between SENAITE internal data models and FHIR resources.
 
-- `docs/`  
-  Additional documentation, including implementation guidance and API behavior.
-
----
-
-## 🧭 Integration Workflows
-
-### 1. Patient Demographics
-
-FHIR Resource: [`Patient`](https://hl7.org/fhir/patient.html)
-
-**Direction:** EMR → SENAITE  
-SENAITE consumes FHIR `Patient` resources to create or update patient records.
-
-### 2. Lab Test Orders
-
-FHIR Resources:  
-- [`ServiceRequest`](https://hl7.org/fhir/servicerequest.html)  
-- [`Specimen`](https://hl7.org/fhir/specimen.html)
-
-**Direction:** EMR → SENAITE  
-Lab test orders are submitted as `ServiceRequest` resources, linked `Specimen` data.
-
-### 3. Diagnostic Reports
-
-FHIR Resources:  
-- [`DiagnosticReport`](https://hl7.org/fhir/diagnosticreport.html)  
-- [`Observation`](https://hl7.org/fhir/observation.html)
-
-**Direction:** SENAITE → EMR  
-Test results are returned via `DiagnosticReport`, with detailed `Observation` data for each analyte.
-
----
-
 ## 🚀 Getting Started
+### Precoditions
+- Need the latest java runtime installed
+- Jekyll Installed
+- Sushi installed as described [here](https://github.com/FHIR/sushi?tab=readme-ov-file#installation-for-sushi-users)
 
 1. Clone this repository:
    ```bash
    git clone https://github.com/your-org/senaite-fhir.git
+2. Set up the Implementation Guide Publisher
+  ```bash
+  ./_updatePublisher.sh
+  ```
+3. Generate the Implementation Guide
+  ```bash
+   ./_genonce.sh
+   ```
+If you then navigate to the output: `output/index.html` this is the implementation guide.
