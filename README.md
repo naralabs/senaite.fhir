@@ -42,9 +42,9 @@ They include:
 
 ## 🚀 Getting Started
 ### Prerequisites
-- Need the latest java runtime installed
-- Jekyll Installed
-- Sushi installed as described [here](https://github.com/FHIR/sushi?tab=readme-ov-file#installation-for-sushi-users)
+- [Java runtime](https://www.java.com/en/download/manual.jsp) 
+- [Jekyll](https://jekyllrb.com/docs/installation/)
+- [Sushi](https://github.com/FHIR/sushi?tab=readme-ov-file#installation-for-sushi-users)
 ### Installation
 1. Clone this repository:
    ```bash
