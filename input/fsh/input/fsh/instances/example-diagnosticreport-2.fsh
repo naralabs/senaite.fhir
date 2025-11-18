@@ -1,5 +1,7 @@
 Instance: example-diagnosticreport-2
 InstanceOf: SenaiteDiagnosticReport
+Title: "[DiagnosticReport] Urinalysis Report (PDF)"
+Description: "DiagnosticReport for a urinalysis panel represented as a PDF attached in presentedForm."
 Usage: #example
 * status = #final
 * code = $loinc#24357-6 "Urinalysis panel"

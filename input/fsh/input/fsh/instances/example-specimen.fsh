@@ -1,5 +1,7 @@
 Instance: example-specimen
 InstanceOf: SenaiteSpecimen
+Title: "[Specimen] Venous Blood (Collected)"
+Description: "Specimen representing a collected venous blood specimen used for CBC testing."
 Usage: #example
 * status = #available
 * type = $sct#122555007 "Venous blood specimen"

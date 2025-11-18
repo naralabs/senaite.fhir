@@ -1,5 +1,7 @@
 Instance: example-servicerequest
 InstanceOf: SenaiteServiceRequest
+Title: "[ServiceRequest] CBC"
+Description: "ServiceRequest for a Full Blood Count (CBC) panel including order details for component tests and specimen reference."
 Usage: #example
 * status = #active
 * intent = #order

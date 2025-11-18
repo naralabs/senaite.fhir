@@ -1,5 +1,7 @@
 Instance: example-servicerequest-2
 InstanceOf: SenaiteServiceRequest
+Title: "[ServiceRequest] Urinalysis"
+Description: "ServiceRequest for a urinalysis panel including multiple orderDetail codes for individual urine tests."
 Usage: #example
 * status = #active
 * intent = #order
