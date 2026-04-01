@@ -60,7 +60,8 @@ or a base64 encoded PDF in presentedForm, or both."""
 * presentedForm ^short = "Base64 encoded PDF report"
 * presentedForm.extension 0..0
 * presentedForm.contentType = #application/pdf (exactly)
-* presentedForm.data 1..1 MS
+* presentedForm.data 0..1 MS
+* presentedForm.data ^short = "Base64 encoded PDF content — populated at runtime"
 * presentedForm.url 0..0
 * presentedForm.size 0..0
 * presentedForm.hash 0..0

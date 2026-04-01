@@ -50,16 +50,24 @@ References SenaitePatient, SenaiteSpecimen, SenaiteEncounter, and SenaitePractit
 // --- Order Detail (R5 backbone: individual test codes within a panel) ---
 * orderDetail 0..* MS
 * orderDetail ^short = "Individual test codes within the ordered panel"
-* orderDetail ^definition = "Where a panel is ordered in code, each individual test to be performed is listed here using parameter with a LOINC code."
+* orderDetail ^definition = "Where a panel is ordered in code, each individual test to be performed is listed here using parameterFocus with a LOINC code."
 * orderDetail.extension 0..0
-* orderDetail.parameter 1..1 MS
-* orderDetail.parameter ^short = "LOINC code for the individual test"
+* orderDetail.parameterFocus 1..1 MS
+* orderDetail.parameterFocus ^short = "LOINC code for the individual test"
+* orderDetail.parameterFocus.concept 1..1 MS
+* orderDetail.parameterFocus.concept.coding 1..1 MS
+* orderDetail.parameterFocus.concept.coding.system = "http://loinc.org" (exactly)
+* orderDetail.parameterFocus.concept.coding.code 1..1 MS
+* orderDetail.parameterFocus.concept.coding.version 0..0
+* orderDetail.parameterFocus.concept.coding.userSelected 0..0
+// R5: orderDetail.parameter is a required backbone element — must include at minimum a code
+* orderDetail.parameter 1..* MS
+* orderDetail.parameter ^short = "Coded parameter for this orderDetail entry — mirrors parameterFocus code"
 * orderDetail.parameter.code 1..1 MS
 * orderDetail.parameter.code.coding 1..1 MS
 * orderDetail.parameter.code.coding.system = "http://loinc.org" (exactly)
 * orderDetail.parameter.code.coding.code 1..1 MS
-* orderDetail.parameter.code.coding.version 0..0
-* orderDetail.parameter.code.coding.userSelected 0..0
+* orderDetail.parameter.value[x] 1..1 MS
 
 // --- Subject ---
 * subject 1..1 MS

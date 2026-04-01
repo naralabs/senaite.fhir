@@ -43,14 +43,14 @@ Updated as the instrument progresses through the workflow."""
 * for.identifier 0..0
 * for.display 0..0
 
-// --- Owner (the instrument) ---
-* owner 1..1 MS
-* owner ^short = "The instrument responsible for executing the task"
-* owner only Reference(SenaiteDevice)
-* owner.reference 1..1 MS
-* owner.identifier 0..0
-* owner.display 0..0
-* owner.type 0..0
+// --- Instrument Device (via extension) ---
+// R5 Task.performer.actor and Task.owner do not support Device references.
+// The instrument is referenced via a custom extension instead.
+* extension contains SenaiteTaskInstrument named instrument 1..1 MS
+* extension[instrument] ^short = "The instrument Device responsible for executing this Task"
+
+// --- Zero out performer entirely ---
+* performer 0..0
 
 // --- Execution Period ---
 * executionPeriod 0..1 MS
@@ -63,7 +63,6 @@ Updated as the instrument progresses through the workflow."""
 * output.value[x] only Reference(SenaiteInstrumentObservation)
 
 // --- Zero out unused elements ---
-* extension 0..0
 * modifierExtension 0..0
 * instantiatesCanonical 0..0
 * instantiatesUri 0..0
