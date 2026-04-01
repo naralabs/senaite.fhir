@@ -58,8 +58,7 @@ Description: """This will be an incoming lab request. It relies on references to
 * requester.display ..0
 * performerType ..0
 * performer ..0
-* locationCode ..0
-* locationReference ..0
+* location ..0
 * reasonCode ..0
 * reasonReference ..0
 * insurance ..0

@@ -21,7 +21,7 @@ Description: "This is the specimen to accompany the ServiceRequest"
 * collection.duration ..0
 * collection.quantity ..0
 * collection.method ..0
-* collection.fastingStatus[x] ..0
+* collection.fasting[x] ..0
 * processing ..0
 * container ..0
 * condition ..0
