@@ -1,0 +1,33 @@
+    title Instrument Integration Workflow (FHIR)
+    participant Laboratory Instrument
+    participant Instrument Middleware
+    participant SENAITE Application
+    participant SENAITE FHIR API
+
+    note over SENAITE Application: Sample has been received\nand worksheets assigned
+
+    Instrument Middleware->>SENAITE FHIR API: GET {fhir_api_root}/ServiceRequest\n?status=active\n&_lastUpdated=<since>
+    SENAITE FHIR API->>Instrument Middleware: Bundle includes active\nServiceRequests
+
+    Instrument Middleware->>Laboratory Instrument: Transmit worklist\nto instrument
+
+    par Instrument Processing
+        Laboratory Instrument->>Laboratory Instrument: Technician loads samples\nand runs analyses
+        note over Laboratory Instrument: Results generated\nper analysis request
+    end
+
+    Laboratory Instrument->>Instrument Middleware: Transmit raw results\n(HL7, ASTM or proprietary format)
+
+    Instrument Middleware->>SENAITE FHIR API: POST {fhir_api_root}/Observation\nfor each result,\nreferencing ServiceRequest
+
+    alt Result Validation
+        SENAITE FHIR API->>SENAITE Application: Map Observations to\nmatching analyses
+        SENAITE Application->>SENAITE Application: Auto-verify results\nagainst reference ranges
+        note over SENAITE Application: Results flagged if\noutside reference range
+    end
+
+    alt Manual Review (if required)
+        SENAITE Application->>SENAITE Application: Lab scientist reviews\nand verifies flagged results
+    end
+
+    SENAITE Application->>SENAITE Application: Publish DiagnosticReport\nand Observations

@@ -1,57 +1,26 @@
 
 ### Workflow-first approach
 
-Integrations with SENAITE are best initially considered in terms of workflows. Workflows avoid becoming mired in technical domain language too early, require almost no tech literacy and focus on what flows where. Also if a manual (paper-based) workflow exists, the automated version can mirror it and hence it is comprehensible by lab staff with no experience in API design.
+Integrations with SENAITE are best initially considered in terms of workflows. Workflows avoid becoming mired in technical domain language too early, require almost no tech literacy and focus on what flows goes where. Also if a manual (paper-based) workflow exists, the automated version can mirror it and hence its digital equivalent is quickly comprehensible by lab staff with no experience in API design.
 
-The two supported workflows for SENAITE are:
+The two main workflows for SENAITE are:
+- **Lab request and results**: Lab requests are sent to SENAITE's FHIR API in the form of a Bundle that includes all relevant resources including:
+  - ServiceRequest: Details of the lab request.
+  - Patient: The subject of the Service Request.
+  - Specimen: The specimen that will be tested.
+  - Encounter: Details in which the test was ordered.
+  - Practitioner: The medical officer that ordered the test.
+- **Instrument Integration**: This is the standardised workflow by which instruments are able to send results to SENAITE via the FHIR API. 
 
-- **Patient Synchronization**: Ensuring patient details are up-to-date in SENAITE. Often a patient's demographic data will influence the results these need to be made up to date.
-- **Lab request and results**: Ensuring requests for lab tests are fetched by SENAITE with results sent from SENAITE to the external software.
-
+### SENAITE is the API Provider
 <div class="info-box">
-These two workflows can be collapsed into a single workflow where the patient details are included in a Bundle with the other Lab Request Resources. The reasons for them being treated distinctly was to open up the possibility of manual tests being created in SENAITE and needing up-to-date patient data.
+A note on flow direction: The following workflows identified below assume the SENAITE is the API provider. This is the strongly recommended choice. The alternative choice is the user implements their own API based on these specs. Our experience has shown this is slower and more error-prone.
 </div>
-
-### SENAITE is the Consumer
-
-It is worth noting that while stipulating profiles, SENAITE does not as yet have a FHIR API, although this will change soon. As such SENAITE is always the consumer - fetching lab requests, patient updated data and posting results. This is reflected in the SENAITE add-on details [here](https://github.com/naralabs/senaite.fhir.api).
 
 ### Workflows
-#### Workflow 1: Patient Synchronization
+#### Workflow 1: Lab Results
 
-Ensures that patient demographic data is kept up-to-date for results processing, a patient synchronization workflow consisting of two use-cases is implemented. 
-
-The two use-cases are: 
-
-1. **New Patient Created:** *A new patient has been created in the external system and the patient's demographics will be fetched by SENAITE.*
-2. **Patient update:** *The external system updates patient data* and because tests require up-to-date demographics this change needs to be communicated. This can include notification that the patient is deceased or can even feature in more complex workflows like patient merges.
-
-<div align="center">
-  <img src="seq-patient-sync.png" alt="equence Diagram: Patient Synchronization between SENAITE and an EHR" class="image-centered" />
-</div>
-
-<div class="info-box">
-Note: this workflow is <em>unidirectional</em> so post-deployment patient editing will be turned-off within SENAITE. The external consumer will be considered the source of truth.
-</div>
-
-Both use cases will adapt the synchronization workflow described in search for the case of Observations [here](https://hl7.org/fhir/R4B/search.html#all). The request will be:
-
-`GET {base_url}/Patient?_lastUpdated=gt<since>`
-
-where:
-
-- `gt` is the logical operator for greater-than.
-- `since` is the [dateTime](https://hl7.org/fhir/R4B/datatypes.html#dateTime) of the latest last modified patient *last fetched*. This ensures that all time management is handled according to the API Server rather than the client. 
-
-<div class="info-box">
-For example, if the fetch returned a Bundle with 20 patients with one patient's <code>meta.lastUpdated</code> being <code>2025-07-07T13:28:17.239+01:00</code> with the other 19 being older, since would become <code>2025-07-07T13:28:17.239+01:00</code> for the subsequent request.
-</div>
-
-This polling request will return patients that need to be conformant to the SENAITEPatient profile which inherits from Patient. See *Resources* section. 
-
-#### Workflow 2: Lab Results
-
-This is what most people would consider the main workflow in a LIMS integration: getting Lab requests into SENAITE and returning results back to the original EHR.
+This is what most people would consider the main workflow in a LIMS integration: posting lab requests to SENAITE and fetching results back to the consumer whether an EHR or middleware layer.
 
 This workflow handles the following cases:
 
@@ -63,7 +32,144 @@ This workflow handles the following cases:
   <img src="seq-req-res.png" alt="Example workflow of request/results exchange" class="image-centered" />
 </div>
 
-New requests are handled with:  
-`GET {base_url}/ServiceRequest?_lastUpdated=gt<since>`
 
-The same logic for `since` as in the Patient workflow is used here, where since is determined by the latest serviceRequest from the last successful fetch.  
+##### Sequence Diagram Explanation: Request/Results Workflow
+The diagram describes a **request-in, poll-for-results** integration pattern, where the consumer 
+pushes a lab order, waits for the lab to process it, and then retrieves results either as structured 
+FHIR data or as a PDF report.
+
+###### 1. Pushing the Request (External Consumer → SENAITE FHIR API)
+
+The workflow begins with the External Consumer (e.g. a hospital system or ordering application) 
+POSTing a FHIR Transaction Bundle to the SENAITE FHIR API. This bundle contains all the resources 
+needed to create a lab request, including the ServiceRequest, Patient, Specimen, Encounter, and 
+Practitioner, with Location and Organization being optional.
+
+---
+
+###### 2. Internal Processing (SENAITE FHIR API → SENAITE Application)
+
+Once received, the FHIR API processes the Bundle and instructs the SENAITE Application to generate 
+a new Sample — translating the FHIR resources into SENAITE's internal data model.
+
+---
+
+###### 3. Acknowledgement (SENAITE FHIR API → External Consumer)
+
+The FHIR API returns a FHIR Transaction Response Bundle back to the External Consumer, confirming 
+that the request was received and processed successfully.
+
+---
+
+###### 4. Sample Processing (SENAITE Application — internal)
+
+This is shown as a parallel block, indicating it happens independently and asynchronously. A lab 
+clerk works through the sample processing workflow inside SENAITE — receiving, analysing, and 
+resulting the sample.
+
+---
+
+###### 5. Results Polling (External Consumer → SENAITE FHIR API)
+
+Once the consumer is ready to check for results, it polls the FHIR API using a GET request filtered 
+by `_lastUpdated` (to only fetch new/changed results), with `_summary=true` and 
+`_include=Observations`. The API responds with a Bundle containing the DiagnosticReport and 
+associated Observations.
+
+---
+
+###### 6. PDF Report Fetch (External Consumer → SENAITE FHIR API)
+
+Finally, the consumer can retrieve the full PDF report by fetching a specific DiagnosticReport by 
+its UID. The API responds with the DiagnosticReport resource containing the full PDF encoded as a 
+base64 attachment.
+
+#### Workflow 2: Instrument Integration
+<div align="center">
+  <img src="seq-instrument.png" alt="Example workflow of request/results exchange" class="image-centered" />
+</div>
+
+This workflow describes a **FHIR R5 native instrument integration pattern** where the 
+Instrument Middleware acts as the translation layer between the instrument's proprietary 
+protocol and FHIR. The middleware polls for work via FHIR ServiceRequests and pushes 
+results back as a FHIR Transaction Bundle of Observations — one Bundle per ServiceRequest, 
+containing multiple Observations. This ensures atomic delivery of results and keeps the 
+entire integration above the middleware layer purely FHIR R5 based. This workflow feeds 
+directly into the Request/Results Workflow once results are published.
+
+###### 1. Pre-condition: Sample Reception (SENAITE Application — internal)
+
+Before the instrument integration workflow begins, the sample has already been received 
+by the lab and worksheets have been assigned internally within SENAITE. This is the 
+trigger point for the instrument integration to commence.
+
+---
+
+###### 2. Worklist Fetch (Instrument Middleware → SENAITE FHIR API)
+
+The Instrument Middleware polls the SENAITE FHIR API for active lab requests using a 
+FHIR R5 GET request against the ServiceRequest endpoint, filtered by `status=active` 
+and `_lastUpdated=<since>` to only retrieve new or changed requests since the last poll. 
+The FHIR API responds with a Bundle containing the matching ServiceRequests.
+
+---
+
+###### 3. Worklist Transmission (Instrument Middleware → Laboratory Instrument)
+
+The Instrument Middleware translates the FHIR ServiceRequests into the instrument's 
+native format (e.g. HL7, ASTM or proprietary) and transmits the worklist to the 
+Laboratory Instrument. This translation layer is a key responsibility of the middleware.
+
+---
+
+###### 4. Instrument Processing (Laboratory Instrument — internal)
+
+This is shown as a parallel block, indicating it happens independently and asynchronously. 
+The technician loads the samples onto the instrument and runs the analyses. Multiple 
+results are generated per ServiceRequest as the instrument completes its processing — 
+for example a full blood count ServiceRequest would generate individual results for 
+haemoglobin, white cell count, platelets and so on.
+
+---
+
+###### 5. Results Transmission (Laboratory Instrument → Instrument Middleware)
+
+Once analyses are complete, the Laboratory Instrument transmits the raw results back to 
+the Instrument Middleware in its native format (HL7, ASTM or proprietary). The middleware 
+is responsible for receiving and interpreting these results.
+
+---
+
+###### 6. Results Push (Instrument Middleware → SENAITE FHIR API)
+
+The Middleware translates the raw instrument results into FHIR Observations and POSTs 
+them as a FHIR Transaction Bundle to `{fhir_api_root}/Bundle`. Each Observation 
+references the originating ServiceRequest via `Observation.basedOn`, allowing SENAITE 
+to correctly match results to the original lab request. Posting as a Transaction Bundle 
+ensures all Observations for a ServiceRequest are received and processed atomically — 
+either all succeed or all fail together.
+
+---
+
+###### 7. Result Validation (SENAITE FHIR API → SENAITE Application — internal)
+
+The FHIR API maps the incoming Observation Bundle to their matching analyses within 
+SENAITE. The application then auto-verifies the results against configured reference 
+ranges, flagging any results that fall outside acceptable limits for further review.
+
+---
+
+###### 8. Manual Review — if required (SENAITE Application — internal)
+
+Where results have been flagged outside reference ranges, a lab scientist reviews and 
+manually verifies the results before they are accepted. This step is conditional and 
+only occurs when auto-verification has not passed.
+
+---
+
+###### 9. Publication (SENAITE Application — internal)
+
+Once all results have been verified — either automatically or manually — SENAITE publishes 
+the DiagnosticReport, grouping all associated Observations via `DiagnosticReport.result`. 
+This makes the results available for retrieval via the FHIR API by the External Consumer 
+as described in the Request/Results Workflow.

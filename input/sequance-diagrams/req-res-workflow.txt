@@ -1,0 +1,23 @@
+    title Request/Results Workflow
+    participant SENAITE Application
+    participant SENAITE FHIR API
+    participant External Consumer
+
+    External Consumer->>SENAITE FHIR API: Push ServiceRequest Bundle that includes:\n - ServiceRequest\n - Patient\n - Specimen\n - Encounter\n - Practitioner\n - [optional] Location\n - [optional] Organization
+    SENAITE FHIR API->>SENAITE Application: Processes Bundle and \ngenerates new Sample
+    SENAITE FHIR API->>External Consumer: Response: FHIR Transaction Response Bundle
+
+    par Sample Processing
+        SENAITE Application->>SENAITE Application: Lab clerk processes ServiceRequest \nthrough sample processing workflow
+        note over SENAITE Application: This paragraph has been summarised
+    end
+
+    alt Step 1: Results polling with data
+        External Consumer->>SENAITE FHIR API: GET {fhir_api_root}/diagnosticreport\n_lastUpdated=<since>\n&_summary=true\n&_include=Observations
+        SENAITE FHIR API->>External Consumer: Bundle includes DiagnosticReport + Observations
+    end
+
+    alt Step 2: PDF Report fetch
+        External Consumer->>SENAITE FHIR API: GET {fhir_api_root}/diagnosticreport/${uid}
+        SENAITE FHIR API->>External Consumer: DiagnosticReport with full base64 PDF
+    end
