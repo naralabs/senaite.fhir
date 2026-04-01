@@ -5,14 +5,16 @@ Description: "ServiceRequest for a Full Blood Count (CBC) panel including order 
 Usage: #example
 * status = #active
 * intent = #order
-* category = $sct#108252007 "Laboratory procedure"
+* category.coding.system = "http://snomed.info/sct"
+* category.coding.code = #108252007
+* category.coding.display = "Laboratory procedure"
 * category.text = "Laboratory procedure"
-* code = $loinc#57021-8 "CBC panel - Blood by Automated count"
-* code.text = "Full Blood Count Panel"
-* orderDetail[0] = $loinc#718-7 "Hemoglobin [Mass/volume] in Blood"
-* orderDetail[+] = $loinc#789-8 "Erythrocytes [#/volume] in Blood"
-* orderDetail[+] = $loinc#777-3 "Leukocytes [#/volume] in Blood"
-* orderDetail[+] = $loinc#4544-3 "Platelets [#/volume] in Blood"
+* code.concept.coding = $loinc#57021-8 "CBC panel - Blood by Automated count"
+* code.concept.text = "Full Blood Count Panel"
+* orderDetail[0].parameterFocus.concept.coding = $loinc#718-7 "Hemoglobin [Mass/volume] in Blood"
+* orderDetail[1].parameterFocus.concept.coding = $loinc#789-8 "Erythrocytes [#/volume] in Blood"
+* orderDetail[2].parameterFocus.concept.coding = $loinc#777-3 "Leukocytes [#/volume] in Blood"
+* orderDetail[3].parameterFocus.concept.coding = $loinc#4544-3 "Platelets [#/volume] in Blood"
 * subject.reference = "Patient/example-patient"
 * encounter.reference = "Encounter/example-encounter"
 * requester.type = "Practitioner"

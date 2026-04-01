@@ -1,66 +1,67 @@
 // ╭──────────────────────────────────────────────────────────────────╮
 // │  SenaiteDevice.fsh                                               │
-// │  Represents a lab instrument/analyser connected via middleware   │
+// │  Laboratory instrument connected via middleware                 │
 // ╰──────────────────────────────────────────────────────────────────╯
 
 Profile: SenaiteDevice
 Parent: Device
 Id: SenaiteDevice
+Title: "SENAITE Device"
 Description: """Represents a laboratory instrument or analyser communicating with SENAITE
-via a middleware layer (e.g. Open Integration Engine / Mirth Connect).
-This resource is used to attribute results to a specific instrument and
+via a middleware layer. Used to attribute results to a specific instrument and
 to support audit and QC traceability."""
 * ^status = #draft
+* ^version = "1.0.0"
+* ^fhirVersion = #5.0.0
 
-// --- Identifiers ---
-* identifier 1..1
-* identifier.extension ..0
-* identifier ^short = "Instrument serial number or asset ID"
-* identifier.use = #official (exactly)
-* identifier.type ..0
-* identifier.system 1..
-* identifier.system ^short = "Namespace for the instrument ID (e.g. institutional asset registry URI)"
-* identifier.value 1..
-* identifier.period ..0
-* identifier.assigner ..0
+// --- Identifier ---
+* identifier 1..* MS
+* identifier ^short = "Unique identifier for the instrument"
 
 // --- Status ---
-* status 1..
-* status ^short = "active | inactive"
+* status 1..1 MS
+* status = #active (exactly)
+* status ^short = "Always active for registered instruments"
 
-// --- Type ---
-* type 1..
-* type ^short = "Kind of instrument (SNOMED preferred)"
-* type.extension ..0
-* type.coding 1..1
-* type.coding.system = "http://snomed.info/sct" (exactly)
-* type.coding.version ..0
-* type.coding.code 1..
-* type.coding.userSelected ..0
+// --- Display Name ---
+* displayName 1..1 MS
+* displayName ^short = "Human readable name of the instrument"
 
-// --- Manufacturer details ---
-* manufacturer 1..
+// --- Manufacturer ---
+* manufacturer 0..1 MS
 * manufacturer ^short = "Instrument manufacturer name"
-* modelNumber 1..
-* modelNumber ^short = "Manufacturer model number"
-* serialNumber ..0  // captured in identifier instead
-* lotNumber ..0
-* manufactureDate ..0
-* expirationDate ..0
-* name 1..1
-* name.value 1..
-* name.type = #registered-name (exactly)
 
-// --- Strip unused elements ---
-* definition ..0
-* udiCarrier ..0
-* version ..0
-* property ..0
-* patient ..0
-* owner ..0
-* contact ..0
-* location ..0
-* url ..0
-* note ..0
-* safety ..0
-* parent ..0
+// --- Model Number ---
+* modelNumber 0..1 MS
+* modelNumber ^short = "Instrument model number"
+
+// --- Serial Number ---
+* serialNumber 0..1 MS
+* serialNumber ^short = "Instrument serial number"
+
+// --- Location ---
+* location 0..1 MS
+* location only Reference(SenaiteLocation)
+* location ^short = "Physical location of the instrument in the lab"
+
+// --- Zero out unused elements ---
+* extension 0..0
+* modifierExtension 0..0
+* udiCarrier 0..0
+* availabilityStatus 0..0
+* biologicalSourceEvent 0..0
+* property 0..0
+* mode 0..0
+* cycle 0..0
+* duration 0..0
+* contact 0..0
+* endpoint 0..0
+* gateway 0..0
+* note 0..0
+* safety 0..0
+* parent 0..0
+* definition 0..0
+* version 0..0
+* conformsTo 0..0
+* name 0..0
+* type 0..0

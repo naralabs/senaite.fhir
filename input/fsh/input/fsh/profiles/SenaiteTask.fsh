@@ -1,77 +1,84 @@
 // ╭──────────────────────────────────────────────────────────────────╮
 // │  SenaiteTask.fsh                                                 │
-// │  Tracks instrument workflow lifecycle for a ServiceRequest       │
+// │  Tracks instrument workflow lifecycle for a ServiceRequest      │
 // ╰──────────────────────────────────────────────────────────────────╯
 
 Profile: SenaiteTask
 Parent: Task
 Id: SenaiteTask
-Description: """Tracks the lifecycle of a lab test as it progresses through instrument
-processing. Updated by the middleware as the instrument works through the sample.
-
-Lifecycle: requested → accepted → in-progress → completed | failed"""
+Title: "SENAITE Instrument Task"
+Description: """Tracks the lifecycle of a worklist item dispatched to a laboratory instrument.
+Created when the middleware fetches a ServiceRequest and dispatched to the instrument.
+Updated as the instrument progresses through the workflow."""
 * ^status = #draft
+* ^version = "1.0.0"
+* ^fhirVersion = #5.0.0
+
+// --- Identifier ---
+* identifier 1..* MS
+* identifier ^short = "Unique identifier for the task"
 
 // --- Status ---
-* status 1..
+* status 1..1 MS
 * status from SenaiteTaskStatusVS (required)
 * status ^short = "requested | accepted | in-progress | completed | failed"
 
 // --- Intent ---
+* intent 1..1 MS
 * intent = #order (exactly)
 
-// --- Timestamps ---
-* authoredOn 1..
-* authoredOn ^short = "When the task was created by SENAITE"
-* lastModified 1..
-* lastModified ^short = "When the middleware last updated the task status"
-
-// --- Links to other resources ---
-* focus 1..
+// --- Focus (the ServiceRequest being fulfilled) ---
+* focus 1..1 MS
 * focus only Reference(SenaiteServiceRequest)
 * focus ^short = "The ServiceRequest this task is fulfilling"
-* focus.reference 1..
-* focus.identifier ..0
-* focus.display ..0
+* focus.reference 1..1 MS
+* focus.identifier 0..0
+* focus.display 0..0
 
-* for 1..
+// --- For (the patient) ---
+* for 1..1 MS
 * for only Reference(SenaitePatient)
-* for ^short = "The patient"
-* for.reference 1..
-* for.identifier ..0
-* for.display ..0
+* for ^short = "The patient the task relates to"
+* for.reference 1..1 MS
+* for.identifier 0..0
+* for.display 0..0
 
-* owner 1..
+// --- Owner (the instrument) ---
+* owner 1..1 MS
+* owner ^short = "The instrument responsible for executing the task"
 * owner only Reference(SenaiteDevice)
-* owner ^short = "The instrument assigned to process this sample"
-* owner.reference 1..
-* owner.identifier ..0
-* owner.display ..0
+* owner.reference 1..1 MS
+* owner.identifier 0..0
+* owner.display 0..0
+* owner.type 0..0
 
-// --- Business status (optional - for middleware-specific state) ---
-* businessStatus ^short = "Optional middleware-specific sub-status (e.g. 'queued', 'running')"
-* businessStatus.coding.system 1..
-* businessStatus.coding.code 1..
+// --- Execution Period ---
+* executionPeriod 0..1 MS
+* executionPeriod ^short = "When the task was started and completed on the instrument"
 
-// --- Strip unused elements ---
-* extension ..0
-* modifierExtension ..0
-* identifier ..0
-* instantiatesCanonical ..0
-* instantiatesUri ..0
-* basedOn ..0
-* groupIdentifier ..0
-* partOf ..0
-* statusReason ..0
-* code ..0
-* description ..0
-* executionPeriod ..0
-* requester ..0
-* performerType ..0
-* reason ..0
-* insurance ..0
-* note ..0
-* relevantHistory ..0
-* restriction ..0
-* input ..0
-* output ..0
+// --- Output (references to produced Observations) ---
+* output 0..* MS
+* output ^short = "References to Observations produced by this task"
+* output.type 1..1 MS
+* output.value[x] only Reference(SenaiteInstrumentObservation)
+
+// --- Zero out unused elements ---
+* extension 0..0
+* modifierExtension 0..0
+* instantiatesCanonical 0..0
+* instantiatesUri 0..0
+* basedOn 0..0
+* groupIdentifier 0..0
+* partOf 0..0
+* statusReason 0..0
+* businessStatus 0..0
+* doNotPerform 0..0
+* requestedPeriod 0..0
+* location 0..0
+* reason 0..0
+* insurance 0..0
+* note 0..0
+* relevantHistory 0..0
+* restriction 0..0
+* input 0..0
+* requester 0..0

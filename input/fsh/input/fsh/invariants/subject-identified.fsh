@@ -1,4 +1,9 @@
+// ╭──────────────────────────────────────────────────────────────────╮
+// │  subject-identified.fsh                                          │
+// │  Invariant ensuring subject is identifiable                     │
+// ╰──────────────────────────────────────────────────────────────────╯
+
 Invariant: subject-identified
-Description: "If there is no identifier then it must have a key"
+Description: "Subject must be identifiable — either a resolvable reference or a reference with a business identifier."
 * severity = #error
-* expression = "hasValue() or subject.identifier.count()"
+* expression = "reference.exists() or identifier.exists()"
