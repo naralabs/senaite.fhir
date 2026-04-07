@@ -10,7 +10,6 @@ Description: "Used to specify the Organization who makes a SenaiteServiceRequest
 * identifier.period ..0
 * identifier.assigner ..0
 * name 1..1
-* telecom.period ..0
 * alias ..0
 * partOf ..0
 * endpoint ..0

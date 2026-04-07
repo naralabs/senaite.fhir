@@ -32,7 +32,6 @@ It may contain either the pdf file in presentedForm or the quanititative results
 * result.identifier ..0
 * result.id ..0
 * result.reference 1..
-* imagingStudy ..0
 * media ..0
 * conclusionCode ..0
 * presentedForm ..1

@@ -11,6 +11,9 @@ name: SENAITE FHIR Implementation Guide
 status: draft # draft | active | retired | unknown
 version: 0.1.0
 fhirVersion: 5.0.0 # https://www.hl7.org/fhir/valueset-FHIR-version.html
+parameters:
+  path-resource:
+    - input/fsh/input
 copyrightYear: 2025+
 releaseLabel: ci-build
 license: GPL-2.0-only # https://www.hl7.org/fhir/valueset-spdx-license.html

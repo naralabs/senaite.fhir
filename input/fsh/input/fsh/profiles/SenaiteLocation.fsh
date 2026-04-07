@@ -11,15 +11,9 @@ Title: "This resource is used to capture the location in which the Service Reque
 * alias ..0
 * mode ..0
 * type ..0
-* telecom ..0
 * address ..0
-* physicalType.extension ..0
-* physicalType.coding.extension ..0
-* physicalType.coding.version ..0
-* physicalType.coding.userSelected ..0
 * position ..0
 * managingOrganization ..0
 * partOf ..0
 * hoursOfOperation ..0
-* availabilityExceptions ..0
 * endpoint ..0

@@ -17,7 +17,7 @@ Description: """This will be an incoming lab request. It relies on references to
 * requisition ..0
 * status ^short = "draft | active | on-hold | revoked | entered-in-error"
 * intent = #order (exactly)
-* intent ^short = "order | reflex-order "
+* intent ^short = "order | reflex-order"
 * category 1..1
 * category ^definition = "This will always be a Laboratory procedure"
 * category ^binding.valueSet = "http://hl7.org/fhir/ValueSet/servicerequest-category"
@@ -34,14 +34,18 @@ Description: """This will be an incoming lab request. It relies on references to
 * code from $loinc (preferred)
 * code ^binding.description = "For laboratory codes"
 * code.extension ..0
-* code.coding.system ^definition = "Prefer LOINC http://loinc.org and without this it will default to LOINC"
-* code.coding.code 1..
-* code.coding.code from $loinc (preferred)
 * orderDetail ^definition = "This is where we handle the individual test codes for the test comprised from the profile as defined in the code."
+* orderDetail 0..
 * orderDetail.extension ..0
-* orderDetail.coding 1..1
-* orderDetail.coding.system from $loinc (preferred)
-* orderDetail.coding.code 1..
+* orderDetail.modifierExtension ..0
+* orderDetail.parameterFocus ..0
+* orderDetail.parameter 1..
+* orderDetail.parameter.extension ..0
+* orderDetail.parameter.modifierExtension ..0
+* orderDetail.parameter.code = http://terminology.hl7.org/CodeSystem/v3-ObservationValue#LOINC "Test Code"
+* orderDetail.parameter.value[x] only CodeableConcept
+* orderDetail.parameter.valueCodeableConcept from $loinc (preferred)
+* orderDetail.parameter.valueCodeableConcept ^binding.description = "LOINC codes for individual laboratory tests"
 * quantity[x] ..0
 * subject.reference obeys subject-identified
 * encounter.reference 1..
@@ -58,10 +62,8 @@ Description: """This will be an incoming lab request. It relies on references to
 * requester.display ..0
 * performerType ..0
 * performer ..0
-* locationCode ..0
-* locationReference ..0
-* reasonCode ..0
-* reasonReference ..0
+* location ..0
+* reason ..0
 * insurance ..0
 * supportingInfo ..0
 * specimen 1..1
