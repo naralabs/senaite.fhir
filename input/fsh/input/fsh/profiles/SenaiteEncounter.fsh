@@ -5,8 +5,8 @@ Id: SenaiteEncounter
 * extension ..0
 * modifierExtension ..0
 * identifier ..0
-* status = #finished (exactly)
-* status ^short = "finished "
+* status = #completed (exactly)
+* status ^short = "completed"
 * status ^definition = "We only want to be informed about finished encounters"
 * class from $v3-ActCode (preferred)
 * type ..0
