@@ -4,8 +4,8 @@
 Integrations with SENAITE are best initially considered in terms of workflows. Workflows avoid becoming mired in technical domain language too early, require almost no tech literacy and focus on what flows goes where. Also if a manual (paper-based) workflow exists, the automated version can mirror it and hence its digital equivalent is quickly comprehensible by lab staff with no experience in API design.
 
 The two main workflows for SENAITE are:
-- **Lab request and results**: Lab requests are sent to SENAITE's FHIR API in the form of a Bundle that includes all relevant resources including:
-  - ServiceRequest: Details of the lab request.
+- **Lab request and results**: Lab requests are sent to SENAITE's FHIR API in the form of a self-contained Bundle that includes all relevant resources including:
+  - ServiceRequest: Details of the lab request, including the panel or profile requested and the individual tests.
   - Patient: The subject of the Service Request.
   - Specimen: The specimen that will be tested.
   - Encounter: Details in which the test was ordered.
@@ -14,7 +14,7 @@ The two main workflows for SENAITE are:
 
 ### SENAITE is the API Provider
 <div class="info-box">
-A note on flow direction: The following workflows identified below assume the SENAITE is the API provider. This is the strongly recommended choice. The alternative choice is the user implements their own API based on these specs. Our experience has shown this is slower and more error-prone.
+A note on flow direction: The following workflows identified below assume SENAITE is the API provider. This is the strongly recommended choice. The alternative choice is the user implements their own API based on these specs. Our experience has shown this is slower and more error-prone.
 </div>
 
 ### Workflows
@@ -118,7 +118,7 @@ The FHIR API responds with a Bundle containing the matching ServiceRequests.
 
 The Instrument Middleware translates the FHIR ServiceRequests into the instrument's 
 native format (e.g. HL7, ASTM or proprietary) and transmits the worklist to the 
-Laboratory Instrument. This translation layer is a key responsibility of the middleware.
+Laboratory Instrument. This translation layer is a key responsibility of the middleware but its details are out of scope for this IG. 
 
 ---
 
