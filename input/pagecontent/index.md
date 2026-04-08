@@ -30,5 +30,5 @@ To expose lab requests and attain their results from SENAITE the first decision 
 Follow the following **Quick Start** process:
 1. Request access to test API from info@naralabs.com. You will be provided with auth details.
 2. Fetch test patients by running:
-`GET https://[baseUrl]/patients`
+`GET https://api.baseurl.com/patients`
 

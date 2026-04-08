@@ -8,6 +8,11 @@ containing multiple Observations. This ensures atomic delivery of results and ke
 entire integration above the middleware layer purely FHIR R5 based. This workflow feeds 
 directly into the Request/Results Workflow once results are published.
 
+ ## (Work-in-Progress) Artefacts for Instrument Workflow
+See:
+- [Profiles](artifacts.html): these define the structure of paritcular resources as they vary from the base type.
+- [Instances or Example](artifacts.html): these are examples of each of the profiles above. Available in JSON or XML.
+
 <div align="center">
   <img src="seq-instrument.png" alt="Example workflow of request/results exchange" class="image-centered" />
 </div>

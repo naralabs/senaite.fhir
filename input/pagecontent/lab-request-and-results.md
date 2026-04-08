@@ -8,11 +8,17 @@ This workflow handles the following cases:
 2. **Lab Test Updated/Cancelled:** *The details of an ordered lab test changes and needs to be shared with SENAITE*. Sometimes this means a lab test has been cancelled (updating the test's status cancelled). Complexities lie in how far along the processing pipeline that test can be cancelled.
 3. **Report Available:** *Once testing is complete the results of a test is to be shared by SENAITE to an external system.* Due to complexities around structuring the vast array of possible test results across multiple categories - this report can be a PDF as published from SENAITE. Additionally, the quantitative results can be represented in a structured form for parsing by the external software. This work still needs to be done.
 
+## Artefacts for Request/Results Workflow
+See:
+- [Profiles](artifacts.html#request-results-workflow-—-profiles): these define the structure of paritcular resources as they vary from the base type.
+- [Instances or Example](artifacts.html#request-results-workflow-—-examples): these are examples of each of the profiles above. Available in JSON or XML.
+
+## Sequence Diagram & Explanation
 <div align="center">
   <img src="seq-req-res.png" alt="Example workflow of request/results exchange" class="image-centered" />
 </div>
 
-## Sequence Diagram Explanation: Request/Results Workflow
+
 The diagram describes a **request-in, poll-for-results** integration pattern, where the consumer 
 pushes a lab order, waits for the lab to process it, and then retrieves results either as structured 
 FHIR data or as a PDF report.
