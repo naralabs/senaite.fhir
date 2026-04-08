@@ -1,31 +1,27 @@
 
-Previous experience has taught us to divide the project into two mandatory phases with a third optional phase. These need to be done in order but each phase is delivered into the live environment before the next begins.
+# Phased Approach
+Previous experience has taught us to divide the project into two distinct phases as determined by separate workflows. These need to be done in order with each delivered into the live environment before the next begins.
 
 Each phase includes:
+- Solution customisation to determine whether the default Resource set is usable or additions/extensions are needed.
+- Discussion + Agreement across lab/provider/consumer domains on the terminologies and codesets used. For example it is necessary to agree on encoding for profiles and individual tests.
+- Release phased update to QA System that consumer are able to test the integration end-to-end. 
+- Feedback window for Naralabs in which a scheduled period for feedback/updates/customisation. 
+- Release to production and integration monitoring.
 
-- Solution design for which Resource properties to use.
-- Agreement on terminologies.
-- Data mapping from internal schema to FHIR Resource.
-- User acceptance testing.
-- Release process and monitoring.
+## Phase 1: Request/Results Workflow
 
-Please see *FHIR Implementation* section for more details.
+As described in the [Lab Request and Results workflow description](lab-request-and-results.html), the request/results are the main part of any lab integration. Requests are PUSHED to SENAITE while the results are fetched directly by the External EHR or via the Middleware layer.
 
-## Phase 1: Patient Synchronization
+The results include optional raw results including numeric, coded and textual results from each test in the diagnostic report as Observations. The devil here is certainly in the detail, because depending on which panels and tests determines the complexity here. For example, microbiological tests can involve some very complicated reflex testing workflows.
 
-Before the test specific data has been transferred, it is required that patient demographic details be synchronized across the systems. This can operate independently of the next workflow - which will assume all patients in SENAITE are up-to-date. This is a relatively simple integration but is an excellent starting point to build confidence in FHIR and refine communication processes where the parties are new to one another.
+## Phase 2: Instrument Workflow
+For a full description of this workflow please see [Instrument Integration Workflow](instrument-integration.html). This requires Phase 1 be implemented first as both systems will need to an identified ServiceRequest with which to attach results.
 
-## Phase 2: Request/Results Workflow
+This phase is still in the draft phase. 
 
-As described in the diagram below, the captured workflows are the main part of the integration. Requests are made available to SENAITE to fetch and the results are posted back to the External EHR via the Middleware layer.
-
-## \[Optional\] Phase 3: Raw Results
-
-This involves including numeric, coded and textual results from each test in the diagnostic report as Observations. The devil here is certainly in the detail, because depending on which panels and tests determines the complexity here. For example, microbiological tests can involve some very complicated reflex testing workflows.
-
-# Questions for Implementers
-
-Each integration is different but there is a standard set of questions to harmonise data between integrating systems
+# Requirements Discovery: Questions for Implementers
+Each integration is different but there is a standard set of questions which can ensure the integration performs correctly.
 
 ## Patient Details
 
@@ -48,3 +44,4 @@ If so:
 
 - [ ] Would it be possible to speak with someone to understand that?
 - [ ] Would it be possible to get copies of the forms/documentation used in this workflow?
+
