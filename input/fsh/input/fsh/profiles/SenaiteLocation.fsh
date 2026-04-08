@@ -1,7 +1,8 @@
 Profile: SenaiteLocation
 Parent: Location
 Id: SenaiteLocation
-Title: "This resource is used to capture the location in which the Service Request was made"
+Title: "SenaiteLocation"
+Description: "This resource is used to capture the location in which the Service Request was made"
 * ^status = #draft
 * ^purpose = "To determine where to send back the results for the Service Request"
 * extension ..0

@@ -137,7 +137,7 @@ Usage:      #inline
 // Transaction Bundle
 // ============================================================
 Instance:   LiverPanelTransactionBundle
-InstanceOf: SenaiteBundle
+InstanceOf: SenaiteRequestBundle
 Title: "[Bundle] Liver Panel Transaction Bundle"
 Description: "Transaction bundle containing patient, organization, location, practitioner, encounter, specimen, and service request resources for a liver panel test order."
 Usage:      #example

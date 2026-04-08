@@ -11,7 +11,7 @@ Parent:      Bundle
 Id:          SenaiteBundleResponse
 Title:       "Senaite Bundle Response"
 Description: """The transaction-response Bundle returned by the server after successfully
-processing a SenaiteBundle. One entry is returned per entry in the request,
+processing a SenaiteRequestBundle. One entry is returned per entry in the request,
 in the same order. Each entry carries the server-assigned fullUrl and a
 response status. No resource body or request element is included."""
 * ^status = #draft

@@ -6,12 +6,12 @@ Expression: "matches('^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-
 Severity:   #error
 
 // ============================================================
-// SenaiteBundle
+// SenaiteRequestBundle
 // ============================================================
-Profile:     SenaiteBundle
+Profile:     SenaiteRequestBundle
 Parent:      Bundle
-Id:          SenaiteBundle
-Title:       "Senaite Bundle"
+Id:          SenaiteRequestBundle
+Title:       "Senaite Service Request Bundle"
 Description: """A transaction Bundle used to submit a laboratory service request to SENAITE.
 The ServiceRequest is the backbone of the Bundle. All referenced resources
 (Patient, Encounter, Practitioner, Location, Organization, Specimen) must be

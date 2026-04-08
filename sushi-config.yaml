@@ -87,9 +87,7 @@ menu:
   Home: index.html
   Supported Workflows: supported-workflows.html
   Project Management: project-management.html
-  Profiles: artifacts.html#1
-  Extensions: artifacts.html#2
-  Examples: artifacts.html#3
+  Artefacts (Profiles/Examples/Extensions): artifacts.html
   Encodings: encodings.html
 
 # ╭───────────────────────────Less Common Implementation Guide Properties──────────────────────────╮
@@ -159,19 +157,34 @@ contact:
 # is specified by id or name, SUSHI will replace it with the correct
 # URL when generating the IG JSON.
 #
-# groups:
-#   GroupA:
-#     name: Group A
-#     description: The Alpha Group
-#     resources:
-#     - StructureDefinition/animal-patient
-#     - StructureDefinition/arm-procedure
-#   GroupB:
-#     name: Group B
-#     description: The Beta Group
-#     resources:
-#     - StructureDefinition/bark-control
-#     - StructureDefinition/bee-sting
+groups:
+  RequestWorkflow:
+    name: "Request/Results Workflow — Profiles"
+    description: "Profiles supporting the lab request and results workflow."
+    resources:
+      - StructureDefinition/SenaiteRequestBundle
+      - StructureDefinition/SenaiteBundleResponse
+      - StructureDefinition/SenaiteServiceRequest
+      - StructureDefinition/SenaiteSpecimen
+      - StructureDefinition/SenaiteEncounter
+      - StructureDefinition/SenaiteLocation
+      - StructureDefinition/SenaiteObservation
+      - StructureDefinition/SenaiteOrganization
+      - StructureDefinition/SenaitePatient
+      - StructureDefinition/SenaitePractitioner
+      - StructureDefinition/SenaiteServiceRequestCancellation
+      - StructureDefinition/SenaiteDiagnosticReport
+  RequestWorkflowExamples:
+    name: "Request/Results Workflow — Examples"
+    description: "Example instances for the lab request and results workflow."
+    resources:
+      - Bundle/LiverPanelTransactionBundle
+      - Bundle/LiverPanelTransactionResponse
+      - OperationOutcome/UnknownLoincPanelOutcome
+      - Parameters/CancelLiverPanelRequest
+      - OperationOutcome/CancelLiverPanelConflict
+      - OperationOutcome/CancelLiverPanelNotFound
+      - OperationOutcome/CancelLiverPanelBadRequest
 #
 #
 # The ImplementationGuide resource defines several other properties
