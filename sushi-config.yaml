@@ -46,14 +46,21 @@ publisher:
 # with supported extensions (e.g., .md/.xml) will be treated as
 # sub-pages.
 #
-# pages:
-#   index.md:
-#     title: Example Home
-#   implementation.xml:
-#   examples.xml:
-#     title: Examples Overview
-#     simpleExamples.xml:
-#     complexExamples.xml:
+pages:
+  index.md:
+    title: Home — SENAITE Implementation Guide
+  supported-workflows.md:
+    title: Supported Workflows
+    lab-request-and-results.md:
+      title: Lab Request and Results
+    instrument-integration.md:
+      title: Instrument Integration
+  project-management.md:
+    title: Project Management
+  profiles.md:
+    title: Profiles
+  encodings.md:
+    title: Encodings
 #
 #
 # The parameters property represents IG.definition.parameter. Rather
