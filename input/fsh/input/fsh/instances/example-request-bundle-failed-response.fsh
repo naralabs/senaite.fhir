@@ -8,6 +8,8 @@
 // ============================================================
 Instance:   UnknownLoincPanelOutcome
 InstanceOf: OperationOutcome
+Title: "[OperationOutcome] Unknown LOINC Panel Code"
+Description: "OperationOutcome returned when a ServiceRequest references an unknown LOINC panel code, causing transaction rollback."
 Usage:      #example
 * issue[0].severity    = #error
 * issue[0].code        = #not-found

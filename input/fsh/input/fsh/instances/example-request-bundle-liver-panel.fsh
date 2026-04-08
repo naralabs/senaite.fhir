@@ -138,6 +138,8 @@ Usage:      #inline
 // ============================================================
 Instance:   LiverPanelTransactionBundle
 InstanceOf: SenaiteBundle
+Title: "[Bundle] Liver Panel Transaction Bundle"
+Description: "Transaction bundle containing patient, organization, location, practitioner, encounter, specimen, and service request resources for a liver panel test order."
 Usage:      #example
 * type = #transaction
 

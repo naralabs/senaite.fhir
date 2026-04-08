@@ -10,6 +10,8 @@ Alias: $opOutcome   = http://terminology.hl7.org/CodeSystem/operation-outcome
 // ================================================================
 Instance:   CancelLiverPanelRequest
 InstanceOf: SenaiteServiceRequestCancellation
+Title: "[Parameters] Cancel Liver Panel Request"
+Description: "Parameters resource for cancelling a liver panel service request using JSON Patch operations."
 Usage:      #example
 * parameter.name                    = "op"
 * parameter.part[op].name           = "op"

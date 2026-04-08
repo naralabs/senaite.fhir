@@ -3,6 +3,8 @@
 // ============================================================
 Instance:   LiverPanelTransactionResponse
 InstanceOf: SenaiteBundleResponse
+Title: "[Bundle] Liver Panel Transaction Response"
+Description: "Transaction response bundle for the liver panel service request, containing created resource IDs."
 Usage:      #example
 * type = #transaction-response
 
