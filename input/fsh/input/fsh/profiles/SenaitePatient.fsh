@@ -3,7 +3,7 @@ Parent: Patient
 Id: SenaitePatient
 Description: "Demographic details of the patient"
 * ^status = #draft
-* extension contains EstimatedDateBirth named estimatedDateBirth 0..*
+* extension contains EstimatedDateBirth named estimatedDateBirth 0..1
 * identifier 1..1
 * identifier.extension ..0
 * identifier.value 1..
