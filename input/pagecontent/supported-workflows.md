@@ -45,6 +45,8 @@ POSTing a FHIR Transaction Bundle to the SENAITE FHIR API. This bundle contains 
 needed to create a lab request, including the ServiceRequest, Patient, Specimen, Encounter, and 
 Practitioner, with Location and Organization being optional.
 
+For example Request Bundle profile please see [here](Bundle-LiverPanelTransactionBundle.json.html)
+
 ---
 
 ###### 2. Internal Processing (SENAITE FHIR API → SENAITE Application)

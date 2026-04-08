@@ -1,0 +1,19 @@
+    title Cancel ServiceRequest Workflow
+    participant SENAITE Application
+    participant SENAITE FHIR API
+    participant External Consumer
+
+    External Consumer->>SENAITE FHIR API: Push ServiceRequest Bundle that includes:\n - ServiceRequest\n - Patient\n - Specimen\n - Encounter\n - Practitioner\n - [optional] Location\n - [optional] Organization
+    SENAITE FHIR API->>SENAITE Application: Processes Bundle and\ngenerates new Sample
+    SENAITE FHIR API-->>External Consumer: Response: FHIR Transaction Response Bundle
+
+    par Sample Processing
+        SENAITE Application->>SENAITE Application: Lab clerk processes ServiceRequest\nthrough sample processing workflow
+        note over SENAITE Application: This paragraph has been summarised
+    end
+
+    External Consumer->>SENAITE FHIR API: PATCH /ServiceRequest/{id}\n[{ "op": "replace", "path": "/status", "value": "revoked" }]
+    SENAITE FHIR API->>SENAITE Application: Revoke sample in SENAITE
+    note over SENAITE Application: Cascade: withdraw specimen,\nnotify downstream systems
+    SENAITE Application-->>SENAITE FHIR API: Revocation confirmed
+    SENAITE FHIR API-->>External Consumer: 200 OK\nServiceRequest (status: revoked, versionId: 2)
