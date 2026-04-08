@@ -35,6 +35,17 @@ Each integration is different but there is a standard set of questions which can
   - [ ] Panels or Profiles: (ServiceRequest.code) Preferred LOINC.
   - [ ] Tests or subtests: (ServiceRequest.orderDetail\[\]) Preferred LOINC
   - [ ]  Specimen.type: Preferred (SNOMED or <https://terminology.hl7.org/3.1.0/ValueSet-v2-0487.html>)
+  - [ ]  What encoding will be used for Practitioner identifier — provider number, HPI-I, local ID?
+
+## Performance
+- [ ] What is the results polling frequency?
+- [ ] What is the expected daily request volume?
+- [ ] Are there peak periods (e.g. Monday morning surge)?
+
+## Error handling and resilience
+
+- [ ] What happens if the consumer's system is unavailable when results are ready?
+- [ ] How will failed transactions be surfaced and resolved operationally?
 
 ## Existing System
 
