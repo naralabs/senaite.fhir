@@ -158,6 +158,11 @@ contact:
 # URL when generating the IG JSON.
 #
 groups:
+  CapabilityStatements:
+    name: "Capability Statements"
+    description: "FHIR capability statements describing the SENAITE API surface."
+    resources:
+      - CapabilityStatement/SenaiteCapabilityStatement
   RequestWorkflow:
     name: "Request/Results Workflow — Profiles"
     description: "Profiles supporting the lab request and results workflow."
