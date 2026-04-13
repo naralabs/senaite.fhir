@@ -8,8 +8,8 @@ directly into the Request/Results Workflow once results are published.
 
 ## Artefacts for Instrument Workflow
 See:
-- [Profiles](artifacts.html): these define the structure of particular resources as they vary from the base type.
-- [Instances or Examples](artifacts.html): these are examples of each of the profiles above. Available in JSON or XML.
+- [Profiles](artifacts.html#instrument-workflow-—-profiles): these define the structure of particular resources as they vary from the base type.
+- [Instances or Examples](artifacts.html#instrument-workflow-—-examples): these are examples of each of the profiles above. Available in JSON or XML.
 
 ## Device Registration
 

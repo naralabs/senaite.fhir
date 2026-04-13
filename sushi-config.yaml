@@ -165,6 +165,10 @@ groups:
       - StructureDefinition/SenaiteRequestBundle
       - StructureDefinition/SenaiteBundleResponse
       - StructureDefinition/SenaiteServiceRequest
+      - StructureDefinition/SenaiteServiceRequestCancellation
+      - StructureDefinition/SenaiteServiceRequestRevoked
+      - StructureDefinition/SenaiteServiceRequestCancellationError
+      - StructureDefinition/SenaiteDiagnosticReport
       - StructureDefinition/SenaiteSpecimen
       - StructureDefinition/SenaiteEncounter
       - StructureDefinition/SenaiteLocation
@@ -172,8 +176,6 @@ groups:
       - StructureDefinition/SenaiteOrganization
       - StructureDefinition/SenaitePatient
       - StructureDefinition/SenaitePractitioner
-      - StructureDefinition/SenaiteServiceRequestCancellation
-      - StructureDefinition/SenaiteDiagnosticReport
   RequestWorkflowExamples:
     name: "Request/Results Workflow — Examples"
     description: "Example instances for the lab request and results workflow."
@@ -185,6 +187,26 @@ groups:
       - OperationOutcome/CancelLiverPanelConflict
       - OperationOutcome/CancelLiverPanelNotFound
       - OperationOutcome/CancelLiverPanelBadRequest
+  InstrumentWorkflow:
+    name: "Instrument Workflow — Profiles"
+    description: "Profiles supporting the instrument integration workflow."
+    resources:
+      - StructureDefinition/SenaiteDevice
+  InstrumentWorkflowExamples:
+    name: "Instrument Workflow — Examples"
+    description: "Example instances for the instrument integration workflow."
+    resources:
+      - Device/device-sysmex-xn1000
+      - Device/device-roche-cobas-c502
+      - Observation/hb-instrument
+      - Observation/rbc-instrument
+      - Observation/wbc-instrument
+      - Observation/plt-instrument
+      - Observation/alt-instrument
+      - Observation/ast-instrument
+      - Observation/alp-instrument
+      - Observation/tbil-instrument
+      - Observation/albumin-instrument
 #
 #
 # The ImplementationGuide resource defines several other properties
