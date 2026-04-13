@@ -1,4 +1,4 @@
-Alias: $senaite = https://senaite-fhir.naralabs.com/en/StructureDefinition
+Alias: $senaite = https://senaite-fhir.naralabs.com/StructureDefinition
 
 Invariant:  urn-uuid
 Description: "fullUrl must be a urn:uuid: reference for POST transaction entries"
