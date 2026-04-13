@@ -16,9 +16,9 @@ As described in the [Lab Request and Results workflow description](lab-request-a
 The results include optional raw results including numeric, coded and textual results from each test in the diagnostic report as Observations. The devil here is certainly in the detail, because depending on which panels and tests determines the complexity here. For example, microbiological tests can involve some very complicated reflex testing workflows.
 
 ### Phase 2: Instrument Workflow
-For a full description of this workflow please see [Instrument Integration Workflow](instrument-integration.html). This requires Phase 1 be implemented first as both systems will need to an identified ServiceRequest with which to attach results.
+For a full description of this workflow please see [Instrument Integration Workflow](instrument-integration.html). This requires Phase 1 be implemented first as both systems will need an identified ServiceRequest with which to attach results.
 
-This phase is still in the draft phase. 
+This phase is still in the draft. 
 
 ## Requirements Discovery: Questions for Implementers
 Each integration is different but there is a standard set of questions which can ensure the integration performs correctly.

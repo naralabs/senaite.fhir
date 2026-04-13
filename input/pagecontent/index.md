@@ -11,9 +11,9 @@ Should your use cases reside outside of health such as industrial applications p
 For those unfamiliar, FHIR uses a RESTFul API approach based on data structures called Resources. Full FHIR documentation is available [here](https://hl7.org/fhir/R5/index.html).
 
 ## Target Audience
-The likely user of this IG is a party wishing integrate SENAITE into a wider health eco-system, most likely either directly with an EHR or with a Middleware layer as part of a broader interoperability strategy. The workflows listed below enable external requests for sample processing to be available in SENAITE and results created for those requests from SENAITE to be made available EHR. Please see the Design Principles section below to understand the options regarding the flow of these resources.
+The likely user of this IG is a party wishing to integrate SENAITE into a wider health eco-system, most likely either directly with an EHR or with a Middleware layer as part of a broader interoperability strategy. The workflows listed below enable external requests for sample processing to be available in SENAITE and results created for those requests from SENAITE to be made available EHR. Please see the Design Principles section below to understand the options regarding the flow of these resources.
 
-Another audience might be those who wish to integrate intruments with SENAITE via a FHIR protocol.  
+Another audience might be those who wish to integrate instruments with SENAITE via a FHIR protocol.  
 
 ## Design Principles
 To expose lab requests and attain their results from SENAITE the first decision should be to decide on which side is hosting the API. There are two options here:

@@ -9,7 +9,7 @@
 
     par Sample Processing
         SENAITE Application->>SENAITE Application: Lab clerk processes ServiceRequest \nthrough sample processing workflow
-        note over SENAITE Application: This paragraph has been summarised
+        note over SENAITE Application: Processing steps omitted for brevity
     end
 
     alt Step 1: Results polling with data

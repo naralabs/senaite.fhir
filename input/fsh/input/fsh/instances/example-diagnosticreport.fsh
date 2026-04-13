@@ -8,7 +8,7 @@ Usage: #example
 * code.text = "Full Blood Count Panel"
 * subject.reference = "Patient/example-patient"
 * basedOn.type = "ServiceRequest"
-* basedOn.reference = "ServiceRequest/example-specimen"
+* basedOn.reference = "ServiceRequest/example-servicerequest"
 * result[0].reference = "Observation/hb"
 * result[+].reference = "Observation/rbc"
 * result[+].reference = "Observation/wbc"

@@ -2,7 +2,7 @@ Profile: SenaiteDiagnosticReport
 Parent: DiagnosticReport
 Id: SenaiteDiagnosticReport
 Description: """This is the results for the lab test requested by the ServiceRequest - as such it requires a basedOn link to the Service Request.
-It may contain either the pdf file in presentedForm or the quanititative results as Observations in results."""
+It may contain either the pdf file in presentedForm or the quantitative results as Observations in results."""
 * ^status = #draft
 * extension ..0
 * modifierExtension ..0

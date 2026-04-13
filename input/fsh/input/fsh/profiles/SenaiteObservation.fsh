@@ -9,17 +9,8 @@ Description: """A single quantitative result produced by an instrument and pushe
 * extension ..0
 * modifierExtension ..0
 * identifier ..0
-
-// basedOn block for instrument results — links Observation to its ServiceRequest
-* device 0..1
-* device only Reference(SenaiteDevice)
-* device.reference 1..
-* device.type ..0
-* device.identifier ..0
-* device.display ..0
-
 // Optional — identifies the instrument that produced this result.
-// Allows SENAITE to track results per device for QC and audit purposes.
+// basedOn block for instrument results — links Observation to its ServiceRequest
 * device 0..1
 * device only Reference(SenaiteDevice)
 * device.reference 1..

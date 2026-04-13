@@ -1,5 +1,4 @@
 title Device Registration Workflow (FHIR)
-participant Laboratory Instrument
 participant Instrument Middleware
 participant SENAITE FHIR API
 participant SENAITE Application
