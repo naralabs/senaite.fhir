@@ -15,6 +15,15 @@ Description: "A single quantitative result produced by an instrument and pushed 
 * basedOn.identifier ..0
 * basedOn.display ..0
 
+// Optional — identifies the instrument that produced this result.
+// Allows SENAITE to track results per device for QC and audit purposes.
+* device 0..1
+* device only Reference(SenaiteDevice)
+* device.reference 1..
+* device.type ..0
+* device.identifier ..0
+* device.display ..0
+
 * partOf ..0
 * category ..0
 * subject ..0

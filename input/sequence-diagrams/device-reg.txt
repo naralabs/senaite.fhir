@@ -1,0 +1,17 @@
+title Device Registration Workflow (FHIR)
+participant Laboratory Instrument
+participant Instrument Middleware
+participant SENAITE FHIR API
+participant SENAITE Application
+
+note over SENAITE Application: Device manually created\nin SENAITE by lab administrator
+
+Instrument Middleware->>SENAITE FHIR API: GET {fhir_api_root}/Device\n?identifier=<asset_number>
+
+alt Device found
+    SENAITE FHIR API-->>Instrument Middleware: 200 OK\nDevice/{id}
+    note over Instrument Middleware: Cache Device/{id}\nfor use in Observations
+else Device not found
+    SENAITE FHIR API-->>Instrument Middleware: 404 Not Found
+    note over Instrument Middleware: Halt — administrator must\ncreate device in SENAITE\nbefore results can be pushed
+end

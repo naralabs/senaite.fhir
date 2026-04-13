@@ -69,6 +69,8 @@ to correctly match results to the original lab request. Posting as a Transaction
 ensures all Observations for a ServiceRequest are received and processed atomically — 
 either all succeed or all fail together.
 
+NOTE: Each Observation should populate basedOn referencing the originating ServiceRequest. This is not enforced at the profile level to allow the profile to serve both the request/results and instrument workflows.
+
 ---
 
 ### 7. Result Validation (SENAITE FHIR API → SENAITE Application — internal)

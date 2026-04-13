@@ -6,7 +6,7 @@
     note over SENAITE Application: Sample has been received\nand worksheets assigned
 
     Instrument Middleware->>SENAITE FHIR API: GET {fhir_api_root}/ServiceRequest\n?status=active\n&_lastUpdated=<since>
-    SENAITE FHIR API->>Instrument Middleware: Bundle includes active\nServiceRequests
+    SENAITE FHIR API-->>Instrument Middleware: Bundle includes active\nServiceRequests
 
     Instrument Middleware->>Laboratory Instrument: Transmit worklist\nto instrument
 
@@ -17,7 +17,10 @@
 
     Laboratory Instrument->>Instrument Middleware: Transmit raw results\n(HL7, ASTM or proprietary format)
 
-    Instrument Middleware->>SENAITE FHIR API: POST {fhir_api_root}/Observation\nfor each result,\nreferencing ServiceRequest
+loop For each result
+    Instrument Middleware->>SENAITE FHIR API: POST {fhir_api_root}/Observation
+    SENAITE FHIR API-->>Instrument Middleware: 201 Created
+end
 
     alt Result Validation
         SENAITE FHIR API->>SENAITE Application: Map Observations to\nmatching analyses
