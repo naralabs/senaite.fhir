@@ -1,9 +1,8 @@
     title Instrument Integration Workflow (FHIR)
     participant Laboratory Instrument
     participant Instrument Middleware
-    participant SENAITE Application
     participant SENAITE FHIR API
-
+    participant SENAITE Application
     note over SENAITE Application: Sample has been received\nand worksheets assigned
 
     Instrument Middleware->>SENAITE FHIR API: GET {fhir_api_root}/ServiceRequest\n?status=active\n&_lastUpdated=<since>

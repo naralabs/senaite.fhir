@@ -1,11 +1,20 @@
 Profile: SenaiteObservation
 Parent: Observation
 Id: SenaiteObservation
+Description: "A single quantitative result produced by an instrument and pushed to SENAITE. basedOn links the result back to the originating ServiceRequest."
 * ^status = #draft
 * extension ..0
 * modifierExtension ..0
 * identifier ..0
-* basedOn ..0
+
+// basedOn block for instrument results — links Observation to its ServiceRequest
+* basedOn 0..1
+* basedOn only Reference(SenaiteServiceRequest)
+* basedOn.reference 1..
+* basedOn.type ..0
+* basedOn.identifier ..0
+* basedOn.display ..0
+
 * partOf ..0
 * category ..0
 * subject ..0
