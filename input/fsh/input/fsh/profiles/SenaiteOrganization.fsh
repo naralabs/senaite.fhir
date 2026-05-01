@@ -11,5 +11,5 @@ Description: "Used to specify the Organization who makes a SenaiteServiceRequest
 * identifier.assigner ..0
 * name 1..1
 * alias ..0
-* partOf ..0
+* partOf ..1 // this can be used in the future to express hierarchies if we need to know the requesting department
 * endpoint ..0

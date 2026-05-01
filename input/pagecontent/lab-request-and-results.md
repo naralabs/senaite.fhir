@@ -21,7 +21,7 @@ See:
 
 The diagram describes a **request-in, poll-for-results** integration pattern, where the consumer pushes a lab order, waits for the lab to process it, and then retrieves results either as structured FHIR data or as a PDF report.
 
-1. **Pushing the request:** The workflow begins with the External Consumer (e.g. a hospital system or ordering application) POSTing a FHIR Transaction Bundle to the SENAITE FHIR API. This bundle contains all the resources needed to create a lab request, including the ServiceRequest, Patient, Specimen, Encounter, and Practitioner, with Location and Organization being optional. For an example Request Bundle see [here](Bundle-LiverPanelTransactionBundle.json.html).
+1. **Pushing the request:** The workflow begins with the External Consumer (e.g. a hospital system or ordering application) POSTing a FHIR Transaction Bundle to the SENAITE FHIR API. This bundle contains all the resources needed to create a lab request, including the ServiceRequest, Patient, Specimen, Encounter, and Practitioner, Organization as client through the extension. For an example Request Bundle see [here](Bundle-LiverPanelTransactionBundle.json.html).
 
 2. **Internal processing:** Once received, the FHIR API processes the Bundle and instructs the SENAITE Application to generate a new Sample — translating the FHIR resources into SENAITE's internal data model.
 

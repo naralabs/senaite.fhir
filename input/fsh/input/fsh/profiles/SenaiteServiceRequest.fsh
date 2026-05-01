@@ -7,7 +7,13 @@ Description: """This will be an incoming lab request. It relies on references to
 - Encounter: Determining where and when the request originated.
 - Requester: The practitioner who made the request."""
 * ^status = #draft
-* extension ..0
+
+// ── Extensions ──────────────────────────────────────────────
+// Remove all extensions except the new SenaiteClient one.
+* extension contains SenaiteClient named client 1..1
+* extension[client] ^short = "The submitting client organisation"
+
+// Suppress all other extensions / modifier extensions
 * modifierExtension ..0
 * identifier ..0
 * instantiatesCanonical ..0
@@ -34,7 +40,7 @@ Description: """This will be an incoming lab request. It relies on references to
 * code from $loinc (preferred)
 * code ^binding.description = "For laboratory codes"
 * code.extension ..0
-* orderDetail ^definition = "This is where we handle the individual test codes for the test comprised from the profile as defined in the code."
+* orderDetail ^definition = "Individual test codes that make up the ordered panel."
 * orderDetail 0..
 * orderDetail.extension ..0
 * orderDetail.modifierExtension ..0
@@ -48,10 +54,7 @@ Description: """This will be an incoming lab request. It relies on references to
 * orderDetail.parameter.valueCodeableConcept ^binding.description = "LOINC codes for individual laboratory tests"
 * quantity[x] ..0
 * subject.reference obeys subject-identified
-* encounter.reference 1..
-* encounter.type ..0
-* encounter.identifier ..0
-* encounter.display ..0
+* encounter ..0
 * occurrence[x] ..0
 * asNeeded[x] ..0
 * requester.extension ..0

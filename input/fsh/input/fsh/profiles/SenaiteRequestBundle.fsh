@@ -12,29 +12,37 @@ Profile:     SenaiteRequestBundle
 Parent:      Bundle
 Id:          SenaiteRequestBundle
 Title:       "Senaite Service Request Bundle"
-Description: """A transaction Bundle used to submit a laboratory service request to SENAITE.
-The ServiceRequest is the backbone of the Bundle. All referenced resources
-(Patient, Encounter, Practitioner, Location, Organization, Specimen) must be
-included as entries so the server can resolve intra-Bundle references.
-Resource instances may not yet exist on the server; entries use POST so the
-server creates them and assigns logical IDs."""
+Description: """
+  A transaction Bundle used to submit a laboratory service request
+  to SENAITE. The ServiceRequest is the backbone of the Bundle.
+  All referenced resources (Patient, Practitioner, Organization,
+  Specimen) must be included as entries so the server can resolve
+  intra-Bundle references.
+
+  Encounter and Location have been removed. The submitting Client
+  Organisation is conveyed directly via the SenaiteClient extension
+  on the ServiceRequest. Organization is required (1..1) because
+  every request must identify its Client.
+
+  Resource instances may not yet exist on the server; entries use
+  POST so the server creates them and assigns logical IDs.
+"""
 * ^status = #draft
 
 // Bundle-level constraints
 * id 1..1
-* type  = #transaction (exactly)
+* type = #transaction (exactly)
 * entry 1..*
 
 // Suppress elements not used in this integration
-* identifier   ..0
-* timestamp    ..0
-* total        ..0
-* link         ..0
-* signature    ..0
+* identifier ..0
+* timestamp  ..0
+* total      ..0
+* link       ..0
+* signature  ..0
 
 // ---------------------------------------------------------------
 // Entry slice definitions
-// One required slice per resource type; all use POST.
 // ---------------------------------------------------------------
 * entry ^slicing.discriminator.type = #profile
 * entry ^slicing.discriminator.path = "resource"
@@ -44,11 +52,9 @@ server creates them and assigns logical IDs."""
 * entry contains
     serviceRequest 1..1 and
     patient        1..1 and
-    encounter      1..1 and
     practitioner   1..1 and
     specimen       1..1 and
-    organization   0..1 and
-    location       0..1
+    organization   1..1
 
 // ---------------------------------------------------------------
 // ServiceRequest entry
@@ -77,19 +83,6 @@ server creates them and assigns logical IDs."""
 * entry[patient].request.url    = "Patient" (exactly)
 
 // ---------------------------------------------------------------
-// Encounter entry
-// ---------------------------------------------------------------
-* entry[encounter].fullUrl  1..1
-* entry[encounter].fullUrl obeys urn-uuid
-* entry[encounter].resource 1..1
-* entry[encounter].resource only SenaiteEncounter
-* entry[encounter].search   ..0
-* entry[encounter].response ..0
-* entry[encounter].request  1..1
-* entry[encounter].request.method = #POST (exactly)
-* entry[encounter].request.url    = "Encounter" (exactly)
-
-// ---------------------------------------------------------------
 // Practitioner entry
 // ---------------------------------------------------------------
 * entry[practitioner].fullUrl  1..1
@@ -116,8 +109,9 @@ server creates them and assigns logical IDs."""
 * entry[specimen].request.url    = "Specimen" (exactly)
 
 // ---------------------------------------------------------------
-// Organization entry (optional — included when the ordering
-// organisation is not yet known to the server)
+// Organization entry — REQUIRED (1..1)
+// The Client organisation submitting the request. Referenced by
+// the ServiceRequest via extension[SenaiteClient].
 // ---------------------------------------------------------------
 * entry[organization].fullUrl  1..1
 * entry[organization].fullUrl obeys urn-uuid
@@ -128,17 +122,3 @@ server creates them and assigns logical IDs."""
 * entry[organization].request  1..1
 * entry[organization].request.method = #POST (exactly)
 * entry[organization].request.url    = "Organization" (exactly)
-
-// ---------------------------------------------------------------
-// Location entry (optional — included when the location is not
-// yet known to the server)
-// ---------------------------------------------------------------
-* entry[location].fullUrl  1..1
-* entry[location].fullUrl obeys urn-uuid
-* entry[location].resource 1..1
-* entry[location].resource only SenaiteLocation
-* entry[location].search   ..0
-* entry[location].response ..0
-* entry[location].request  1..1
-* entry[location].request.method = #POST (exactly)
-* entry[location].request.url    = "Location" (exactly)
