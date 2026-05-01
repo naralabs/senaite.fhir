@@ -3,7 +3,7 @@
     participant SENAITE FHIR API
     participant External Consumer
 
-    External Consumer->>SENAITE FHIR API: Push ServiceRequest Bundle that includes:\n - ServiceRequest\n - Patient\n - Specimen\n - Encounter\n - Practitioner\n - [optional] Location\n - [optional] Organization
+    External Consumer->>SENAITE FHIR API: Push ServiceRequest Bundle that includes:\n - ServiceRequest\n - Patient\n - Specimen\n - Encounter\n - Practitioner\n - [Client] Organization
     SENAITE FHIR API->>SENAITE Application: Processes Bundle and \ngenerates new Sample
     SENAITE FHIR API->>External Consumer: Response: FHIR Transaction Response Bundle
 
