@@ -132,51 +132,35 @@ Usage:        #definition
 * rest[0].resource[5].interaction[0].extension[0].valueCode = #SHALL
 
 // ---------------------------------------------------------------
-// Encounter
+// Practitioner
 // ---------------------------------------------------------------
-* rest[0].resource[6].type = #Encounter
+* rest[0].resource[6].type = #Practitioner
 * rest[0].resource[6].documentation = "Created as part of a SenaiteRequestBundle transaction. No direct REST interactions outside the Bundle are defined by this IG."
-* rest[0].resource[6].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaiteEncounter"
+* rest[0].resource[6].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaitePractitioner"
 * rest[0].resource[6].interaction[0].code = #create
 * rest[0].resource[6].interaction[0].extension[0].url = $capabilitystatement-expectation
 * rest[0].resource[6].interaction[0].extension[0].valueCode = #SHALL
 
 // ---------------------------------------------------------------
-// Practitioner
+// Specimen
 // ---------------------------------------------------------------
-* rest[0].resource[7].type = #Practitioner
+* rest[0].resource[7].type = #Specimen
 * rest[0].resource[7].documentation = "Created as part of a SenaiteRequestBundle transaction. No direct REST interactions outside the Bundle are defined by this IG."
-* rest[0].resource[7].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaitePractitioner"
+* rest[0].resource[7].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaiteSpecimen"
 * rest[0].resource[7].interaction[0].code = #create
 * rest[0].resource[7].interaction[0].extension[0].url = $capabilitystatement-expectation
 * rest[0].resource[7].interaction[0].extension[0].valueCode = #SHALL
 
 // ---------------------------------------------------------------
-// Specimen
+// Organization — REQUIRED in Bundle
+// Every SenaiteRequestBundle must include the submitting Client
+// Organisation. Encounter and Location have been removed; the
+// Client is now referenced directly from the ServiceRequest via
+// the SenaiteClient extension.
 // ---------------------------------------------------------------
-* rest[0].resource[8].type = #Specimen
-* rest[0].resource[8].documentation = "Created as part of a SenaiteRequestBundle transaction. No direct REST interactions outside the Bundle are defined by this IG."
-* rest[0].resource[8].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaiteSpecimen"
+* rest[0].resource[8].type = #Organization
+* rest[0].resource[8].documentation = "Required as part of every SenaiteRequestBundle transaction. Represents the Client Organisation submitting the lab request. Referenced from the ServiceRequest via the SenaiteClient extension. No direct REST interactions outside the Bundle are defined by this IG."
+* rest[0].resource[8].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaiteOrganization"
 * rest[0].resource[8].interaction[0].code = #create
 * rest[0].resource[8].interaction[0].extension[0].url = $capabilitystatement-expectation
 * rest[0].resource[8].interaction[0].extension[0].valueCode = #SHALL
-
-// ---------------------------------------------------------------
-// Location (optional in Bundle)
-// ---------------------------------------------------------------
-* rest[0].resource[9].type = #Location
-* rest[0].resource[9].documentation = "Optionally created as part of a SenaiteRequestBundle transaction. No direct REST interactions outside the Bundle are defined by this IG."
-* rest[0].resource[9].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaiteLocation"
-* rest[0].resource[9].interaction[0].code = #create
-* rest[0].resource[9].interaction[0].extension[0].url = $capabilitystatement-expectation
-* rest[0].resource[9].interaction[0].extension[0].valueCode = #SHOULD
-
-// ---------------------------------------------------------------
-// Organization (optional in Bundle)
-// ---------------------------------------------------------------
-* rest[0].resource[10].type = #Organization
-* rest[0].resource[10].documentation = "Optionally created as part of a SenaiteRequestBundle transaction. No direct REST interactions outside the Bundle are defined by this IG."
-* rest[0].resource[10].supportedProfile[0] = "https://senaite-fhir.naralabs.com/en/StructureDefinition/SenaiteOrganization"
-* rest[0].resource[10].interaction[0].code = #create
-* rest[0].resource[10].interaction[0].extension[0].url = $capabilitystatement-expectation
-* rest[0].resource[10].interaction[0].extension[0].valueCode = #SHOULD
