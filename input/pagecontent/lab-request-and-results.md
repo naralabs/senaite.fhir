@@ -7,7 +7,7 @@ This workflow handles the following cases:
 1. **Lab test ordered:** *A new lab test has been ordered in the external system and the details need to be shared with SENAITE for processing*. This will include details about the sample/specimen along with test information like profiles/panels and tests.
 2. **Lab test updated/cancelled:** *The details of an ordered lab test changes and needs to be shared with SENAITE*. Sometimes this means a lab test has been cancelled (updating the test's status to cancelled). Complexities lie in how far along the processing pipeline that test can be cancelled.
 3. **Report available:** *Once testing is complete the results of a test are to be shared by SENAITE to an external system.* Due to complexities around structuring the vast array of possible test results across multiple categories, this report can be a PDF as published from SENAITE. Additionally, the quantitative results can be represented in a structured form for parsing by the external software. This work still needs to be done.
-
+ 
 ## Artefacts for Request/Results Workflow
 See:
 - [Profiles](artifacts.html#request-results-workflow-—-profiles): these define the structure of particular resources as they vary from the base type.
@@ -21,7 +21,7 @@ See:
 
 The diagram describes a **request-in, poll-for-results** integration pattern, where the consumer pushes a lab order, waits for the lab to process it, and then retrieves results either as structured FHIR data or as a PDF report.
 
-1. **Pushing the request:** The workflow begins with the External Consumer (e.g. a hospital system or ordering application) POSTing a FHIR Transaction Bundle to the SENAITE FHIR API. This bundle contains all the resources needed to create a lab request, including the ServiceRequest, Patient, Specimen, Encounter, and Practitioner, Organization as client through the extension. For an example Request Bundle see [here](Bundle-LiverPanelTransactionBundle.json.html).
+1. **Pushing the request:** The workflow begins with the External Consumer (e.g. a hospital system or ordering application) POSTing a FHIR Transaction Bundle to the SENAITE FHIR API. This bundle contains all the resources needed to create a lab request, including the ServiceRequest, Patient, Specimen, Practitioner, and Organization (Client). The submitting Client Organisation is identified directly on the ServiceRequest via the `SenaiteClient` extension — unlike previous IGs no Encounter is required. For an example Request Bundle see [here](Bundle-LiverPanelTransactionBundle.json.html).
 
 2. **Internal processing:** Once received, the FHIR API processes the Bundle and instructs the SENAITE Application to generate a new Sample — translating the FHIR resources into SENAITE's internal data model.
 

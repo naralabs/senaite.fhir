@@ -5,10 +5,10 @@ Integrations with SENAITE are best initially considered in terms of workflows. W
 
 The two main workflows for SENAITE are:
 - **Lab request and results**: Lab requests are sent to SENAITE's FHIR API in the form of a self-contained Bundle that includes all relevant resources including:
-  - ServiceRequest: Details of the lab request, including the panel or profile requested and the individual tests.
+  - ServiceRequest: Details of the lab request, including the panel or profile requested and the individual tests. The submitting Client Organisation is identified directly on the ServiceRequest via the `SenaiteClient` extension.
   - Patient: The subject of the Service Request.
   - Specimen: The specimen that will be tested.
-  - Encounter: Details in which the test was ordered.
+  - Organization: The Client organisation submitting the request.
   - Practitioner: The medical officer that ordered the test.
 - **Instrument Integration**: This is the standardised workflow by which instruments are able to send results to SENAITE via the FHIR API. 
 
