@@ -175,8 +175,6 @@ groups:
       - StructureDefinition/SenaiteServiceRequestCancellationError
       - StructureDefinition/SenaiteDiagnosticReport
       - StructureDefinition/SenaiteSpecimen
-      - StructureDefinition/SenaiteEncounter
-      - StructureDefinition/SenaiteLocation
       - StructureDefinition/SenaiteObservation
       - StructureDefinition/SenaiteOrganization
       - StructureDefinition/SenaitePatient
