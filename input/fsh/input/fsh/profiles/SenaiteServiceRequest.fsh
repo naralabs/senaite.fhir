@@ -4,7 +4,7 @@ Id: SenaiteServiceRequest
 Description: """This will be an incoming lab request. It relies on references to:
 - Specimen: to handle the related specimen details.
 - Subject: The patient
-- Encounter: Determining where and when the request originated.
+- Organization: Determining from which client the request originated.
 - Requester: The practitioner who made the request."""
 * ^status = #draft
 

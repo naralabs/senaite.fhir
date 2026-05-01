@@ -1,7 +1,7 @@
 Profile: SenaiteOrganization
 Parent: Organization
 Id: SenaiteOrganization
-Description: "Used to specify the Organization who makes a SenaiteServiceRequest. Usually via an SenaiteEncounter."
+Description: "Used to specify the Organization who makes a SenaiteServiceRequest."
 * ^status = #draft
 * modifierExtension 0..0
 * identifier 0..1
