@@ -4,6 +4,10 @@
   <adapter for="senaite.patient.interfaces.IPatient"
            factory=".patient.PatientToResource"/>
 
+  <!-- AnalysisRequest To FHIR -->
+  <adapter for="bika.lims.interfaces.IAnalysisRequest"
+           factory=".analysisrequest.AnalysisRequestRevokeToResource"/>
+
   <!-- FHIR To Patient -->
   <adapter for="senaite.fhir.interfaces.IPatientResource"
            factory=".patient.ResourceToPatient"/>

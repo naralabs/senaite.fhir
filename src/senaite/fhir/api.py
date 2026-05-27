@@ -10,6 +10,7 @@ from persistent.dict import PersistentDict
 from plone.uuid.interfaces import IUUIDGenerator
 from Products.Archetypes.utils import mapply
 from Products.CMFCore.permissions import ModifyPortalContent
+from senaite.jsonapi import request as req
 from senaite.fhir import logger
 from senaite.fhir.config import FHIR_STORAGE_KEY
 from senaite.fhir.config import SYSTEM_CODES
@@ -106,6 +107,75 @@ def get_object(thing, default=_marker):
     if default is _marker:
         return api.get_object(thing)
     return api.get_object(thing, default=default)
+
+
+def get_available_reasons():
+    """Returns available rejection reasons
+    """
+    setup = api.get_senaite_setup()
+    return setup.getRejectionReasons()
+
+
+def get_rejection_reason():
+    """Extract and map rejection reason from a FHIR Parameters payload.
+
+    If a reason matches a predefined setup reason, it is stored in selected
+    Otherwise it is stored as free text in other
+    """
+    records = req.get_request_data()
+    if not records:
+        return []
+
+    if len(records) > 1:
+        fail("Revoke with multiple entries is not supported", status=500)
+
+    payload = records[0]
+    if not payload:
+        return []
+
+    if not isinstance(payload, dict):
+        fail("Invalid revoke body.", status=500)
+
+    resource_type = payload.get("resourceType")
+    if resource_type and resource_type != "Parameters":
+        fail(msg="Invalid revoke body.", status=500)
+
+    params = payload.get("parameter") or []
+    if not params:
+        return []
+
+    if not api.is_list(params):
+        params = [params]
+
+    selected = []
+    other = []
+    available_reasons = get_available_reasons() or []
+
+    for param in params:
+        if param.get("name") != "reason":
+            continue
+
+        reason = api.safe_unicode(param.get("valueString")).strip()
+        if not reason:
+            continue
+
+        matched = None
+        for available_reason in available_reasons:
+            available_reason_text = api.safe_unicode(available_reason).strip()
+            if available_reason_text.lower() == reason.lower():
+                matched = available_reason
+                break
+
+        if matched:
+            if matched not in selected:
+                selected.append(matched)
+        elif reason not in other:
+            other.append(reason)
+
+    if not any([selected, other]):
+        return []
+
+    return [{"selected": selected, "other": ", ".join(other)}]
 
 
 def to_fhir_resource(thing, default=_marker):

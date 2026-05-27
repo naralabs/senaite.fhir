@@ -3,18 +3,25 @@
 import transaction
 
 from bika.lims import api
+from bika.lims.workflow import doActionFor as do_action_for
 from senaite.core.api import dtime
+from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IBundleResource
 from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
+from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationError  # noqa: E501
 from senaite.jsonapi import api as japi
 from senaite.jsonapi import request as req
 
 ENDPOINT = "senaite.fhir.r5"
 ENDPOINT_GET = "%s.get" % ENDPOINT
 ENDPOINT_POST = "%s.post" % ENDPOINT
+ENDPOINT_REVOKE = "%s.revoke" % ENDPOINT
+
+RESOURCE_TYPE_SERVICE_REQUEST = "ServiceRequest"
+RESOURCE_STATUS_FIELD = "ServiceRequest.status"
 
 
 # /<resource_type>
@@ -107,6 +114,66 @@ def post(context, request, resource_type=None):
         "entry": entries,
     }
     return BundleResponseResource(resp)
+
+
+@add_route("/<string:resource_type>/<string(length=32):uid>/$revoke",
+           ENDPOINT_REVOKE, methods=["POST"])
+@add_route("/<string:resource_type>/<string(length=36):uid>/$revoke",
+           ENDPOINT_REVOKE, methods=["POST"])
+def revoke(context, request, resource_type=None, uid=None):
+    # disable CSRF
+    req.disable_csrf_protection()
+
+    if resource_type != RESOURCE_TYPE_SERVICE_REQUEST:
+        fapi.fail(msg="Not Found", status=404)
+
+    uid = fapi.get_uuid(uid).hex
+    obj = api.get_object_by_uid(uid, default=None)
+    if not obj:
+        fapi.fail(msg="Not Found", status=404)
+
+    reject_reason = fapi.get_rejection_reason()
+    reject_allowed = wapi.is_transition_allowed(obj, "reject")
+    cancel_allowed = wapi.is_transition_allowed(obj, "cancel")
+
+    if reject_allowed and not cancel_allowed:
+        transition = "reject"
+    elif cancel_allowed and not reject_allowed:
+        transition = "cancel"
+    else:
+        # TODO: This is ambiguous when both/neither transitions are allowed;
+        # confirm the intended behavior with product/functional owners
+        transition = "reject" if reject_reason else "cancel"
+
+    if reject_reason:
+        obj.setRejectionReasons(reject_reason)
+
+    success, message = do_action_for(obj, transition)
+    if not success:
+        # prevent partial commits (e.g. reason was set before transition)
+        transaction.abort()
+        request.response.setStatus(409)
+
+        # create the OperationOutcome resource
+        issue = {
+            "severity": "error",
+            "code": "conflict",
+            "details": {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/operation-outcome",  # noqa: E501
+                    "code": "MSG_LOCAL_FAIL",
+                }],
+                "text": message,
+            },
+            "diagnostics": message,
+            "expression": [RESOURCE_STATUS_FIELD],
+        }
+        return ServiceRequestRevocationError({
+            "issue": issue
+        })
+
+    resource = fapi.to_fhir_resource(obj)
+    return resource
 
 
 def get_fhir_resources():
