@@ -172,7 +172,7 @@ def revoke(context, request, resource_type=None, uid=None):
             "issue": issue
         })
 
-    resource = fapi.to_fhir_resource(obj)
+    resource = fapi.to_fhir_action_resource(obj, "revoke")
     return resource
 
 

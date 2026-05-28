@@ -87,6 +87,15 @@ class IContentToFHIR(Interface):
         """
 
 
+class IContentActionToFHIR(Interface):
+    """Converter of AT/DX content action/transition to IFHIRResource
+    """
+
+    def to_fhir_resource(self):
+        """Returns the conversion of the context for a FHIR action
+        """
+
+
 class IFHIRToContent(Interface):
     """Converter of IFHIRResource to AT/DX info dict
     """

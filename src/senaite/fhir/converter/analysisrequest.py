@@ -2,7 +2,7 @@
 from senaite.core.api import dtime
 from bika.lims.interfaces import IAnalysisRequest
 from senaite.fhir.converter import first_by, to_fhir_profile_url
-from senaite.fhir.interfaces import IContentToFHIR
+from senaite.fhir.interfaces import IContentActionToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevokedResource  # noqa: E501
@@ -25,8 +25,8 @@ PRIORITIES = (
 
 
 @adapter(IAnalysisRequest)
-@implementer(IContentToFHIR)
-class AnalysisRequestRevokedToResource(object):
+@implementer(IContentActionToFHIR)
+class AnalysisRequestRevokeToResource(object):
 
     def __init__(self, context):
         self.context = context
@@ -52,6 +52,10 @@ class AnalysisRequestRevokedToResource(object):
             data["note"] = [{"text": reason}]
 
         return ServiceRequestRevokedResource(data)
+
+
+# BBB: keep old import path/class name
+AnalysisRequestRevokedToResource = AnalysisRequestRevokeToResource
 
 
 @adapter(IServiceRequestResource)
