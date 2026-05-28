@@ -1,10 +1,66 @@
 # -*- coding: utf-8 -*-
 
+from bika.lims import api
+from senaite.fhir.interfaces import IFHIRResource
 from senaite.fhir.interfaces import IServiceRequestResource
-from senaite.fhir.resource.operationoutcome import FHIRResource
+from senaite.fhir.resource import FHIRResource
 from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.fhir.resource.servicerequest import ServiceRequestResource
 from zope.interface import implementer
+
+
+@implementer(IFHIRResource)
+class ServiceRequestRevocationResource(FHIRResource):
+    """FHIR Parameters payload for ServiceRequest $revoke.
+    """
+    __fixed_values = (
+        ("resourceType", "Parameters"),
+    )
+
+    @property
+    def parameter(self):
+        parameters = self.get("parameter") or []
+        return parameters if api.is_list(parameters) else [parameters]
+
+    @property
+    def rejection_reason(self):
+        """Maps FHIR Parameters.reason values to SENAITE rejection reasons.
+        """
+        selected = []
+        other = []
+        available_reasons = self.get_available_reasons()
+
+        for param in self.parameter:
+            if not isinstance(param, dict):
+                continue
+            if param.get("name") != "reason":
+                continue
+
+            reason = api.safe_unicode(param.get("valueString")).strip()
+            if not reason:
+                continue
+
+            matched = None
+            for available_reason in available_reasons:
+                available_reason_text = api.safe_unicode(available_reason).strip()  # noqa: E501
+                if available_reason_text.lower() == reason.lower():
+                    matched = available_reason
+                    break
+
+            if matched:
+                if matched not in selected:
+                    selected.append(matched)
+            elif reason not in other:
+                other.append(reason)
+
+        if not any([selected, other]):
+            return []
+
+        return [{"selected": selected, "other": ", ".join(other)}]
+
+    def get_available_reasons(self):
+        setup = api.get_senaite_setup()
+        return setup.getRejectionReasons() or []
 
 
 @implementer(IServiceRequestResource)

@@ -32,6 +32,14 @@
            provides="senaite.fhir.interfaces.IFHIRResource"
            factory=".servicerequest.ServiceRequestResource"/>
 
+  <!-- ServiceRequestRevocationResource
+  # TODO Mapping FHIR Parameters resource type to ServiceRequestRevocationResource,
+        that does not look good. Maybe use named adapter? -->
+  <adapter name="Parameters"
+           for="dict"
+           provides="senaite.fhir.interfaces.IFHIRResource"
+           factory=".servicerequestrevoked.ServiceRequestRevocationResource"/>
+
   <!-- Specimen -->
   <adapter name="Specimen"
            for="dict"

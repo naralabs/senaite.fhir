@@ -12,6 +12,7 @@ from senaite.fhir.interfaces import IBundleResource
 from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationError  # noqa: E501
+from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationResource  # noqa: E501
 from senaite.jsonapi import api as japi
 from senaite.jsonapi import request as req
 
@@ -132,7 +133,17 @@ def revoke(context, request, resource_type=None, uid=None):
     if not obj:
         fapi.fail(msg="Not Found", status=404)
 
-    reject_reason = fapi.get_rejection_reason()
+    resources = get_fhir_resources()
+    if len(resources) > 1:
+        fapi.fail("Revoke with multiple entries is not supported")
+
+    reject_reason = []
+    if resources:
+        resource = resources[0]
+        if not isinstance(resource, ServiceRequestRevocationResource):
+            fapi.fail(msg="Invalid revoke body.")
+        reject_reason = resource.rejection_reason
+
     reject_allowed = wapi.is_transition_allowed(obj, "reject")
     cancel_allowed = wapi.is_transition_allowed(obj, "cancel")
 
