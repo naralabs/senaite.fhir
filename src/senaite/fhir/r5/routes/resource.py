@@ -147,6 +147,26 @@ def revoke(context, request, resource_type=None, uid=None):
     reject_allowed = wapi.is_transition_allowed(obj, "reject")
     cancel_allowed = wapi.is_transition_allowed(obj, "cancel")
 
+    if not any([reject_allowed, cancel_allowed]):
+        message = "Revoke is not allowed for this resource"
+        request.response.setStatus(403)
+        issue = {
+            "severity": "error",
+            "code": "forbidden",
+            "details": {
+                "coding": [{
+                    "system": "http://terminology.hl7.org/CodeSystem/operation-outcome",  # noqa: E501
+                    "code": "MSG_LOCAL_FAIL",
+                }],
+                "text": message,
+            },
+            "diagnostics": message,
+            "expression": [RESOURCE_STATUS_FIELD],
+        }
+        return ServiceRequestRevocationError({
+            "issue": issue
+        })
+
     if reject_allowed and not cancel_allowed:
         transition = "reject"
     elif cancel_allowed and not reject_allowed:
@@ -163,12 +183,12 @@ def revoke(context, request, resource_type=None, uid=None):
     if not success:
         # prevent partial commits (e.g. reason was set before transition)
         transaction.abort()
-        request.response.setStatus(409)
+        request.response.setStatus(403)
 
         # create the OperationOutcome resource
         issue = {
             "severity": "error",
-            "code": "conflict",
+            "code": "forbidden",
             "details": {
                 "coding": [{
                     "system": "http://terminology.hl7.org/CodeSystem/operation-outcome",  # noqa: E501
