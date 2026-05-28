@@ -5,7 +5,7 @@ from senaite.fhir.converter import first_by, to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
-from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevokeResource  # noqa: E501
+from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevokedResource  # noqa: E501
 from zope.component import adapter
 from zope.interface import implementer
 from bika.lims import api
@@ -26,7 +26,7 @@ PRIORITIES = (
 
 @adapter(IAnalysisRequest)
 @implementer(IContentToFHIR)
-class AnalysisRequestRevokeToResource(object):
+class AnalysisRequestRevokedToResource(object):
 
     def __init__(self, context):
         self.context = context
@@ -51,7 +51,7 @@ class AnalysisRequestRevokeToResource(object):
         if reason:
             data["note"] = [{"text": reason}]
 
-        return ServiceRequestRevokeResource(data)
+        return ServiceRequestRevokedResource(data)
 
 
 @adapter(IServiceRequestResource)

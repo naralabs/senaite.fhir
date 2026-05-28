@@ -8,7 +8,7 @@ from zope.interface import implementer
 
 
 @implementer(IServiceRequestResource)
-class ServiceRequestRevokeResource(ServiceRequestResource):
+class ServiceRequestRevokedResource(ServiceRequestResource):
     """The ServiceRequest resource returned by the server in the
     200 OK response body after a successful $revoke operation.
     Identical to SenaiteServiceRequest but with status fixed to revoked,

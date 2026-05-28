@@ -6,7 +6,7 @@
 
   <!-- AnalysisRequest To FHIR -->
   <adapter for="bika.lims.interfaces.IAnalysisRequest"
-           factory=".analysisrequest.AnalysisRequestRevokeToResource"/>
+           factory=".analysisrequest.AnalysisRequestRevokedToResource"/>
 
   <!-- FHIR To Patient -->
   <adapter for="senaite.fhir.interfaces.IPatientResource"
