@@ -17,19 +17,9 @@ class ServiceRequestRevokedResource(ServiceRequestResource):
     supplied to the $revoke operation.
     https://fhir.senaite.org/StructureDefinition-SenaiteServiceRequestRevoked.html
     """
-    __cardinality = (
-        ("note", "0..*"),
-    )
-
     __fixed_values = (
         ("status", "revoked"),
     )
-
-    @property
-    def note(self):
-        """Text carries the reason supplied in the $revoke call.
-        """
-        return self.get("note")
 
 
 @implementer(IServiceRequestResource)
