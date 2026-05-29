@@ -26,7 +26,7 @@ PRIORITIES = (
 
 @adapter(IAnalysisRequest)
 @implementer(IContentActionToFHIR)
-class AnalysisRequestRevokeToResource(object):
+class AnalysisRequestRevokedToResource(object):
 
     def __init__(self, context):
         self.context = context
@@ -55,7 +55,7 @@ class AnalysisRequestRevokeToResource(object):
 
 
 # BBB: keep old import path/class name
-AnalysisRequestRevokedToResource = AnalysisRequestRevokeToResource
+AnalysisRequestRevokedToResource = AnalysisRequestRevokedToResource
 
 
 @adapter(IServiceRequestResource)
