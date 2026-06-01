@@ -73,21 +73,20 @@ def post(context, request, resource_type=None):
 
         # create or update the counterpart object
         obj = fapi.get_object(resource, default=None)
-        if not errored:
-            try:
-                if not obj:
-                    obj = fapi.create(resource)
-                    status = "201 Created"
-                else:
-                    obj = fapi.update(resource)
-                    status = "201 Updated"
-            except Exception as e:
-                errored = True
-                status = "500 %s" % str(e)
-                # prevent partial commits
-                transaction.abort()
-        else:
-            status = "500 Skipped due to a previous error"
+        try:
+            if not obj:
+                obj = fapi.create(resource)
+                status = "201 Created"
+            else:
+                obj = fapi.update(resource)
+                status = "201 Updated"
+        except Exception as e:
+            errored = True
+            status = "500 %s" % str(e)
+            # flush entries to only report back the errored resource
+            entries = []
+            # prevent partial commits
+            transaction.abort()
 
         # build the response entry
         fullUrl = "%s/%s" % (resource.resourceType, resource.id)
@@ -103,6 +102,10 @@ def post(context, request, resource_type=None):
             }
         }
         entries.append(entry)
+
+        # Skip further processing if errored
+        if errored:
+            break
 
     # create the BundleResponse
     resp = {
