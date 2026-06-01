@@ -48,9 +48,15 @@ class AnalysisRequestRevokedToResource(object):
             "versionId": api.get_version(self.context),
             "lastUpdated": modified,
         }
-        reason = self.context.getRejectionReasons()
-        if reason:
-            data["note"] = [{"text": reason}]
+        # get the selected predefined reasons
+        reasons = list(self.context.getSelectedRejectionReasons())
+        # append custom/other reasons
+        reasons.append(self.context.getOtherRejectionReasons())
+        # remove empties/Nones
+        reasons = list(filter(None, reasons))
+        reasons = "; ".join(reasons)
+        if reasons:
+            data["note"] = [{"text": reasons}]
 
         return ServiceRequestRevokedResource(data)
 
