@@ -79,7 +79,7 @@ class ServiceRequestRevokedResource(ServiceRequestResource):
 
 
 @implementer(IServiceRequestResource)
-class ServiceRequestRevocationError(FHIRResource):
+class ServiceRequestRevocationError(OperationOutcome):
     """The OperationOutcome returned with a 409 Conflict when a
     ServiceRequest cannot be revoked, for example because results have
     already been published in SENAITE.
@@ -88,12 +88,3 @@ class ServiceRequestRevocationError(FHIRResource):
     __cardinality = (
         ("issue", "1..1"),
     )
-
-    @property
-    def issue(self):
-        """Captures issues and warnings that relate to the construction of the
-        Bundle and the content within it.
-        https://fhir.senaite.org/StructureDefinition-SenaiteServiceRequestRevocationError.html#ServiceRequest.issues
-        """
-        record = self.get("issue") or {}
-        return OperationOutcome(record)
