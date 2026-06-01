@@ -61,10 +61,6 @@ class AnalysisRequestRevokedToResource(object):
         return ServiceRequestRevokedResource(data)
 
 
-# BBB: keep old import path/class name
-AnalysisRequestRevokedToResource = AnalysisRequestRevokedToResource
-
-
 @adapter(IServiceRequestResource)
 @implementer(IFHIRToContent)
 class ResourceToAnalysisRequest(object):

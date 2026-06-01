@@ -358,4 +358,4 @@ def generate_UUID():
     """Generates a new UUID object
     """
     generator = getUtility(IUUIDGenerator)
-    return generator()
+    return get_uuid(generator())

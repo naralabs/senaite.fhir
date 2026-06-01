@@ -12,6 +12,7 @@ class OperationOutcome(FHIRResource):
     )
 
     def _initialize(self):
+        super(OperationOutcome, self)._initialize()
         self["resourceType"] = "OperationOutcome"
         self["id"] = str(fapi.generate_UUID())
 
