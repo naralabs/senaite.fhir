@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from senaite.core.api import dtime
 from bika.lims.interfaces import IAnalysisRequest
-from senaite.fhir.converter import first_by, to_fhir_profile_url
+from senaite.fhir.converter import first_by
+from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentActionToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
