@@ -3,6 +3,7 @@
 import transaction
 
 from bika.lims import api
+from bika.lims.interfaces import IAnalysisRequest
 from bika.lims.workflow import doActionFor as do_action_for
 from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
@@ -21,8 +22,9 @@ ENDPOINT_GET = "%s.get" % ENDPOINT
 ENDPOINT_POST = "%s.post" % ENDPOINT
 ENDPOINT_REVOKE = "%s.revoke" % ENDPOINT
 
-RESOURCE_TYPE_SERVICE_REQUEST = "ServiceRequest"
-RESOURCE_STATUS_FIELD = "ServiceRequest.status"
+RESOURCE_TYPE_TO_CONTENT = (
+    ("ServiceRequest", IAnalysisRequest),
+)
 
 
 # /<resource_type>
@@ -124,29 +126,37 @@ def post(context, request, resource_type=None):
            ENDPOINT_REVOKE, methods=["POST"])
 @add_route("/<string:resource_type>/<string(length=36):uid>/$revoke",
            ENDPOINT_REVOKE, methods=["POST"])
-def revoke(context, request, resource_type=None, uid=None):
+def revoke(context, request, resource_type, uid):
     # disable CSRF
     req.disable_csrf_protection()
 
-    if resource_type != RESOURCE_TYPE_SERVICE_REQUEST:
-        fapi.fail(msg="Not Found", status=404)
-
+    # ensure there is a counterpart object registered for the given uid
     uid = fapi.get_uuid(uid).hex
     obj = api.get_object_by_uid(uid, default=None)
     if not obj:
-        fapi.fail(msg="Not Found", status=404)
+        fapi.fail("Object not found", status=404)
 
+    # ensure the object found is from the expected type
+    implementer = dict(RESOURCE_TYPE_TO_CONTENT).get(resource_type)
+    if not implementer:
+        fapi.fail("Resource type '%s' is not supported" % resource_type)
+    if not implementer.providedBy(obj):
+        fapi.fail("Unexpected content type: %s" % api.get_portal_type(obj),
+                  status=406)
+
+    # get the FHIR resource that represents the revocation
     resources = get_fhir_resources()
+    if not resources:
+        fapi.fail("No revocation resource found for '%s'" % resource_type)
     if len(resources) > 1:
         fapi.fail("Revoke with multiple entries is not supported")
 
-    reject_reason = []
-    if resources:
-        resource = resources[0]
-        if not isinstance(resource, ServiceRequestRevocationResource):
-            fapi.fail(msg="Invalid revoke body.")
-        reject_reason = resource.rejection_reason
+    resource = resources[0]
+    if not isinstance(resource, ServiceRequestRevocationResource):
+        fapi.fail("Not a ServiceRevocationResource")
 
+    # get the reason(s) for rejection/cancellation
+    reject_reason = resource.rejection_reason
     reject_allowed = wapi.is_transition_allowed(obj, "reject")
     cancel_allowed = wapi.is_transition_allowed(obj, "cancel")
 
@@ -164,7 +174,7 @@ def revoke(context, request, resource_type=None, uid=None):
                 "text": message,
             },
             "diagnostics": message,
-            "expression": [RESOURCE_STATUS_FIELD],
+            "expression": ["%s.status" % resource_type],
         }
         return ServiceRequestRevocationError({
             "issue": issue
@@ -200,7 +210,7 @@ def revoke(context, request, resource_type=None, uid=None):
                 "text": message,
             },
             "diagnostics": message,
-            "expression": [RESOURCE_STATUS_FIELD],
+            "expression": ["%s.status" % resource_type],
         }
         return ServiceRequestRevocationError({
             "issue": issue
