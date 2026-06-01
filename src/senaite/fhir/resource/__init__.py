@@ -27,6 +27,7 @@ class FHIRResource(dict):
 
     def __init__(self, seq=None, **kwargs):
         super(FHIRResource, self).__init__(seq, **kwargs)
+        self._initialize()
         self._validate()
 
     @property
@@ -109,6 +110,9 @@ class FHIRResource(dict):
         if as_list:
             return [data_type(record) for record in value]
         return data_type(value)
+
+    def _initialize(self):
+        pass
 
     def _validate(self):
         """Looks through all properties and validates any constraint

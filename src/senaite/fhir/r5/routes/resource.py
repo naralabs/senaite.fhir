@@ -161,7 +161,7 @@ def revoke(context, request, resource_type, uid):
     cancel_allowed = wapi.is_transition_allowed(obj, "cancel")
 
     if not any([reject_allowed, cancel_allowed]):
-        message = "Revoke is not allowed for this resource"
+        # return a ServiceRequestRevocationError
         request.response.setStatus(403)
         issue = {
             "severity": "error",
@@ -171,14 +171,11 @@ def revoke(context, request, resource_type, uid):
                     "system": "http://terminology.hl7.org/CodeSystem/operation-outcome",  # noqa: E501
                     "code": "MSG_LOCAL_FAIL",
                 }],
-                "text": message,
+                "text": "Revoke is not allowed for this resource",
             },
-            "diagnostics": message,
             "expression": ["%s.status" % resource_type],
         }
-        return ServiceRequestRevocationError({
-            "issue": issue
-        })
+        return ServiceRequestRevocationError({"issue": [issue]})
 
     if reject_allowed and not cancel_allowed:
         transition = "reject"
@@ -196,9 +193,8 @@ def revoke(context, request, resource_type, uid):
     if not success:
         # prevent partial commits (e.g. reason was set before transition)
         transaction.abort()
+        # return a ServiceRequestRevocationError
         request.response.setStatus(403)
-
-        # create the OperationOutcome resource
         issue = {
             "severity": "error",
             "code": "forbidden",
@@ -209,12 +205,9 @@ def revoke(context, request, resource_type, uid):
                 }],
                 "text": message,
             },
-            "diagnostics": message,
             "expression": ["%s.status" % resource_type],
         }
-        return ServiceRequestRevocationError({
-            "issue": issue
-        })
+        return ServiceRequestRevocationError({"issue": [issue]})
 
     resource = fapi.to_fhir_action_resource(obj, "revoke")
     return resource

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from senaite.fhir import api as fapi
 from senaite.fhir.datatype.codeableconcept import CodeableConcept
 from senaite.fhir.resource import FHIRResource
 
@@ -9,6 +10,10 @@ class OperationOutcome(FHIRResource):
     __cardinality = (
         ("issue", "1..*"),
     )
+
+    def _initialize(self):
+        self["resourceType"] = "OperationOutcome"
+        self["id"] = str(fapi.generate_UUID())
 
     @property
     def issue(self):

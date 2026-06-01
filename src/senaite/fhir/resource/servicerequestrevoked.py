@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from bika.lims import api
+from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.datatype.meta import Meta
 from senaite.fhir.interfaces import IFHIRResource
 from senaite.fhir.interfaces import IServiceRequestResource
 from senaite.fhir.resource import FHIRResource
@@ -88,3 +90,8 @@ class ServiceRequestRevocationError(OperationOutcome):
     __cardinality = (
         ("issue", "1..1"),
     )
+
+    def _initialize(self):
+        super(ServiceRequestRevocationError, self)._initialize()
+        profile = to_fhir_profile_url(self.__class__.__name__)
+        self["meta"] = Meta({"profile": [profile]})
