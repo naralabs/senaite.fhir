@@ -4,6 +4,11 @@
   <adapter for="senaite.patient.interfaces.IPatient"
            factory=".patient.PatientToResource"/>
 
+  <!-- ResultsReport To FHIR -->
+  <adapter for="senaite.core.interfaces.IResultsReport"
+           factory=".diagnosticreport.ResultsReportToResource"
+           provides="senaite.fhir.interfaces.IContentToFHIR"/>
+
   <!-- AnalysisRequest revoke transition to FHIR -->
   <adapter name="senaite.fhir.action.revoke"
            factory=".analysisrequest.AnalysisRequestRevokedToResource"

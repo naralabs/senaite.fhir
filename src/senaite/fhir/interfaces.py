@@ -78,6 +78,12 @@ class ISpecimenResource(IFHIRResource):
     """
 
 
+class IDiagnosticReportResource(IFHIRResource):
+    """Marker interface for a FHIR's DiagnosticReport resource
+    https://fhir.senaite.org/StructureDefinition-SenaiteDiagnosticReport.html
+    """
+
+
 class IContentToFHIR(Interface):
     """Converter of AT/DX content to IFHIRResource
     """

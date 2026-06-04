@@ -9,3 +9,12 @@ SYSTEM_CODES = (
     ("Specimen", "http://snomed.info/sct"),
     ("SamplePoint", "http://snomed.info/sct"),
 )
+
+REPORT_STATUSES = {
+    "sample_received": "partial",
+    "to_be_verified": "preliminary",
+    "published": "final",
+    "invalid": "entered-in-error",
+    "rejected": "revoked",
+    "cancelled": "revoked",
+}

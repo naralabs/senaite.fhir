@@ -26,6 +26,12 @@
            provides="senaite.fhir.interfaces.IFHIRResource"
            factory=".practitioner.PractitionerResource"/>
 
+  <!-- DiagnosticReport -->
+  <adapter name="DiagnosticReport"
+           for="dict"
+           provides="senaite.fhir.interfaces.IFHIRResource"
+           factory=".diagnosticreport.DiagnosticReportResource"/>
+
   <!-- ServiceRequest -->
   <adapter name="ServiceRequest"
            for="dict"
