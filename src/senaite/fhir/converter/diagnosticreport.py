@@ -94,11 +94,6 @@ class ResultsReportToResource(object):
         return source_data.get("code")
 
     def get_subject(self):
-        source_data = self.get_source_data()
-        subject = source_data.get("subject")
-        if subject:
-            return subject
-
         patient = self.get_patient()
         if not patient:
             return None
@@ -108,11 +103,6 @@ class ResultsReportToResource(object):
         }
 
     def get_result(self):
-        source_data = self.get_source_data()
-        result = source_data.get("result") or []
-        if result:
-            return result
-
         sample = self.get_sample()
         references = []
         for analysis in sample.getAnalyses(full_objects=True):
