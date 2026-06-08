@@ -108,6 +108,11 @@ back to the primary sample:
     ...     sample, "ResultsReport",
     ...     sample=sample.UID(),
     ... )
+    >>> report.setPdf({
+    ...     "data": b"%PDF-1.4 fake diagnostic report",
+    ...     "filename": u"HH-report.pdf",
+    ...     "contentType": "application/pdf",
+    ... })
     >>> report
     <ResultsReport at /plone/clients/...>
     >>> report_uid = api.get_uid(report)
@@ -171,6 +176,29 @@ The reference's UID segment resolves to the same sample:
     >>> ref_uid = based_on[0]["reference"].split("/")[-1]
     >>> uuid.UUID(ref_uid).hex == sample_uid
     True
+
+The ``result`` list contains one ``Observation`` reference per reportable
+analysis. After publishing, the Copper analysis is reportable, so exactly
+one entry is present:
+
+    >>> result = resource["result"]
+    >>> len(result)
+    1
+    >>> result[0]["reference"].startswith("Observation/")
+    True
+    >>> result[0]["display"]
+    u'Copper'
+
+The ``presentedForm`` list carries the base64-encoded PDF that was
+attached to the report:
+
+    >>> presented_form = resource["presentedForm"]
+    >>> len(presented_form)
+    1
+    >>> presented_form[0]["contentType"]
+    u'application/pdf'
+    >>> presented_form[0]["title"]
+    u'HH-report.pdf'
 
 
 Fetch by UID Alone
