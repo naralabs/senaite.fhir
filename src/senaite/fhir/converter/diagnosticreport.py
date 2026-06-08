@@ -137,9 +137,6 @@ class ResultsReportToResource(object):
 
     def get_presented_form(self):
         pdf = self.report.getPdf()
-        if not pdf or not getattr(pdf, "data", None):
-            return []
-
         data = base64.b64encode(pdf.data)
         if not isinstance(data, str):
             data = data.decode("ascii")
