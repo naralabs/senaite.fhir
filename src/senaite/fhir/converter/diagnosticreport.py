@@ -51,7 +51,7 @@ class ResultsReportToResource(object):
 
     def get_source_data(self):
         sample = self.get_sample()
-        if not sample or not fapi.is_fhir_content(sample):
+        if not fapi.is_fhir_content(sample):
             return {}
         storage = fapi.get_fhir_storage(sample)
         return storage.get("data") or {}
@@ -62,7 +62,7 @@ class ResultsReportToResource(object):
 
     def get_status(self):
         sample = self.get_sample()
-        status = api.get_review_status(sample) if sample else None
+        status = api.get_review_status(sample)
         return REPORT_STATUSES.get(status, "registered")
 
     def get_identifier(self):
@@ -72,9 +72,6 @@ class ResultsReportToResource(object):
             return identifiers
 
         sample = self.get_sample()
-        if not sample:
-            return []
-
         identifier = [
             to_fhir_id("servicerequest-id", sample.getId(), use="usual"),
         ]
@@ -87,9 +84,6 @@ class ResultsReportToResource(object):
             return based_on
 
         sample = self.get_sample()
-        if not sample:
-            return []
-
         return [{
             "type": "ServiceRequest",
             "reference": "ServiceRequest/{}".format(fapi.get_uuid(sample)),
@@ -120,9 +114,6 @@ class ResultsReportToResource(object):
             return result
 
         sample = self.get_sample()
-        if not sample:
-            return []
-
         references = []
         for analysis in sample.getAnalyses(full_objects=True):
             if not self.is_reportable(analysis):
@@ -135,8 +126,6 @@ class ResultsReportToResource(object):
 
     def get_patient(self):
         sample = self.get_sample()
-        if not sample:
-            return None
         mrn = sample.getMedicalRecordNumberValue()
         if not mrn:
             return None
@@ -158,7 +147,7 @@ class ResultsReportToResource(object):
         title = getattr(pdf, "filename", None)
         if not title:
             sample = self.get_sample()
-            title = api.get_id(sample) if sample else self.report.Title()
+            title = api.get_id(sample)
 
         return [{
             "contentType": "application/pdf",
