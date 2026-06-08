@@ -66,16 +66,18 @@ class ResultsReportToResource(object):
         return REPORT_STATUSES.get(status, "registered")
 
     def get_identifier(self):
-        source_data = self.get_source_data()
-        identifiers = source_data.get("identifier") or []
-        if identifiers:
-            return identifiers
-
         sample = self.get_sample()
-        identifier = [
+        identifiers = [
             to_fhir_id("servicerequest-id", sample.getId(), use="usual"),
         ]
-        return identifier
+
+        source_data = self.get_source_data()
+        for identifier in source_data.get("identifier", []):
+            if identifier.get("use") != "secondary":
+                continue
+            identifiers.append(identifier)
+
+        return identifiers
 
     def get_based_on(self):
         source_data = self.get_source_data()
