@@ -5,12 +5,14 @@ from uuid import UUID
 
 from bika.lims import api
 from bika.lims.api.security import check_permission
+from bika.lims.interfaces import IInternalUse
 from bika.lims.utils.analysisrequest import create_analysisrequest
 from persistent.dict import PersistentDict
 from plone.uuid.interfaces import IUUIDGenerator
 from Products.Archetypes.utils import mapply
 from Products.CMFCore.permissions import ModifyPortalContent
 from senaite.fhir import logger
+from senaite.fhir.config import ANALYSIS_REPORTABLE_STATUSES
 from senaite.fhir.config import FHIR_STORAGE_KEY
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.exceptions import FHIRAPIError
@@ -47,6 +49,18 @@ def is_fhir_resource(obj):
     """Returns whether the thing is a FHIR Resource object
     """
     return IFHIRResource.providedBy(obj)
+
+
+def is_reportable(analysis):
+    """Returns whether the analysis has to be exposed in FHIR results
+    """
+    if analysis.getHidden():
+        return False
+    if IInternalUse.providedBy(analysis):
+        return False
+
+    status = api.get_review_status(analysis)
+    return status in ANALYSIS_REPORTABLE_STATUSES
 
 
 def get_fhir_storage(obj):

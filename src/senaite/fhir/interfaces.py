@@ -84,6 +84,19 @@ class IDiagnosticReportResource(IFHIRResource):
     """
 
 
+class IObservationResource(IFHIRResource):
+    """Marker interface for a FHIR's Observation resource
+    https://fhir.senaite.org/StructureDefinition-SenaiteObservation.html
+    """
+
+
+class IResultsBundleResource(IFHIRResource):
+    """Marker interface for a FHIR searchset Bundle returned by the
+    DiagnosticReport polling endpoint.
+    https://fhir.senaite.org/StructureDefinition-SenaiteResultsBundle.html
+    """
+
+
 class IContentToFHIR(Interface):
     """Converter of AT/DX content to IFHIRResource
     """

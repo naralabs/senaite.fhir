@@ -57,7 +57,8 @@ class ResultsReportToResource(object):
         return storage.get("data") or {}
 
     def get_last_updated(self):
-        modified = api.get_modification_date(self.report)
+        sample = self.get_sample()
+        modified = api.get_modification_date(sample)
         return dtime.to_localized_time(modified, long_format=True)
 
     def get_status(self):
@@ -108,7 +109,7 @@ class ResultsReportToResource(object):
         sample = self.get_sample()
         references = []
         for analysis in sample.getAnalyses(full_objects=True):
-            if not self.is_reportable(analysis):
+            if not fapi.is_reportable(analysis):
                 continue
             references.append({
                 "reference": "Observation/{}".format(fapi.get_uuid(analysis)),
@@ -122,10 +123,6 @@ class ResultsReportToResource(object):
         if not mrn:
             return None
         return papi.get_patient_by_mrn(mrn, include_inactive=True)
-
-    def is_reportable(self, analysis):
-        status = api.get_review_status(analysis)
-        return status in ["to_be_verified", "verified", "published"]
 
     def get_presented_form(self):
         pdf = self.report.getPdf()

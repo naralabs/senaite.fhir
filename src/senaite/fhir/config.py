@@ -10,11 +10,21 @@ SYSTEM_CODES = (
     ("SamplePoint", "http://snomed.info/sct"),
 )
 
+UCUM_SYSTEM = "http://unitsofmeasure.org"
+
 REPORT_STATUSES = {
-    "sample_received": "partial",
+    "sample_received": "preliminary",
     "to_be_verified": "preliminary",
     "published": "final",
     "invalid": "entered-in-error",
-    "rejected": "revoked",
-    "cancelled": "revoked",
+    "rejected": "cancelled",
+    "cancelled": "cancelled",
+    "retracted": "entered-in-error",
+    "dispatched": "final",
 }
+
+ANALYSIS_REPORTABLE_STATUSES = (
+    "to_be_verified",
+    "verified",
+    "published",
+)
