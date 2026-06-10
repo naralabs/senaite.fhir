@@ -247,7 +247,7 @@ def get_diagnostic_report_bundle(_context, request):
         }
         return OperationOutcome({"issue": [issue]})
 
-    is_include_observations = "Observation:result" in params.get("_include")
+    is_include_observations = "Observation:result" in params.get("_include", "")  # noqa: E501
 
     query = {"portal_type": "AnalysisRequest"}
     if since:
