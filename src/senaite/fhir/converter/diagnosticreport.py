@@ -5,7 +5,7 @@ import base64
 from bika.lims import api
 from senaite.core.interfaces import IResultsReport
 from senaite.fhir import api as fapi
-from senaite.fhir.config import REPORT_STATUSES
+from senaite.fhir.config import DIAGNOSTIC_REPORT_STATUSES
 from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
@@ -57,13 +57,19 @@ class ResultsReportToResource(object):
         return storage.get("data") or {}
 
     def get_last_updated(self):
-        modified = api.get_modification_date(self.report)
+        sample = self.get_sample()
+        modified = api.get_modification_date(sample)
         return to_fhir_datetime(modified)
 
     def get_status(self):
         sample = self.get_sample()
         status = api.get_review_status(sample)
-        return REPORT_STATUSES.get(status, "registered")
+        mapping = dict(DIAGNOSTIC_REPORT_STATUSES)
+        fhir_status = mapping.get(status)
+        if fhir_status:
+            return fhir_status
+        # return default (None as the key)
+        return mapping.get(None)
 
     def get_identifier(self):
         sample = self.get_sample()
@@ -108,7 +114,7 @@ class ResultsReportToResource(object):
         sample = self.get_sample()
         references = []
         for analysis in sample.getAnalyses(full_objects=True):
-            if not self.is_reportable(analysis):
+            if not fapi.is_reportable(analysis):
                 continue
             references.append({
                 "reference": "Observation/{}".format(fapi.get_uuid(analysis)),
@@ -122,10 +128,6 @@ class ResultsReportToResource(object):
         if not mrn:
             return None
         return papi.get_patient_by_mrn(mrn, include_inactive=True)
-
-    def is_reportable(self, analysis):
-        status = api.get_review_status(analysis)
-        return status in ["to_be_verified", "verified", "published"]
 
     def get_presented_form(self):
         pdf = self.report.getPdf()

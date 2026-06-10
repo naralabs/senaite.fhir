@@ -32,6 +32,12 @@
            provides="senaite.fhir.interfaces.IFHIRResource"
            factory=".diagnosticreport.DiagnosticReportResource"/>
 
+  <!-- Observation -->
+  <adapter name="Observation"
+           for="dict"
+           provides="senaite.fhir.interfaces.IFHIRResource"
+           factory=".observation.ObservationResource"/>
+
   <!-- ServiceRequest -->
   <adapter name="ServiceRequest"
            for="dict"

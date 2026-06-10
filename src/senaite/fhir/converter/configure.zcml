@@ -9,6 +9,11 @@
            factory=".diagnosticreport.ResultsReportToResource"
            provides="senaite.fhir.interfaces.IContentToFHIR"/>
 
+  <!-- Analysis To FHIR Observation -->
+  <adapter for="bika.lims.interfaces.IAnalysis"
+           factory=".observation.AnalysisToObservation"
+           provides="senaite.fhir.interfaces.IContentToFHIR"/>
+
   <!-- AnalysisRequest revoke transition to FHIR -->
   <adapter name="senaite.fhir.action.revoke"
            factory=".analysisrequest.AnalysisRequestRevokedToResource"

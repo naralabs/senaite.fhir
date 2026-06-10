@@ -12,6 +12,8 @@ from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IBundleResource
 from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
+from senaite.fhir.resource.operationoutcome import OperationOutcome
+from senaite.fhir.resource.resultsbundle import ResultsBundleResource
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationError  # noqa: E501
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationResource  # noqa: E501
 from senaite.jsonapi import api as japi
@@ -46,6 +48,10 @@ def get(context, request, resource_type=None, uid=None):
     if uuids:
         uid = fapi.get_uuid(uuids[0]).hex
         return fapi.to_fhir_resource(uid)
+
+    # DiagnosticReport search (polling endpoint)
+    if resource_type == "DiagnosticReport" and not uid:
+        return get_diagnostic_report_bundle(context, request)
 
     # all resources from the defined type
     portal_type = japi.resource_to_portal_type(resource_type)
@@ -211,6 +217,141 @@ def revoke(context, request, resource_type, uid):
 
     resource = fapi.to_fhir_action_resource(obj, "revoke")
     return resource
+
+
+def get_diagnostic_report_bundle(_context, request):
+    """Handle GET /DiagnosticReport with _lastUpdated, _summary, _include.
+
+    Builds a SenaiteResultsBundle (searchset) containing:
+      - DiagnosticReport entries with search.mode = "match"
+      - Observation entries with search.mode = "include" when
+        _include=Observation:result is requested
+    """
+    params = request.form
+
+    since = parse_last_updated(params.get("_lastUpdated", ""))
+    if isinstance(since, OperationOutcome):
+        return since
+    summary = params.get("_summary", "").lower()
+
+    if summary != "true":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "required",
+            "details": {
+                "text": "_summary=true is required for this endpoint",
+            },
+            "diagnostics": "This endpoint only supports requests with _summary=true. Include _summary=true as a query parameter.",  # noqa: E501
+            "expression": ["_summary"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    is_include_observations = "Observation:result" in params.get("_include", "")  # noqa: E501
+
+    query = {"portal_type": "AnalysisRequest"}
+    if since:
+        query["modified"] = {"query": since, "range": "min"}
+    brains = api.search(query)
+
+    entries = []
+    total_match = 0
+    seen_obs_uids = set()
+
+    for brain in brains:
+        sample = api.get_object(brain, default=None)
+        reports = sample.getReports()
+        if not reports:
+            continue
+
+        # Get the most recent report for this sample
+        last_report = reports[-1]
+        dr = fapi.to_fhir_resource(last_report, default=None)
+        if not dr:
+            continue
+
+        total_match += 1
+
+        dr_dict = dict(dr)
+        strip_presented_form_data(dr_dict)
+
+        entries.append({
+            "fullUrl": "DiagnosticReport/{}".format(dr.id),
+            "resource": dr_dict,
+            "search": {"mode": "match"},
+        })
+
+        if not is_include_observations:
+            continue
+
+        for analysis in sample.getAnalyses(full_objects=True):
+            if not fapi.is_reportable(analysis):
+                continue
+            obs_uid = fapi.get_uid(analysis)
+            if obs_uid in seen_obs_uids:
+                continue
+            seen_obs_uids.add(obs_uid)
+
+            obs = fapi.to_fhir_resource(analysis, default=None)
+            if not obs:
+                continue
+
+            entries.append({
+                "fullUrl": "Observation/{}".format(obs.id),
+                "resource": dict(obs),
+                "search": {"mode": "include"},
+            })
+
+    now = dtime.to_localized_time(dtime.now(), long_format=True)
+    bundle_data = {
+        "resourceType": "Bundle",
+        "id": str(fapi.generate_UUID()),
+        "meta": {
+            "profile": [to_fhir_profile_url("SenaiteResultsBundle")],
+        },
+        "type": "searchset",
+        "timestamp": now,
+        "total": total_match,
+    }
+
+    if entries:
+        bundle_data["entry"] = entries
+
+    return ResultsBundleResource(bundle_data)
+
+
+def parse_last_updated(value):
+    """Parse a FHIR _lastUpdated value into a catalog min-range boundary
+    """
+    if not value:
+        return None
+
+    if value.startswith("gt"):
+        value = value[2:]
+
+    since = dtime.to_DT(value)
+    if not since:
+        request = req.get_request()
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "invalid",
+            "details": {
+                "text": "Malformed _lastUpdated value",
+            },
+            "diagnostics": "_lastUpdated must be a valid FHIR instant, for example gt2026-05-28T00:00:00Z.",  # noqa: E501
+            "expression": ["_lastUpdated"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    return since
+
+
+def strip_presented_form_data(dr_dict):
+    """Remove the base64 PDF payload from presentedForm
+    """
+    for attachment in dr_dict.get("presentedForm") or []:
+        attachment.pop("data", None)
 
 
 def get_fhir_resources():
