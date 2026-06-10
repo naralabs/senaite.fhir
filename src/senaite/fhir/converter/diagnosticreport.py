@@ -6,7 +6,7 @@ from bika.lims import api
 from senaite.core.api import dtime
 from senaite.core.interfaces import IResultsReport
 from senaite.fhir import api as fapi
-from senaite.fhir.config import REPORT_STATUSES
+from senaite.fhir.config import DIAGNOSTIC_REPORT_STATUSES
 from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
@@ -64,7 +64,12 @@ class ResultsReportToResource(object):
     def get_status(self):
         sample = self.get_sample()
         status = api.get_review_status(sample)
-        return REPORT_STATUSES.get(status, "registered")
+        mapping = dict(DIAGNOSTIC_REPORT_STATUSES)
+        fhir_status = mapping.get(status)
+        if fhir_status:
+            return fhir_status
+        # return default (None as the key)
+        return mapping.get(None)
 
     def get_identifier(self):
         sample = self.get_sample()

@@ -4,9 +4,9 @@ from bika.lims import api
 from bika.lims.interfaces import IAnalysis
 from senaite.core.api import dtime
 from senaite.fhir import api as fapi
+from senaite.fhir.config import OBSERVATION_STATUSES
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.config import UCUM_SYSTEM
-from senaite.fhir.config import REPORT_STATUSES
 from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
@@ -56,7 +56,12 @@ class AnalysisToObservation(object):
 
     def get_status(self):
         status = api.get_review_status(self.analysis)
-        return REPORT_STATUSES.get(status, "registered")
+        mapping = dict(OBSERVATION_STATUSES)
+        fhir_status = mapping.get(status)
+        if fhir_status:
+            return fhir_status
+        # return default (None as the key)
+        return mapping.get(None)
 
     def get_sample(self):
         return self.analysis.getRequest()
