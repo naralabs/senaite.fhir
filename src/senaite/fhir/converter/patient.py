@@ -5,6 +5,7 @@ from senaite.core.api import dtime
 from senaite.fhir import api as fapi
 from senaite.fhir.converter import group_by
 from senaite.fhir.converter import to_content_address
+from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
@@ -59,7 +60,7 @@ class PatientToResource(object):
 
     def to_fhir_resource(self):
         modified = api.get_modification_date(self.patient)
-        modified = dtime.to_localized_time(modified, long_format=True)
+        modified = to_fhir_datetime(modified)
         uuid = fapi.get_uuid(self.patient)
         profile_url = to_fhir_profile_url("Patient")
         data = {

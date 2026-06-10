@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-from senaite.core.api import dtime
 from bika.lims.interfaces import IAnalysisRequest
 from senaite.fhir.converter import first_by
+from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentActionToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
@@ -38,7 +38,7 @@ class AnalysisRequestRevokedToResource(object):
             data = fapi.get_fhir_storage(self.context).get("data")
 
         modified = api.get_modification_date(self.context)
-        modified = dtime.to_localized_time(modified, long_format=True)
+        modified = to_fhir_datetime(modified)
         profile_url = to_fhir_profile_url("SenaiteServiceRequestRevoked")
         data["resourceType"] = "ServiceRequest"
         data["id"] = str(fapi.get_uuid(self.context))

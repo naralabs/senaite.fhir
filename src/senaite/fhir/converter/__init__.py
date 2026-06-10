@@ -3,6 +3,7 @@ import collections
 import copy
 
 from bika.lims import api
+from senaite.core.api import dtime
 from senaite.core.api import geo
 from senaite.core.schema.addressfield import OTHER_ADDRESS
 from senaite.core.schema.addressfield import PHYSICAL_ADDRESS
@@ -27,6 +28,22 @@ def to_fhir_profile_url(resource_type):
     if not resource_type:
         return None
     return "%s/StructureDefinition/%s" % (FHIR_BASE_URL, resource_type)
+
+
+def to_fhir_datetime(dt):
+    """Serialize a date as a FHIR dateTime in the configured portal timezone.
+    """
+    dt = dtime.to_dt(dt)
+    if dt is None:
+        return None
+
+    timezone = api.get_registry_record("plone.portal_timezone")
+    if dtime.is_valid_timezone(timezone):
+        dt = dtime.to_zone(dt, timezone)
+    elif dtime.is_timezone_naive(dt):
+        dt = dtime.to_zone(dt, dtime.get_os_timezone())
+
+    return dt.replace(microsecond=0).isoformat()
 
 
 @deprecate("Use first_by instead")

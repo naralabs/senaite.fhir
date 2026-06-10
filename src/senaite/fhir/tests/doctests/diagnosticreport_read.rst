@@ -16,14 +16,17 @@ Test Setup
 Needed imports:
 
     >>> import json
+    >>> import re
     >>> import uuid
     >>> import transaction
     >>> from DateTime import DateTime
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
+    >>> from plone.registry.interfaces import IRegistry
     >>> from bika.lims import api
     >>> from bika.lims.utils.analysisrequest import create_analysisrequest
     >>> from bika.lims.workflow import doActionFor as do_action_for
+    >>> from zope.component import getUtility
 
 Variables:
 
@@ -35,6 +38,8 @@ Variables:
     >>> browser = self.getBrowser()
     >>> setRoles(portal, TEST_USER_ID, ["LabManager", "Manager"])
     >>> portal.bika_setup.setSelfVerificationEnabled(True)
+    >>> registry = getUtility(IRegistry)
+    >>> registry["plone.portal_timezone"] = "Asia/Kolkata"
     >>> transaction.commit()
 
 
@@ -146,6 +151,15 @@ The resource carries FHIR metadata with at least ``lastUpdated`` and
     >>> "lastUpdated" in resource["meta"]
     True
     >>> "profile" in resource["meta"]
+    True
+
+The ``lastUpdated`` field is serialized as a FHIR ``dateTime`` with
+seconds and the configured timezone offset:
+
+    >>> pattern = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$"
+    >>> re.match(pattern, resource["meta"]["lastUpdated"]) is not None
+    True
+    >>> resource["meta"]["lastUpdated"].endswith("+05:30")
     True
 
 The published sample maps to a FHIR ``final`` DiagnosticReport status:
