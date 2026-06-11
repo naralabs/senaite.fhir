@@ -169,7 +169,13 @@ def to_fhir_resource(thing, default=_marker):
             fail(msg="Type is not supported: %r" % obj)
         return default
 
-    return adapter.to_fhir_resource()
+    resource = adapter.to_fhir_resource()
+    if not resource:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
+
+    return resource
 
 
 def to_fhir_action_resource(thing, fhir_action, default=_marker):

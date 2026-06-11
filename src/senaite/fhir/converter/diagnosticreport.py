@@ -27,6 +27,9 @@ class ResultsReportToResource(object):
         self.report = report
 
     def to_fhir_resource(self):
+        if not fapi.is_fhir_content(self.get_sample()):
+            return None
+
         profile_url = to_fhir_profile_url("SenaiteDiagnosticReport")
         data = {
             "resourceType": "DiagnosticReport",
@@ -99,7 +102,11 @@ class ResultsReportToResource(object):
 
     def get_code(self):
         source_data = self.get_source_data()
-        return source_data.get("code")
+        code = source_data.get("code", None)
+        if not code:
+            return None
+
+        return code.get("concept") or code
 
     def get_subject(self):
         patient = self.get_patient()

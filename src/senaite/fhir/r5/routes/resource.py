@@ -260,6 +260,8 @@ def get_diagnostic_report_bundle(_context, request):
 
     for brain in brains:
         sample = api.get_object(brain, default=None)
+        if not fapi.is_fhir_content(sample):
+            continue
         reports = sample.getReports()
         if not reports:
             continue
