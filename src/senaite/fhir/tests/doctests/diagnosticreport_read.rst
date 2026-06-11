@@ -26,6 +26,7 @@ Needed imports:
     >>> from bika.lims import api
     >>> from bika.lims.utils.analysisrequest import create_analysisrequest
     >>> from bika.lims.workflow import doActionFor as do_action_for
+    >>> from senaite.fhir import api as fapi
     >>> from zope.component import getUtility
 
 Variables:
@@ -100,6 +101,21 @@ a published request:
     True
     >>> api.get_workflow_status_of(sample)
     'published'
+    >>> fapi.link_fhir_resource(sample, fapi.to_fhir_resource({
+    ...     "resourceType": "ServiceRequest",
+    ...     "id": str(uuid.UUID(sample_uid)),
+    ...     "code": {
+    ...         "concept": {
+    ...             "coding": [{
+    ...                 "system": "http://loinc.org",
+    ...                 "code": "24323-8",
+    ...                 "display": "Copper",
+    ...             }],
+    ...             "text": "Metals",
+    ...         },
+    ...     },
+    ... }))
+    >>> transaction.commit()
 
 
 Create the ResultsReport
