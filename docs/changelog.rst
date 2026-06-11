@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #5 Guard DiagnosticReport conversion for non-FHIR content
 - #3 Implement pollable DiagnosticReport fetch API
 - #4 Fix FHIR datetime formatting with timezone offset
 - #2 Implement DiagnosticReport PDF report fetch API
