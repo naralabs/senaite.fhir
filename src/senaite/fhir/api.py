@@ -13,6 +13,7 @@ from Products.Archetypes.utils import mapply
 from Products.CMFCore.permissions import ModifyPortalContent
 from senaite.fhir import logger
 from senaite.fhir.config import ANALYSIS_REPORTABLE_STATUSES
+from senaite.fhir.config import FHIR_RESOURCE_TO_PORTAL_TYPE
 from senaite.fhir.config import FHIR_STORAGE_KEY
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.exceptions import FHIRAPIError
@@ -115,12 +116,73 @@ def get_fhir_uid(obj):
     return None
 
 
+def fhir_id_key(resource_type):
+    """Return the annotation storage key for a FHIR resource type.
+
+    Converts CamelCase resource type names to a snake_case storage key:
+      Patient          -> fhir_patient_id
+      DiagnosticReport -> fhir_diagnostic_report_id
+      ServiceRequest   -> fhir_service_request_id
+    """
+    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", resource_type).lower()
+    return "fhir_%s_id" % snake
+
+
+def get_fhir_resource_id(obj, resource_type):
+    """Returns the stored FHIR resource ID for resource_type on obj, or None.
+
+    Reads directly from the annotation without creating storage, so calling
+    this on a SENAITE-native object (no FHIR storage yet) is safe and cheap.
+    """
+    annotation = IAnnotations(obj)
+    storage = annotation.get(FHIR_STORAGE_KEY)
+    if storage is None:
+        return None
+    return storage.get(fhir_id_key(resource_type), None)
+
+
+def set_fhir_resource_id(obj, resource_type, fhir_id):
+    """Stores the FHIR resource ID (hex UUID) for resource_type on obj
+    """
+    storage = get_fhir_storage(obj)
+    storage[fhir_id_key(resource_type)] = fhir_id
+
+
+def get_object_by_fhir_id(fhir_id, resource_type, portal_type):
+    """Returns the SENAITE object whose stored FHIR ID for resource_type
+    matches fhir_id, or None when not found
+    """
+    brains = api.search({"portal_type": portal_type})
+    for brain in brains:
+        obj = api.get_object(brain, default=None)
+        if obj and get_fhir_resource_id(obj, resource_type) == fhir_id:
+            return obj
+    return None
+
+
 def get_object(thing, default=_marker):
+    resource_type = None
     if is_fhir_resource(thing):
+        resource_type = thing.resourceType
         thing = get_uid(thing)
+
+    # Fast path: direct SENAITE UID lookup
+    obj = api.get_object(thing, default=None)
+    if obj:
+        return obj
+
+    # Fallback: search by stored FHIR resource ID when the resource type
+    # is in the migrated set (i.e. its FHIR ID no longer equals SENAITE UID)
+    if is_uuid(thing) and resource_type:
+        portal_type = FHIR_RESOURCE_TO_PORTAL_TYPE.get(resource_type)
+        if portal_type:
+            obj = get_object_by_fhir_id(thing, resource_type, portal_type)
+            if obj:
+                return obj
+
     if default is _marker:
         return api.get_object(thing)
-    return api.get_object(thing, default=default)
+    return default
 
 
 def get_available_reasons():
@@ -130,7 +192,7 @@ def get_available_reasons():
     return setup.getRejectionReasons()
 
 
-def to_fhir_resource(thing, default=_marker):
+def to_fhir_resource(thing, default=_marker, resource_type=None):
     """Converts the object to a FHIR resource
     """
     if not thing:
@@ -156,7 +218,13 @@ def to_fhir_resource(thing, default=_marker):
         return resource
 
     if api.is_uid(thing):
-        thing = api.get_object_by_uid(thing, default=None)
+        uid = thing
+        thing = api.get_object_by_uid(uid, default=None)
+        # Fallback: the UID may be a FHIR resource ID, not a SENAITE UID
+        if not thing and resource_type:
+            portal_type = FHIR_RESOURCE_TO_PORTAL_TYPE.get(resource_type)
+            if portal_type:
+                thing = get_object_by_fhir_id(uid, resource_type, portal_type)
         if not thing:
             if default is _marker:
                 fail(msg="Not Found", status=404)
@@ -308,10 +376,13 @@ def create(resource):
     api.uncatalog_object(obj)
 
     # set the uid of the FHIR resource
-    if api.is_dexterity_content(obj):
-        setattr(obj, "_plone.uuid", uid)
-    elif api.is_at_content(obj):
-        setattr(obj, "_at_uid", uid)
+    if resource.resourceType in FHIR_RESOURCE_TO_PORTAL_TYPE:
+        set_fhir_resource_id(obj, resource.resourceType, uid)
+    else:
+        if api.is_dexterity_content(obj):
+            setattr(obj, "_plone.uuid", uid)
+        elif api.is_at_content(obj):
+            setattr(obj, "_at_uid", uid)
 
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)

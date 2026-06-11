@@ -47,7 +47,10 @@ def get(context, request, resource_type=None, uid=None):
     uuids = list(filter(lambda val: fapi.is_uuid(val), [uid, resource_type]))
     if uuids:
         uid = fapi.get_uuid(uuids[0]).hex
-        return fapi.to_fhir_resource(uid)
+        # pass the resource type so to_fhir_resource can fall back to a
+        # fhir_<resource_type>_id search when the SENAITE UID lookup misses
+        fhir_type = resource_type if not fapi.is_uuid(resource_type) else None
+        return fapi.to_fhir_resource(uid, resource_type=fhir_type)
 
     # DiagnosticReport search (polling endpoint)
     if resource_type == "DiagnosticReport" and not uid:

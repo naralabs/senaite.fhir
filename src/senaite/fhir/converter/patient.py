@@ -173,13 +173,17 @@ class PatientToResource(object):
     def to_fhir_resource(self):
         modified = api.get_modification_date(self.patient)
         modified = to_fhir_datetime(modified)
-        # TODO(#14): replace with fhir_patient_id once separate FHIR ID
-        # management is in place. Currently reuses the SENAITE UID.
-        uuid = fapi.get_uuid(self.patient)
+
+        # Get or generate the FHIR Patient ID (separate from SENAITE UID)
+        fhir_id = fapi.get_fhir_resource_id(self.patient, "Patient")
+        if not fhir_id:
+            fhir_id = fapi.generate_UUID().hex
+            fapi.set_fhir_resource_id(self.patient, "Patient", fhir_id)
+
         profile_url = to_fhir_profile_url("Patient")
         data = {
             "resourceType": "Patient",
-            "id": str(uuid),
+            "id": fhir_id,
             "status": api.get_review_status(self.patient),
             "meta": {
                 "profile": [profile_url],

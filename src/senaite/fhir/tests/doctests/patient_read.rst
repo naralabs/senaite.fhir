@@ -140,10 +140,36 @@ reference are present in the FHIR response:
     True
 
 
+The FHIR resource ``id`` is a separate UUID generated on first fetch;
+it is not the same as the SENAITE object UID::
+
+    >>> fhir_id = resource["id"]
+    >>> fhir_id != uid
+    True
+
+Fetch by FHIR ID
+~~~~~~~~~~~~~~~~
+
+Because the FHIR ID and the SENAITE UID are separate, the resource is
+also reachable by its FHIR-assigned ``id``::
+
+    >>> browser.open("{}/Patient/{}".format(fhir_url, fhir_id))
+    >>> resource2 = json.loads(browser.contents)
+    >>> resource2["resourceType"]
+    u'Patient'
+    >>> resource2["id"] == fhir_id
+    True
+
+The FHIR ID is stable — re-fetching via the SENAITE UID returns the same ``id``::
+
+    >>> browser.open("{}/Patient/{}".format(fhir_url, uid))
+    >>> json.loads(browser.contents)["id"] == fhir_id
+    True
+
 Fetch by UID Alone
 ~~~~~~~~~~~~~~~~~~
 
-The same Patient is also reachable by its plain UID (without the
+The same Patient is also reachable by its plain SENAITE UID (without the
 resource type segment):
 
     >>> browser.open("{}/{}".format(fhir_url, uid))
