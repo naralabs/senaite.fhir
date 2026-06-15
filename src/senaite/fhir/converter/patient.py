@@ -183,7 +183,7 @@ class PatientToResource(object):
         profile_url = to_fhir_profile_url("Patient")
         data = {
             "resourceType": "Patient",
-            "id": fhir_id,
+            "id": str(fapi.get_uuid(fhir_id)),
             "status": api.get_review_status(self.patient),
             "meta": {
                 "profile": [profile_url],
