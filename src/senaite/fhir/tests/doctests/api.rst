@@ -575,15 +575,15 @@ to trigger the FHIR-ID fallback scan::
     True
 
 Passing a bare FHIR ID string has no resource-type context, so the
-fallback scan is skipped and the lookup fails (use ``get_object_by_fhir_id``
+catalog fallback is skipped and the lookup fails (use ``search_by_fhir_uid``
 when you need to look up by a known FHIR ID and portal type)::
 
     >>> fhir_id = fapi.get_uid(fresh)
     >>> fapi.get_object(fhir_id, default=None) is None
     True
 
-    >>> found = fapi.get_object_by_fhir_id(fhir_id, "Patient", "Patient")
-    >>> fapi.get_uid(found) == fapi.get_uid(created)
+    >>> brains = fapi.search_by_fhir_uid(fhir_id, "Patient")
+    >>> fapi.get_uid(brains[0]) == fapi.get_uid(created)
     True
 
 An unknown UID raises unless a default is provided::
@@ -599,6 +599,30 @@ An unknown UID raises unless a default is provided::
 
     >>> fapi.get_object(orphan, default=None) is None
     True
+
+
+search_by_fhir_uid
+~~~~~~~~~~~~~~~~~~
+
+``fapi.search_by_fhir_uid`` looks up the FHIR catalog by its ``fhir_uids``
+index and returns the matching brains::
+
+    >>> brains = fapi.search_by_fhir_uid(fapi.get_uid(fresh))
+    >>> fapi.get_uid(brains[0]) == fapi.get_uid(created)
+    True
+
+A dashed FHIR id is harmonized to a hex UID, so either form works. With
+``as_brains=False`` the matching objects are woken up and returned::
+
+    >>> objs = fapi.search_by_fhir_uid(
+    ...     fapi.get_fhir_id(created), "Patient", as_brains=False)
+    >>> fapi.get_uid(objs[0]) == fapi.get_uid(created)
+    True
+
+An unknown UID yields an empty result::
+
+    >>> len(fapi.search_by_fhir_uid("99999999-9999-5999-9999-999999999999"))
+    0
 
 
 update

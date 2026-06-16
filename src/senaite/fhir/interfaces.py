@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-
-
+from senaite.core.interfaces import ISenaiteCatalogObject
 from senaite.patient import ISenaitePatientLayer
 from zope.interface import Interface
 
@@ -128,4 +127,9 @@ class IFHIRToContent(Interface):
 
 class IFHIRContent(Interface):
     """Marker interface for objects that has a linked FHIR Resource
+    """
+
+
+class IFHIRCatalog(ISenaiteCatalogObject):
+    """Marker interface for Senaite FHIR catalog
     """
