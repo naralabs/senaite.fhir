@@ -109,12 +109,12 @@ def get_fhir_uid(obj):
     """
     uids = get_fhir_uids(obj)
     if is_fhir_resource(obj):
-        return uids.get(obj.resourceType)[0]
+        return uids.get(obj.resourceType)
 
     obj = api.get_object(obj)
     if is_fhir_content(obj):
         portal_type = api.get_portal_type(obj)
-        return uids.get(portal_type)[0]
+        return uids.get(portal_type)
 
     return None
 
@@ -125,7 +125,7 @@ def get_fhir_uids(obj):
     """
     if is_fhir_resource(obj):
         # TODO Include uids of references from inside the resource maybe?
-        return {obj.resourceType: [get_uid(obj)]}
+        return {obj.resourceType: get_uid(obj)}
 
     # get the object
     obj = api.get_object(obj)
@@ -141,7 +141,7 @@ def get_fhir_uids(obj):
     # inject the object's uid if no entry for object's portal_type
     portal_type = api.get_portal_type(obj)
     if portal_type not in uids:
-        uids[portal_type] = [api.get_uid(obj)]
+        uids[portal_type] = api.get_uid(obj)
 
     return uids
 
@@ -431,9 +431,7 @@ def link_fhir_resource(obj, resource):
     # link the resource's UID to the given object. We might have more than one
     # resource id/uid per resource type, so we store a list of uids for each
     annotation = get_fhir_storage(obj)
-    uids = annotation.get("uids", {})
-    uids.setdefault(resource_type, []).append(resource_uid)
-    annotation["uids"] = uids
+    annotation.setdefault("uids", {})[resource_type] = resource_uid
 
     # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the

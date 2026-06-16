@@ -412,7 +412,7 @@ storage. It is what ``create`` / ``update`` use internally::
 The resource's UID is also tracked in the ``uids`` mapping, keyed by
 resource type, so a single object can hold several FHIR ids per type::
 
-    >>> storage["uids"]["Patient"] == [fapi.get_uid(resource)]
+    >>> storage["uids"]["Patient"] == fapi.get_uid(resource)
     True
 
     >>> storage["data"]["resourceType"]
