@@ -81,6 +81,9 @@ class ResourceToAnalysisRequest(object):
         services = self.get_services()
         priority = self.get_priority()
 
+        external_id = self.resource.get_external_id()
+        client_sample_id = external_id.value if external_id else None
+
         data = {
             "portal_type": "AnalysisRequest",
             "parent_path": api.get_path(client),
@@ -95,6 +98,7 @@ class ResourceToAnalysisRequest(object):
             # "Remarks": remarks,
             "Specification": specs,
             "Analyses": services,
+            "ClientSampleID": client_sample_id,
         }
 
         # update with patient information

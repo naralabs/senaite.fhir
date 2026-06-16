@@ -260,8 +260,6 @@ def get_diagnostic_report_bundle(_context, request):
 
     for brain in brains:
         sample = api.get_object(brain, default=None)
-        if not fapi.is_fhir_content(sample):
-            continue
         reports = sample.getReports()
         if not reports:
             continue
@@ -269,7 +267,7 @@ def get_diagnostic_report_bundle(_context, request):
         # Get the most recent report for this sample
         last_report = reports[-1]
         dr = fapi.to_fhir_resource(last_report, default=None)
-        if not dr:
+        if not dr or isinstance(dr, OperationOutcome):
             continue
 
         total_match += 1

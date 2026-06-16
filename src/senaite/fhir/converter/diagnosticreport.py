@@ -11,6 +11,7 @@ from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.resource.diagnosticreport import DiagnosticReportResource
+from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.patient import api as papi
 from zope.component import adapter
 from zope.interface import implementer
@@ -27,8 +28,16 @@ class ResultsReportToResource(object):
         self.report = report
 
     def to_fhir_resource(self):
-        if not fapi.is_fhir_content(self.get_sample()):
-            return None
+        try:
+            code = self.get_code()
+        except ValueError as e:
+            issue = {
+                "severity": "error",
+                "code": "required",
+                "details": {"text": str(e)},
+                "expression": ["DiagnosticReport.code"],
+            }
+            return OperationOutcome({"issue": [issue]})
 
         profile_url = to_fhir_profile_url("SenaiteDiagnosticReport")
         data = {
@@ -39,7 +48,7 @@ class ResultsReportToResource(object):
                 "lastUpdated": self.get_last_updated(),
             },
             "status": self.get_status(),
-            "code": self.get_code(),
+            "code": code,
             "identifier": self.get_identifier(),
             "basedOn": self.get_based_on(),
             "subject": self.get_subject(),
@@ -51,13 +60,6 @@ class ResultsReportToResource(object):
 
     def get_sample(self):
         return self.report.getSample()
-
-    def get_source_data(self):
-        sample = self.get_sample()
-        if not fapi.is_fhir_content(sample):
-            return {}
-        storage = fapi.get_fhir_storage(sample)
-        return storage.get("data") or {}
 
     def get_last_updated(self):
         sample = self.get_sample()
@@ -79,21 +81,12 @@ class ResultsReportToResource(object):
         identifiers = [
             to_fhir_id("servicerequest-id", sample.getId(), use="usual"),
         ]
-
-        source_data = self.get_source_data()
-        for identifier in source_data.get("identifier", []):
-            if identifier.get("use") != "secondary":
-                continue
-            identifiers.append(identifier)
-
+        client_sample_id = sample.getClientSampleID()
+        if client_sample_id:
+            identifiers.append({"use": "secondary", "value": client_sample_id})
         return identifiers
 
     def get_based_on(self):
-        source_data = self.get_source_data()
-        based_on = source_data.get("basedOn") or []
-        if based_on:
-            return based_on
-
         sample = self.get_sample()
         return [{
             "type": "ServiceRequest",
@@ -101,12 +94,24 @@ class ResultsReportToResource(object):
         }]
 
     def get_code(self):
-        source_data = self.get_source_data()
-        code = source_data.get("code", None)
-        if not code:
-            return None
-
-        return code.get("concept") or code
+        sample = self.get_sample()
+        profiles = sample.getProfiles()
+        if not profiles:
+            raise ValueError(
+                "No AnalysisProfile assigned to sample %s" % api.get_id(sample)
+            )
+        profile = profiles[0]
+        system = fapi.get_system_code("AnalysisProfile")
+        profile_key = profile.getProfileKey()
+        title = api.get_title(profile)
+        return {
+            "coding": [{
+                "system": system,
+                "code": profile_key,
+                "display": title,
+            }],
+            "text": title,
+        }
 
     def get_subject(self):
         patient = self.get_patient()
