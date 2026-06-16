@@ -177,10 +177,11 @@ def get_object_by_fhir_id(fhir_id, resource_type, portal_type):
     """Returns the SENAITE object whose stored FHIR ID for resource_type
     matches fhir_id, or None when not found
     """
+    uid = get_uuid(fhir_id).hex
     brains = api.search({"portal_type": portal_type})
     for brain in brains:
         obj = api.get_object(brain, default=None)
-        if obj and get_fhir_resource_id(obj, resource_type) == fhir_id:
+        if obj and get_fhir_uid(obj, resource_type) == uid:
             return obj
     return None
 
