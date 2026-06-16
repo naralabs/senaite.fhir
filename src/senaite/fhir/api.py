@@ -103,16 +103,11 @@ def get_uid(obj):
     return api.get_uid(obj)
 
 
-def to_fhir_id(uid):
-    return str(get_uuid(uid))
-
-
 def get_resource_type(obj):
     """Returns the resource type associated to the given object
     """
     if is_fhir_resource(obj):
         return obj.resourceType
-
     # resolve the resource type from the portal type
     obj = api.get_object(obj)
     portal_type = api.get_portal_type(obj)
@@ -132,7 +127,7 @@ def get_fhir_uid(obj, resource_type=None):
 
 def get_fhir_id(obj, resource_type=None):
     uid = get_fhir_uid(obj, resource_type=resource_type)
-    return to_fhir_id(uid) if uid else None
+    return str(get_uuid(uid)) if uid else None
 
 
 def get_fhir_uids(obj):
