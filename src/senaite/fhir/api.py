@@ -25,9 +25,8 @@ from senaite.fhir.interfaces import IFHIRToContent
 from zope.annotation.interfaces import IAnnotations
 from zope.component import getUtility
 from zope.component import queryAdapter
-from zope.event import notify
+from zope.deprecation import deprecate
 from zope.interface import alsoProvides
-from zope.lifecycleevent import ObjectModifiedEvent
 
 _marker = object()
 
@@ -104,16 +103,47 @@ def get_uid(obj):
     return api.get_uid(obj)
 
 
+@deprecate("Use get_fhir_uids instead")
 def get_fhir_uid(obj):
     """Returns the UID of the counterpart FHIR content, if any
     """
+    uids = get_fhir_uids(obj)
     if is_fhir_resource(obj):
-        return get_uid(obj)
+        return uids.get(obj.resourceType)[0]
+
     obj = api.get_object(obj)
     if is_fhir_content(obj):
-        storage = get_fhir_storage(obj)
-        return storage.get("uid", None)
+        portal_type = api.get_portal_type(obj)
+        return uids.get(portal_type)[0]
+
     return None
+
+
+def get_fhir_uids(obj):
+    """Returns the FHIR UIDs assigned to the given object grouped by
+    resource_type
+    """
+    if is_fhir_resource(obj):
+        # TODO Include uids of references from inside the resource maybe?
+        return {obj.resourceType: [get_uid(obj)]}
+
+    # get the object
+    obj = api.get_object(obj)
+
+    # if no fhir content linked, return empty
+    if not is_fhir_content(obj):
+        return []
+
+    # get object's FHIR annotations
+    storage = get_fhir_storage(obj)
+    uids = dict(storage.get("uids") or {})
+
+    # inject the object's uid if no entry for object's portal_type
+    portal_type = api.get_portal_type(obj)
+    if portal_type not in uids:
+        uids[portal_type] = [api.get_uid(obj)]
+
+    return uids
 
 
 def fhir_id_key(resource_type):
@@ -372,31 +402,13 @@ def create(resource):
     else:
         obj = api.create(container, portal_type, **data)
 
-    # un-catalog the object
-    api.uncatalog_object(obj)
-
     # set the uid of the FHIR resource
+    # TODO Remove this once new id system is in place
     if resource.resourceType in FHIR_RESOURCE_TO_PORTAL_TYPE:
         set_fhir_resource_id(obj, resource.resourceType, uid)
-    else:
-        if api.is_dexterity_content(obj):
-            setattr(obj, "_plone.uuid", uid)
-        elif api.is_at_content(obj):
-            setattr(obj, "_at_uid", uid)
 
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)
-
-    # re-catalog the object
-    api.catalog_object(obj)
-
-    # TODO Consider to apply this to senaite.core's api.catalog_object
-    # api.catalog_object only re-adds AT content to uid_catalog; for DX
-    # content we rely on plone.app.referenceablebehavior, which re-indexes
-    # the object in uid_catalog on ObjectModifiedEvent. Without this, the
-    # patched UID is invisible to api.get_object_by_uid afterwards.
-    if api.is_dexterity_content(obj):
-        notify(ObjectModifiedEvent(obj))
 
     return obj
 
@@ -408,13 +420,25 @@ def link_fhir_resource(obj, resource):
         raise ValueError("Type not supported: {}".format(repr(type(resource))))
 
     # mark the object with IFHIRContent, so we can always know beforehand if
-    # this object has a counterpart FHIR resource
-    alsoProvides(obj, IFHIRContent)
+    # this object has counterpart FHIR resources
+    if not IFHIRContent.providedBy(obj):
+        alsoProvides(obj, IFHIRContent)
 
+    # get the uid and resourceType
+    resource_uid = get_uid(resource)
+    resource_type = resource.resourceType
+
+    # link the resource's UID to the given object. We might have more than one
+    # resource id/uid per resource type, so we store a list of uids for each
+    annotation = get_fhir_storage(obj)
+    uids = annotation.get("uids", {})
+    uids.setdefault(resource_type, []).append(resource_uid)
+    annotation["uids"] = uids
+
+    # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the
     # original information, even when connection with source is lost
-    annotation = get_fhir_storage(obj)
-    annotation["uid"] = get_uid(resource)
+    annotation["uid"] = resource_uid
     annotation["data"] = resource.to_dict()
 
 
