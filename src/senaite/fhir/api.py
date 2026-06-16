@@ -508,9 +508,6 @@ def update(resource):
 def create(resource):
     """Creates a counterpart object for the given FHIR Resource
     """
-    # get the uid
-    uid = get_uid(resource)
-
     # check if already exists
     obj = get_object(resource, default=None)
     if obj:
