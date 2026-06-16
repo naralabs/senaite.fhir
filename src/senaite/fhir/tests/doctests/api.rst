@@ -290,6 +290,32 @@ A resource type with no UID associated to the object returns ``None``::
     True
 
 
+get_fhir_uids
+~~~~~~~~~~~~~
+
+``fapi.get_fhir_uids`` returns all FHIR UIDs (hex) assigned to a thing,
+grouped by resource type. For a FHIR resource it is a single-entry mapping::
+
+    >>> fapi.get_fhir_uids(a_resource) == {"Patient": fapi.get_uid(a_resource)}
+    True
+
+For a content object, the object's own UID is injected for both its FHIR
+resource type and its portal type. For a Patient the two coincide::
+
+    >>> fapi.get_fhir_uids(patient) == {"Patient": fapi.get_uid(patient)}
+    True
+
+When the resource type and the portal type differ, both keys are present: a
+``Client`` is exposed as a FHIR ``Organization``::
+
+    >>> uids = fapi.get_fhir_uids(client)
+    >>> sorted(uids.keys())
+    ['Client', 'Organization']
+
+    >>> uids["Organization"] == uids["Client"] == fapi.get_uid(client)
+    True
+
+
 to_fhir_resource
 ~~~~~~~~~~~~~~~~
 

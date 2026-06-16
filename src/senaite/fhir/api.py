@@ -209,8 +209,22 @@ def get_fhir_id(obj, resource_type=None):
 
 
 def get_fhir_uids(obj):
-    """Returns the FHIR UIDs assigned to the given object grouped by
-    resource_type
+    """Returns the FHIR UIDs (hex) assigned to the given object, grouped by
+    resource type.
+
+    For a FHIR resource, a single-entry mapping ``{resourceType: uid}`` is
+    returned.
+
+    For a content object (or a brain/UID resolving to one), the persisted FHIR
+    UIDs are read from the object's annotation storage (without creating it, to
+    avoid a write-on-read) and grouped by resource type. The object's own
+    SENAITE UID is then injected for both its FHIR resource type and its portal
+    type when no entry exists yet, so a resource derived from the object always
+    resolves to a stable identity.
+
+    :param obj: FHIR resource, content object, catalog brain or UID
+    :returns: mapping of resource type -> FHIR UID (hex)
+    :rtype: dict
     """
     if is_fhir_resource(obj):
         # TODO Include uids of references from inside the resource maybe?
