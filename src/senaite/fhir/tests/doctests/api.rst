@@ -230,8 +230,8 @@ Resource types without a mapping fall back to the resource type itself::
     'Encounter'
 
 
-is_fhir_content / is_fhir_resource / get_fhir_uid
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+is_fhir_content / is_fhir_resource
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A freshly-created Patient is not yet linked to any external FHIR resource::
 
@@ -241,10 +241,32 @@ A freshly-created Patient is not yet linked to any external FHIR resource::
     >>> fapi.is_fhir_resource(patient)
     False
 
-Even when not linked, ``get_fhir_uid`` falls back to the object's own UID,
-so a FHIR resource derived from it has a stable identity::
+
+get_fhir_uid
+~~~~~~~~~~~~
+
+``fapi.get_fhir_uid`` returns the FHIR UID (hex) of the counterpart resource
+of the given object for a resource type, defaulting to the object's own
+resource type when none is passed.
+
+For a FHIR resource, its own UID is returned::
+
+    >>> fapi.get_fhir_uid(a_resource) == fapi.get_uid(a_resource)
+    True
+
+An object not linked to a separate FHIR resource falls back to its own
+SENAITE UID, so a derived resource keeps a stable identity::
 
     >>> fapi.get_fhir_uid(patient) == fapi.get_uid(patient)
+    True
+
+The resource type can be given explicitly; one with no UID associated to the
+object returns ``None``::
+
+    >>> fapi.get_fhir_uid(patient, resource_type="Patient") == fapi.get_uid(patient)
+    True
+
+    >>> fapi.get_fhir_uid(patient, resource_type="Observation") is None
     True
 
 

@@ -161,7 +161,22 @@ def get_portal_type(obj):
 
 
 def get_fhir_uid(obj, resource_type=None):
-    """Returns the UID of the counterpart FHIR content, if any
+    """Returns the FHIR UID (hex) of the counterpart resource of the given
+    object for the given resource type.
+
+    When ``resource_type`` is not provided, it defaults to the resource type
+    associated to the object (see ``get_resource_type``).
+
+    If the object has no separately-linked FHIR resource for that type, this
+    falls back to the object's own SENAITE UID, so a FHIR resource derived
+    from it keeps a stable identity (see ``get_fhir_uids``). Returns ``None``
+    when the object has no UID associated to the requested resource type.
+
+    :param obj: FHIR resource, content object, catalog brain or UID
+    :param resource_type: FHIR resource type to look up, e.g. ``"Patient"``;
+        defaults to the object's own resource type
+    :returns: the FHIR UID in hex format, or ``None``
+    :rtype: str
     """
     if resource_type is None:
         resource_type = get_resource_type(obj)
