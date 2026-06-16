@@ -158,6 +158,37 @@ returns the corresponding ``uuid.UUID``::
     True
 
 
+get_resource_type
+~~~~~~~~~~~~~~~~~
+
+``fapi.get_resource_type`` returns the FHIR resource type for a given
+thing. For a content object, it is resolved from the object's portal type::
+
+    >>> fapi.get_resource_type(patient)
+    'Patient'
+
+It also accepts a catalog brain or a UID resolving to a content object::
+
+    >>> fapi.get_resource_type(patient_uid)
+    'Patient'
+
+For a FHIR resource, its own ``resourceType`` is returned::
+
+    >>> a_resource = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "52f941c6-81a0-51be-b1a6-f92ac079be34",
+    ... })
+    >>> fapi.get_resource_type(a_resource)
+    'Patient'
+
+Portal types without a mapping in ``FHIR_RESOURCE_TO_PORTAL_TYPE`` are
+returned unchanged::
+
+    >>> client = api.create(portal.clients, "Client", title="Acme")
+    >>> fapi.get_resource_type(client)
+    'Client'
+
+
 is_fhir_content / is_fhir_resource / get_fhir_uid
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

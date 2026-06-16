@@ -104,7 +104,17 @@ def get_uid(obj):
 
 
 def get_resource_type(obj):
-    """Returns the resource type associated to the given object
+    """Returns the FHIR resource type associated to the given object.
+
+    If a FHIR resource is passed in, its own ``resourceType`` is returned.
+    For a SENAITE content object (or a brain/UID resolving to one), the
+    resource type is looked up from the object's portal type through
+    ``FHIR_RESOURCE_TO_PORTAL_TYPE``, falling back to the portal type itself
+    when no mapping is defined for it.
+
+    :param obj: FHIR resource, content object, catalog brain or UID
+    :returns: the FHIR resource type, e.g. ``"Patient"``
+    :rtype: str
     """
     if is_fhir_resource(obj):
         return obj.resourceType
