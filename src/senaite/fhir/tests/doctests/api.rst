@@ -161,7 +161,7 @@ returns the corresponding ``uuid.UUID``::
 is_fhir_content / is_fhir_resource / get_fhir_uid
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-A freshly-created Patient is not yet linked to any FHIR resource::
+A freshly-created Patient is not yet linked to any external FHIR resource::
 
     >>> fapi.is_fhir_content(patient)
     False
@@ -169,7 +169,10 @@ A freshly-created Patient is not yet linked to any FHIR resource::
     >>> fapi.is_fhir_resource(patient)
     False
 
-    >>> fapi.get_fhir_uid(patient) is None
+Even when not linked, ``get_fhir_uid`` falls back to the object's own UID,
+so a FHIR resource derived from it has a stable identity::
+
+    >>> fapi.get_fhir_uid(patient) == fapi.get_uid(patient)
     True
 
 

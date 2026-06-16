@@ -143,15 +143,11 @@ def get_fhir_uids(obj):
         # TODO Include uids of references from inside the resource maybe?
         return {obj.resourceType: get_uid(obj)}
 
-    # get the object
+    # get object's FHIR annotations storage, but don't use get_fhir_storage to
+    # not do a write-on-read
     obj = api.get_object(obj)
-
-    # if no fhir content linked, return empty
-    if not is_fhir_content(obj):
-        return {}
-
-    # get object's FHIR annotations
-    storage = get_fhir_storage(obj)
+    annotation = IAnnotations(obj)
+    storage = annotation.get(FHIR_STORAGE_KEY) or {}
     uids = dict(storage.get("uids") or {})
 
     # inject the uid for the counterpart FHIR resource if not present
