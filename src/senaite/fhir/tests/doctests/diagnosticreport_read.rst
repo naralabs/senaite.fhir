@@ -26,7 +26,6 @@ Needed imports:
     >>> from bika.lims import api
     >>> from bika.lims.utils.analysisrequest import create_analysisrequest
     >>> from bika.lims.workflow import doActionFor as do_action_for
-    >>> from senaite.fhir import api as fapi
     >>> from zope.component import getUtility
 
 Variables:
@@ -64,6 +63,9 @@ Create the minimum set of objects needed to register a sample:
     >>> Cu = api.create(portal.bika_setup.bika_analysisservices,
     ...                 "AnalysisService", title="Copper", Keyword="Cu",
     ...                 Category=category.UID())
+    >>> profile = api.create(setup.analysisprofiles, "AnalysisProfile",
+    ...                      title="Metals Panel", ProfileKey="metals-panel")
+    >>> profile.setServices([Cu.UID()])
 
 
 Create the Sample
@@ -74,6 +76,7 @@ Create the Sample
     ...     "Contact": contact.UID(),
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
+    ...     "Profiles": [profile.UID()],
     ... }
     >>> sample = create_analysisrequest(client, request, values, [Cu.UID()])
     >>> sample
@@ -101,20 +104,6 @@ a published request:
     True
     >>> api.get_workflow_status_of(sample)
     'published'
-    >>> fapi.link_fhir_resource(sample, fapi.to_fhir_resource({
-    ...     "resourceType": "ServiceRequest",
-    ...     "id": str(uuid.UUID(sample_uid)),
-    ...     "code": {
-    ...         "concept": {
-    ...             "coding": [{
-    ...                 "system": "http://loinc.org",
-    ...                 "code": "24323-8",
-    ...                 "display": "Copper",
-    ...             }],
-    ...             "text": "Metals",
-    ...         },
-    ...     },
-    ... }))
     >>> transaction.commit()
 
 
@@ -184,6 +173,14 @@ The published sample maps to a FHIR ``final`` DiagnosticReport status:
     'published'
     >>> resource["status"]
     u'final'
+
+The ``code`` field is derived from the sample's AnalysisProfile:
+
+    >>> code = resource["code"]
+    >>> code["text"]
+    u'Metals Panel'
+    >>> code["coding"][0]["code"]
+    u'metals-panel'
 
 The ``identifier`` list carries at least one entry whose ``value``
 matches the sample's internal ID:
