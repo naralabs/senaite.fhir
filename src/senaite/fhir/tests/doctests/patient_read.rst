@@ -214,3 +214,20 @@ original FHIR id (in dashed UUID form), not the underlying object's UID:
 
     >>> created_resource["id"] != created_uid
     True
+
+Fetching the Patient by its original FHIR resource id (which is not a SENAITE
+UID, so it is resolved through the FHIR catalog) returns the very same
+resource:
+
+    >>> browser.open("{}/Patient/{}".format(
+    ...     fhir_url, "a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa"))
+    >>> by_fhir_id = json.loads(browser.contents)
+    >>> by_fhir_id["id"] == created_resource["id"]
+    True
+
+Ignoring the per-request ``_runtime`` marker, it is the same resource::
+
+    >>> drop_runtime = lambda r: dict((k, v) for k, v in r.items()
+    ...                               if k != "_runtime")
+    >>> drop_runtime(by_fhir_id) == drop_runtime(created_resource)
+    True
