@@ -404,10 +404,7 @@ storage. It is what ``create`` / ``update`` use internally::
 
     >>> storage = fapi.get_fhir_storage(patient)
     >>> sorted(storage.keys())
-    ['data', 'fhir_patient_id', 'uid', 'uids']
-
-    >>> storage["uid"] == fapi.get_uid(resource)
-    True
+    ['data', 'fhir_patient_id', 'uids']
 
 The resource's UID is also tracked in the ``uids`` mapping, keyed by
 resource type, so a single object can hold several FHIR ids per type::

@@ -458,7 +458,6 @@ def link_fhir_resource(obj, resource):
     # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the
     # original information, even when connection with source is lost
-    annotation["uid"] = resource_uid
     annotation["data"] = resource.to_dict()
 
 
