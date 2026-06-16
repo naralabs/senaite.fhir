@@ -103,20 +103,36 @@ def get_uid(obj):
     return api.get_uid(obj)
 
 
-@deprecate("Use get_fhir_uids instead")
-def get_fhir_uid(obj):
+def to_fhir_id(uid):
+    return str(get_uuid(uid))
+
+
+def get_resource_type(obj):
+    """Returns the resource type associated to the given object
+    """
+    if is_fhir_resource(obj):
+        return obj.resourceType
+
+    # resolve the resource type from the portal type
+    obj = api.get_object(obj)
+    portal_type = api.get_portal_type(obj)
+    return FHIR_RESOURCE_TO_PORTAL_TYPE.get(portal_type, portal_type)
+
+
+def get_fhir_uid(obj, resource_type=None):
     """Returns the UID of the counterpart FHIR content, if any
     """
+    if resource_type is None:
+        resource_type = get_resource_type(obj)
+
+    # return the FHIR uid for the given object and resource type
     uids = get_fhir_uids(obj)
-    if is_fhir_resource(obj):
-        return uids.get(obj.resourceType)
+    return uids.get(resource_type)
 
-    obj = api.get_object(obj)
-    if is_fhir_content(obj):
-        portal_type = api.get_portal_type(obj)
-        return uids.get(portal_type)
 
-    return None
+def get_fhir_id(obj, resource_type=None):
+    uid = get_fhir_uid(obj, resource_type=resource_type)
+    return to_fhir_id(uid) if uid else None
 
 
 def get_fhir_uids(obj):
@@ -132,11 +148,16 @@ def get_fhir_uids(obj):
 
     # if no fhir content linked, return empty
     if not is_fhir_content(obj):
-        return []
+        return {}
 
     # get object's FHIR annotations
     storage = get_fhir_storage(obj)
     uids = dict(storage.get("uids") or {})
+
+    # inject the uid for the counterpart FHIR resource if not present
+    resource_type = get_resource_type(obj)
+    if resource_type and resource_type not in uids:
+        uids[resource_type] = api.get_uid(obj)
 
     # inject the object's uid if no entry for object's portal_type
     portal_type = api.get_portal_type(obj)
@@ -158,6 +179,7 @@ def fhir_id_key(resource_type):
     return "fhir_%s_id" % snake
 
 
+@deprecate("Use get_fhir_id instead")
 def get_fhir_resource_id(obj, resource_type):
     """Returns the stored FHIR resource ID for resource_type on obj, or None.
 
