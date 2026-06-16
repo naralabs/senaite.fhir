@@ -187,6 +187,23 @@ def get_fhir_uid(obj, resource_type=None):
 
 
 def get_fhir_id(obj, resource_type=None):
+    """Returns the FHIR id of the counterpart resource of the given object for
+    the given resource type, in canonical dashed UUID form.
+
+    This is the string form of ``get_fhir_uid`` (which returns the UID in hex
+    format). When ``resource_type`` is not provided, it defaults to the
+    resource type associated to the object (see ``get_resource_type``).
+
+    Like ``get_fhir_uid``, it falls back to the object's own SENAITE UID when
+    no separate FHIR resource is linked for that type, and returns ``None``
+    when the object has no UID associated to the requested resource type.
+
+    :param obj: FHIR resource, content object, catalog brain or UID
+    :param resource_type: FHIR resource type to look up, e.g. ``"Patient"``;
+        defaults to the object's own resource type
+    :returns: the FHIR id in canonical dashed UUID form, or ``None``
+    :rtype: str
+    """
     uid = get_fhir_uid(obj, resource_type=resource_type)
     return str(get_uuid(uid)) if uid else None
 

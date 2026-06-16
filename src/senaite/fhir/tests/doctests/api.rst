@@ -270,6 +270,26 @@ object returns ``None``::
     True
 
 
+get_fhir_id
+~~~~~~~~~~~
+
+``fapi.get_fhir_id`` is the canonical dashed UUID form of ``get_fhir_uid``
+(which returns the UID in hex). For a FHIR resource it returns its own id::
+
+    >>> fapi.get_fhir_id(a_resource)
+    '52f941c6-81a0-51be-b1a6-f92ac079be34'
+
+It is the dashed-form counterpart of the hex UID from ``get_fhir_uid``::
+
+    >>> fapi.get_uuid(fapi.get_fhir_id(patient)).hex == fapi.get_fhir_uid(patient)
+    True
+
+A resource type with no UID associated to the object returns ``None``::
+
+    >>> fapi.get_fhir_id(patient, resource_type="Observation") is None
+    True
+
+
 to_fhir_resource
 ~~~~~~~~~~~~~~~~
 
