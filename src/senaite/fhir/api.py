@@ -167,18 +167,6 @@ def get_fhir_uids(obj):
     return uids
 
 
-def fhir_id_key(resource_type):
-    """Return the annotation storage key for a FHIR resource type.
-
-    Converts CamelCase resource type names to a snake_case storage key:
-      Patient          -> fhir_patient_id
-      DiagnosticReport -> fhir_diagnostic_report_id
-      ServiceRequest   -> fhir_service_request_id
-    """
-    snake = re.sub(r"(?<!^)(?=[A-Z])", "_", resource_type).lower()
-    return "fhir_%s_id" % snake
-
-
 @deprecate("Use get_fhir_id instead")
 def get_fhir_resource_id(obj, resource_type):
     """Returns the stored FHIR resource ID for resource_type on obj, or None.
@@ -186,18 +174,7 @@ def get_fhir_resource_id(obj, resource_type):
     Reads directly from the annotation without creating storage, so calling
     this on a SENAITE-native object (no FHIR storage yet) is safe and cheap.
     """
-    annotation = IAnnotations(obj)
-    storage = annotation.get(FHIR_STORAGE_KEY)
-    if storage is None:
-        return None
-    return storage.get(fhir_id_key(resource_type), None)
-
-
-def set_fhir_resource_id(obj, resource_type, fhir_id):
-    """Stores the FHIR resource ID (hex UUID) for resource_type on obj
-    """
-    storage = get_fhir_storage(obj)
-    storage[fhir_id_key(resource_type)] = fhir_id
+    return get_fhir_uid(obj, resource_type=resource_type)
 
 
 def get_object_by_fhir_id(fhir_id, resource_type, portal_type):
@@ -423,11 +400,6 @@ def create(resource):
         obj = create_analysisrequest(data["Client"], request, data)
     else:
         obj = api.create(container, portal_type, **data)
-
-    # set the uid of the FHIR resource
-    # TODO Remove this once new id system is in place
-    if resource.resourceType in FHIR_RESOURCE_TO_PORTAL_TYPE:
-        set_fhir_resource_id(obj, resource.resourceType, uid)
 
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)

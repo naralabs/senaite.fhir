@@ -62,59 +62,6 @@ The separator can be customised or removed::
     >>> fapi.slugify("Hello World", repl="")
     'helloworld'
 
-
-get_fhir_resource_id / set_fhir_resource_id
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``get_fhir_resource_id`` returns ``None`` (without creating annotation storage)
-for objects that have never been assigned a FHIR ID::
-
-    >>> plain = api.create(
-    ...     portal.patients, "Patient",
-    ...     mrn=u"PAT-PLAIN",
-    ...     firstname=u"Alice",
-    ...     lastname=u"Smith",
-    ... )
-    >>> fapi.get_fhir_resource_id(plain, "Patient") is None
-    True
-
-``set_fhir_resource_id`` writes the id and creates storage on demand::
-
-    >>> fapi.set_fhir_resource_id(plain, "Patient", "aabbccdd" * 4)
-    >>> fapi.get_fhir_resource_id(plain, "Patient")
-    'aabbccddaabbccddaabbccddaabbccdd'
-
-The helper is generic and supports any resource type on the same object::
-
-    >>> fapi.set_fhir_resource_id(plain, "DiagnosticReport", "11223344" * 4)
-    >>> fapi.get_fhir_resource_id(plain, "DiagnosticReport")
-    '11223344112233441122334411223344'
-
-Each type uses its own key so they do not collide::
-
-    >>> fapi.get_fhir_resource_id(plain, "Patient")
-    'aabbccddaabbccddaabbccddaabbccdd'
-
-
-get_object_by_fhir_id
-~~~~~~~~~~~~~~~~~~~~~
-
-``get_object_by_fhir_id`` scans the catalog for an object whose stored FHIR ID
-matches the given value.  It returns ``None`` when no match is found.
-
-Compare by UID rather than Python identity, because the catalog returns
-acquisition-wrapped objects that are not ``is``-identical to the original::
-
-    >>> found = fapi.get_object_by_fhir_id(
-    ...     "aabbccddaabbccddaabbccddaabbccdd", "Patient", "Patient")
-    >>> fapi.get_uid(found) == fapi.get_uid(plain)
-    True
-
-    >>> fapi.get_object_by_fhir_id("00000000000000000000000000000000",
-    ...                             "Patient", "Patient") is None
-    True
-
-
 fail
 ~~~~
 
@@ -404,7 +351,7 @@ storage. It is what ``create`` / ``update`` use internally::
 
     >>> storage = fapi.get_fhir_storage(patient)
     >>> sorted(storage.keys())
-    ['data', 'fhir_patient_id', 'uids']
+    ['data', 'uids']
 
 The resource's UID is also tracked in the ``uids`` mapping, keyed by
 resource type, so a single object can hold several FHIR ids per type::
