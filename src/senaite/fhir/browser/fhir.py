@@ -4,8 +4,8 @@ from plone.jsonapi.core.browser.decorators import handle_errors
 from plone.jsonapi.core.browser.decorators import returns_binary_stream
 from plone.jsonapi.core.browser.decorators import returns_json
 from plone.jsonapi.core.browser.decorators import returns_xml
-from plone.jsonapi.core.browser.decorators import runtime
 from Products.Five import BrowserView
+from senaite.fhir.browser.decorators import runtime
 from senaite.fhir.browser.interfaces import IFHIR
 from senaite.fhir.browser.router import DefaultFHIRRouter
 from zope.interface import implementer

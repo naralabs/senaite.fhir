@@ -138,6 +138,17 @@ The resource type is ``DiagnosticReport``:
     >>> resource["resourceType"]
     u'DiagnosticReport'
 
+The response body stays valid FHIR: the request runtime is *not* injected
+into the payload as a ``_runtime`` key. Instead it is reported through the
+W3C ``Server-Timing`` response header, expressed in milliseconds::
+
+    >>> "_runtime" in resource
+    False
+
+    >>> re.match(r"^senaite;dur=[\d.]+$", browser.headers["Server-Timing"]) \
+    ...     is not None
+    True
+
 The logical ``id`` in the response corresponds to the report's UID:
 
     >>> uuid.UUID(resource["id"]).hex == report_uid
