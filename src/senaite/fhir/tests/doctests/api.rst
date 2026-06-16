@@ -172,6 +172,15 @@ It also accepts a catalog brain or a UID resolving to a content object::
     >>> fapi.get_resource_type(patient_uid)
     'Patient'
 
+The lookup is a true reverse of ``FHIR_RESOURCE_TO_PORTAL_TYPE`` (an immutable
+tuple of ``(resource_type, portal_type)`` pairs), so a portal type resolves
+back to its FHIR resource type even when the two names differ. A SENAITE
+``Client`` maps to a FHIR ``Organization``::
+
+    >>> client = api.create(portal.clients, "Client", title="Acme")
+    >>> fapi.get_resource_type(client)
+    'Organization'
+
 For a FHIR resource, its own ``resourceType`` is returned::
 
     >>> a_resource = fapi.to_fhir_resource({
@@ -184,9 +193,41 @@ For a FHIR resource, its own ``resourceType`` is returned::
 Portal types without a mapping in ``FHIR_RESOURCE_TO_PORTAL_TYPE`` are
 returned unchanged::
 
-    >>> client = api.create(portal.clients, "Client", title="Acme")
-    >>> fapi.get_resource_type(client)
+    >>> fapi.get_resource_type(portal.clients) == api.get_portal_type(
+    ...     portal.clients)
+    True
+
+
+get_portal_type
+~~~~~~~~~~~~~~~
+
+``fapi.get_portal_type`` is the inverse of ``get_resource_type``. For a
+content object it returns the object's portal type, and it likewise accepts a
+catalog brain or a UID resolving to one::
+
+    >>> fapi.get_portal_type(patient)
+    'Patient'
+
+    >>> fapi.get_portal_type(patient_uid)
+    'Patient'
+
+For a FHIR resource, the portal type is looked up from its ``resourceType``
+through ``FHIR_RESOURCE_TO_PORTAL_TYPE``, so a FHIR ``Organization`` resolves
+to a SENAITE ``Client``::
+
+    >>> org = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "44444444-4444-5444-9444-444444444444",
+    ... })
+    >>> org["resourceType"] = "Organization"
+    >>> fapi.get_portal_type(org)
     'Client'
+
+Resource types without a mapping fall back to the resource type itself::
+
+    >>> org["resourceType"] = "Encounter"
+    >>> fapi.get_portal_type(org)
+    'Encounter'
 
 
 is_fhir_content / is_fhir_resource / get_fhir_uid

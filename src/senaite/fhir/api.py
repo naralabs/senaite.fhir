@@ -25,7 +25,6 @@ from senaite.fhir.interfaces import IFHIRToContent
 from zope.annotation.interfaces import IAnnotations
 from zope.component import getUtility
 from zope.component import queryAdapter
-from zope.deprecation import deprecate
 from zope.interface import alsoProvides
 
 _marker = object()
@@ -108,9 +107,12 @@ def get_resource_type(obj):
 
     If a FHIR resource is passed in, its own ``resourceType`` is returned.
     For a SENAITE content object (or a brain/UID resolving to one), the
-    resource type is looked up from the object's portal type through
-    ``FHIR_RESOURCE_TO_PORTAL_TYPE``, falling back to the portal type itself
-    when no mapping is defined for it.
+    resource type is resolved by reverse-looking-up the object's portal type
+    in ``FHIR_RESOURCE_TO_PORTAL_TYPE`` (which maps resource type -> portal
+    type), falling back to the portal type itself when no mapping is defined.
+
+    When several resource types map to the same portal type, the first one in
+    alphabetical order is returned for determinism.
 
     :param obj: FHIR resource, content object, catalog brain or UID
     :returns: the FHIR resource type, e.g. ``"Patient"``
@@ -118,10 +120,44 @@ def get_resource_type(obj):
     """
     if is_fhir_resource(obj):
         return obj.resourceType
-    # resolve the resource type from the portal type
+
+    # reverse-lookup the resource type for the object's portal type
     obj = api.get_object(obj)
     portal_type = api.get_portal_type(obj)
-    return FHIR_RESOURCE_TO_PORTAL_TYPE.get(portal_type, portal_type)
+
+    # looks for the first match
+    mapping = sorted(FHIR_RESOURCE_TO_PORTAL_TYPE)
+    for resource_type, mapped_portal_type in mapping:
+        if mapped_portal_type == portal_type:
+            return resource_type
+
+    # fall back to the portal type itself when no mapping is defined
+    return portal_type
+
+
+def get_portal_type(obj):
+    """Returns the SENAITE portal type associated to the given object.
+
+    This is the inverse of ``get_resource_type``. If a FHIR resource is passed
+    in, the portal type is looked up from its ``resourceType`` through
+    ``FHIR_RESOURCE_TO_PORTAL_TYPE`` (which maps resource type -> portal type),
+    falling back to the resource type itself when no mapping is defined. For a
+    content object (or a brain/UID resolving to one), its portal type is
+    returned.
+
+    :param obj: FHIR resource, content object, catalog brain or UID
+    :returns: the SENAITE portal type, e.g. ``"Patient"``
+    :rtype: str
+    """
+    if is_fhir_resource(obj):
+        # lookup the portal_type for the resource's resourceType
+        resource_type = obj.resourceType
+        mapping = dict(FHIR_RESOURCE_TO_PORTAL_TYPE)
+        return mapping.get(resource_type, resource_type)
+
+    # an object, return the portal type
+    obj = api.get_object(obj)
+    return api.get_portal_type(obj)
 
 
 def get_fhir_uid(obj, resource_type=None):
@@ -194,8 +230,9 @@ def get_object(thing, default=_marker):
 
     # Fallback: search by stored FHIR resource ID when the resource type
     # is in the migrated set (i.e. its FHIR ID no longer equals SENAITE UID)
+    mapping = dict(FHIR_RESOURCE_TO_PORTAL_TYPE)
     if is_uuid(thing) and resource_type:
-        portal_type = FHIR_RESOURCE_TO_PORTAL_TYPE.get(resource_type)
+        portal_type = mapping.get(resource_type)
         if portal_type:
             obj = get_object_by_fhir_id(thing, resource_type, portal_type)
             if obj:
@@ -238,12 +275,13 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
 
         return resource
 
+    mapping = dict(FHIR_RESOURCE_TO_PORTAL_TYPE)
     if api.is_uid(thing):
         uid = thing
         thing = api.get_object_by_uid(uid, default=None)
         # Fallback: the UID may be a FHIR resource ID, not a SENAITE UID
         if not thing and resource_type:
-            portal_type = FHIR_RESOURCE_TO_PORTAL_TYPE.get(resource_type)
+            portal_type = mapping.get(resource_type)
             if portal_type:
                 thing = get_object_by_fhir_id(uid, resource_type, portal_type)
         if not thing:

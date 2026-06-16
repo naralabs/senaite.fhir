@@ -5,9 +5,13 @@ FHIR_STORAGE_KEY = "senaite.fhir.storage"
 
 # Mapping of FHIR resource type -> SENAITE portal type for objects that carry
 # a separate FHIR resource ID (e.g. Patient, Specimen, etc.)
-FHIR_RESOURCE_TO_PORTAL_TYPE = {
-    "Patient": "Patient",
-}
+FHIR_RESOURCE_TO_PORTAL_TYPE = (
+    ("Patient", "Patient"),
+    ("Organization", "Client"),
+    ("Practitioner", "Contact"),
+    ("Observation", "Analysis"),
+    ("DiagnosticReport", "ResultsReport"),
+)
 
 SYSTEM_CODES = (
     ("AnalysisProfile", "http://loinc.org"),
