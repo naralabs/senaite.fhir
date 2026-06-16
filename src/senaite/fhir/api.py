@@ -252,6 +252,20 @@ def get_fhir_uids(obj):
 
 
 def set_fhir_uids(obj, **kwargs):
+    """Persists FHIR UIDs against the given object, keyed by resource type, and
+    (re)indexes it in the FHIR catalog.
+
+    Each keyword argument maps a FHIR resource type to the UID (hex) of its
+    counterpart FHIR resource, e.g. ``set_fhir_uids(sample, Specimen=uid1,
+    ServiceRequest=uid2)``. Stored entries for resource types not passed in are
+    kept; entries for the passed resource types are overwritten.
+
+    The object is then indexed in the FHIR catalog so it can be resolved back
+    via ``search_by_fhir_uid``.
+
+    :param obj: content object, catalog brain or UID
+    :param kwargs: mapping of resource type -> FHIR UID (hex)
+    """
     obj = api.get_object(obj)
     storage = get_fhir_storage(obj)
     for resource_type, uid in kwargs.items():

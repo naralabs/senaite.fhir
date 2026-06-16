@@ -625,6 +625,37 @@ An unknown UID yields an empty result::
     0
 
 
+set_fhir_uids
+~~~~~~~~~~~~~
+
+``fapi.set_fhir_uids`` persists FHIR UIDs against an object, keyed by resource
+type, and indexes it in the FHIR catalog so it can be found again with
+``search_by_fhir_uid``::
+
+    >>> linked = api.create(portal.patients, "Patient", mrn=u"PAT-UIDS")
+    >>> specimen_uid = fapi.generate_UUID().hex
+    >>> fapi.set_fhir_uids(linked, Specimen=specimen_uid)
+
+The UID is now part of the object's FHIR UIDs, keyed by resource type::
+
+    >>> fapi.get_fhir_uid(linked, "Specimen") == specimen_uid
+    True
+
+And the object is resolvable through the FHIR catalog::
+
+    >>> brains = fapi.search_by_fhir_uid(specimen_uid, "Patient")
+    >>> fapi.get_uid(brains[0]) == fapi.get_uid(linked)
+    True
+
+Stored entries for other resource types are kept; passing a new resource type
+adds to the mapping rather than replacing it::
+
+    >>> service_request_uid = fapi.generate_UUID().hex
+    >>> fapi.set_fhir_uids(linked, ServiceRequest=service_request_uid)
+    >>> sorted(fapi.get_fhir_uids(linked).keys())
+    ['Patient', 'ServiceRequest', 'Specimen']
+
+
 update
 ~~~~~~
 
