@@ -163,16 +163,6 @@ def get_fhir_uids(obj):
     return uids
 
 
-@deprecate("Use get_fhir_id instead")
-def get_fhir_resource_id(obj, resource_type):
-    """Returns the stored FHIR resource ID for resource_type on obj, or None.
-
-    Reads directly from the annotation without creating storage, so calling
-    this on a SENAITE-native object (no FHIR storage yet) is safe and cheap.
-    """
-    return get_fhir_uid(obj, resource_type=resource_type)
-
-
 def get_object_by_fhir_id(fhir_id, resource_type, portal_type):
     """Returns the SENAITE object whose stored FHIR ID for resource_type
     matches fhir_id, or None when not found

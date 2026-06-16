@@ -406,7 +406,7 @@ The SENAITE UID is not overwritten; it keeps its own generated value::
 
 The incoming FHIR id is preserved in the annotation storage::
 
-    >>> fapi.get_fhir_resource_id(created, "Patient") == fapi.get_uid(fresh)
+    >>> fapi.get_fhir_uid(created, "Patient") == fapi.get_uid(fresh)
     True
 
     >>> fapi.get_fhir_uid(created) == fapi.get_uid(fresh)
@@ -510,7 +510,7 @@ A brand-new resource produces a new content object::
 
 The FHIR id is stored separately; the SENAITE UID is distinct::
 
-    >>> fapi.get_fhir_resource_id(minted, "Patient") == fapi.get_uid(brand_new)
+    >>> fapi.get_fhir_uid(minted, "Patient") == fapi.get_uid(brand_new)
     True
     >>> fapi.get_uid(minted) == fapi.get_uid(brand_new)
     False
