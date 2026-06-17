@@ -59,6 +59,9 @@ Create the minimum set of objects needed to register a sample:
     >>> Hb = api.create(portal.bika_setup.bika_analysisservices,
     ...                 "AnalysisService", title="Haemoglobin", Keyword="Hb",
     ...                 Category=category.UID())
+    >>> profile = api.create(setup.analysisprofiles, "AnalysisProfile",
+    ...                      title="CBC Panel", ProfileKey="cbc-panel")
+    >>> profile.setServices([Hb.UID()])
 
 
 Create and publish the sample
@@ -69,6 +72,7 @@ Create and publish the sample
     ...     "Contact": contact.UID(),
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
+    ...     "Profiles": [profile.UID()],
     ... }
     >>> sample = create_analysisrequest(client, request, values, [Hb.UID()])
     >>> sample
