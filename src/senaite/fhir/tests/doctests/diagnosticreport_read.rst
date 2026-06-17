@@ -237,3 +237,56 @@ without the resource-type prefix:
     >>> browser.open("{}/{}".format(fhir_url, report_uid))
     >>> json.loads(browser.contents)["resourceType"]
     u'DiagnosticReport'
+
+
+Validation Error: Missing AnalysisProfile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a ``ResultsReport`` belongs to a sample that has no ``AnalysisProfile``
+assigned, ``to_fhir_resource`` must return an ``OperationOutcome`` rather than
+raising an exception.
+
+Create a sample without a profile:
+
+    >>> values_no_profile = {
+    ...     "Client": client.UID(),
+    ...     "Contact": contact.UID(),
+    ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
+    ...     "SampleType": sampletype.UID(),
+    ... }
+    >>> sample_no_profile = create_analysisrequest(client, request, values_no_profile, [Cu.UID()])
+
+Create a ``ResultsReport`` for it:
+
+    >>> report_no_profile = api.create(
+    ...     sample_no_profile, "ResultsReport",
+    ...     sample=sample_no_profile.UID(),
+    ... )
+
+Instantiate the converter and call ``to_fhir_resource`` — it must return an
+``OperationOutcome`` because ``validate()`` detects no profiles:
+
+    >>> from senaite.fhir.converter.diagnosticreport import ResultsReportToResource
+    >>> from senaite.fhir.resource.operationoutcome import OperationOutcome
+    >>> converter = ResultsReportToResource(report_no_profile)
+    >>> result = converter.to_fhir_resource()
+    >>> isinstance(result, OperationOutcome)
+    True
+
+The resource type in the payload is ``OperationOutcome``:
+
+    >>> result["resourceType"]
+    'OperationOutcome'
+
+The single issue has severity ``error`` and code ``required``:
+
+    >>> issue = result.issue[0]
+    >>> issue.severity
+    'error'
+    >>> issue.code
+    'required'
+
+The expression points to the field that failed validation:
+
+    >>> issue.expression
+    ['DiagnosticReport.code']

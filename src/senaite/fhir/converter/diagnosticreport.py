@@ -28,16 +28,9 @@ class ResultsReportToResource(object):
         self.report = report
 
     def to_fhir_resource(self):
-        try:
-            code = self.get_code()
-        except ValueError as e:
-            issue = {
-                "severity": "error",
-                "code": "required",
-                "details": {"text": str(e)},
-                "expression": ["DiagnosticReport.code"],
-            }
-            return OperationOutcome({"issue": [issue]})
+        outcome = self.validate()
+        if outcome:
+            return outcome
 
         profile_url = to_fhir_profile_url("SenaiteDiagnosticReport")
         data = {
@@ -48,7 +41,7 @@ class ResultsReportToResource(object):
                 "lastUpdated": self.get_last_updated(),
             },
             "status": self.get_status(),
-            "code": code,
+            "code": self.get_code(),
             "identifier": self.get_identifier(),
             "basedOn": self.get_based_on(),
             "subject": self.get_subject(),
@@ -57,6 +50,21 @@ class ResultsReportToResource(object):
         }
 
         return DiagnosticReportResource(data)
+
+    def validate(self):
+        issues = []
+        sample = self.get_sample()
+        if not sample.getProfiles():
+            issues.append({
+                "severity": "error",
+                "code": "required",
+                "details": {"text": "No AnalysisProfile assigned to sample"},
+                "expression": ["DiagnosticReport.code"],
+            })
+
+        if issues:
+            return OperationOutcome({"issue": issues})
+        return None
 
     def get_sample(self):
         return self.report.getSample()
@@ -96,10 +104,6 @@ class ResultsReportToResource(object):
     def get_code(self):
         sample = self.get_sample()
         profiles = sample.getProfiles()
-        if not profiles:
-            raise ValueError(
-                "No AnalysisProfile assigned to sample %s" % api.get_id(sample)
-            )
         profile = profiles[0]
         system = fapi.get_system_code("AnalysisProfile")
         profile_key = profile.getProfileKey()
