@@ -1,0 +1,414 @@
+{
+  "resourceType" : "Bundle",
+  "id" : "cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f",
+  "meta" : {
+    "profile" : ["https://fhir.senaite.org/StructureDefinition/SenaiteRequestBundle"]
+  },
+  "type" : "transaction",
+  "entry" : [{
+    "fullUrl" : "urn:uuid:ddaf107d-a44d-4b7b-966b-65d82de495cc",
+    "resource" : {
+      "resourceType" : "Patient",
+      "id" : "ddaf107d-a44d-4b7b-966b-65d82de495cc",
+      "meta" : {
+        "profile" : ["https://fhir.senaite.org/StructureDefinition/SenaitePatient"]
+      },
+      "text" : {
+        "status" : "generated",
+        "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><a name=\"Patient_ddaf107d-a44d-4b7b-966b-65d82de495cc\"> </a><p class=\"res-header-id\"><b>Generated Narrative: Patient ddaf107d-a44d-4b7b-966b-65d82de495cc</b></p><a name=\"ddaf107d-a44d-4b7b-966b-65d82de495cc\"> </a><a name=\"hcddaf107d-a44d-4b7b-966b-65d82de495cc\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-SenaitePatient.html\">SenaitePatient</a></p></div><p style=\"border: 1px #661aff solid; background-color: #e6e6ff; padding: 10px;\">James Nguyen (official) Male, DoB: 1985-09-14 ( MRN-20394857\u00a0(use:\u00a0secondary,\u00a0))</p><hr/><table class=\"grid\"><tr><td style=\"background-color: #f3f5da\" title=\"Known Marital status of Patient\">Marital Status:</td><td colspan=\"3\"><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-MaritalStatus M}\">Married</span></td></tr><tr><td style=\"background-color: #f3f5da\" title=\"Ways to contact the Patient\">Contact Detail</td><td colspan=\"3\"><ul><li><a href=\"tel:+61390001234\">+61 3 9000 1234</a></li><li><a href=\"mailto:james.nguyen@example.com\">james.nguyen@example.com</a></li><li>12 Parkville Drive Melbourne Victoria 3052 AU (home)</li></ul></td></tr></table></div>"
+      },
+      "identifier" : [{
+        "use" : "secondary",
+        "value" : "MRN-20394857"
+      }],
+      "name" : [{
+        "use" : "official",
+        "family" : "Nguyen",
+        "given" : ["James"],
+        "prefix" : ["Mr."]
+      }],
+      "telecom" : [{
+        "system" : "phone",
+        "value" : "+61 3 9000 1234",
+        "use" : "home"
+      },
+      {
+        "system" : "email",
+        "value" : "james.nguyen@example.com",
+        "use" : "work"
+      }],
+      "gender" : "male",
+      "birthDate" : "1985-09-14",
+      "address" : [{
+        "use" : "home",
+        "line" : ["12 Parkville Drive"],
+        "city" : "Melbourne",
+        "state" : "Victoria",
+        "postalCode" : "3052",
+        "country" : "AU"
+      }],
+      "maritalStatus" : {
+        "coding" : [{
+          "system" : "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+          "code" : "M",
+          "display" : "Married"
+        }]
+      }
+    },
+    "request" : {
+      "method" : "POST",
+      "url" : "Patient"
+    }
+  },
+  {
+    "fullUrl" : "urn:uuid:6c248ba7-a4c4-4606-b4a0-efbff71fb902",
+    "resource" : {
+      "resourceType" : "Organization",
+      "id" : "6c248ba7-a4c4-4606-b4a0-efbff71fb902",
+      "meta" : {
+        "profile" : ["https://fhir.senaite.org/StructureDefinition/SenaiteOrganization"]
+      },
+      "text" : {
+        "status" : "generated",
+        "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><a name=\"Organization_6c248ba7-a4c4-4606-b4a0-efbff71fb902\"> </a><p class=\"res-header-id\"><b>Generated Narrative: Organization 6c248ba7-a4c4-4606-b4a0-efbff71fb902</b></p><a name=\"6c248ba7-a4c4-4606-b4a0-efbff71fb902\"> </a><a name=\"hc6c248ba7-a4c4-4606-b4a0-efbff71fb902\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-SenaiteOrganization.html\">SenaiteOrganization</a></p></div><p><b>identifier</b>: ORG-RMH-MEL\u00a0(use:\u00a0secondary,\u00a0)</p><p><b>active</b>: true</p><p><b>name</b>: Royal Melbourne Hospital</p><h3>Contacts</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Name</b></td><td><b>Telecom</b></td><td><b>Address</b></td></tr><tr><td style=\"display: none\">*</td><td>Laboratory Services Administration(Official)</td><td><a href=\"tel:+61393427000\">+61 3 9342 7000</a>, <a href=\"mailto:labservices@rmh.org.au\">labservices@rmh.org.au</a></td><td>300 Grattan Street Melbourne Victoria 3050 AU (work)</td></tr></table></div>"
+      },
+      "identifier" : [{
+        "use" : "secondary",
+        "value" : "ORG-RMH-MEL"
+      }],
+      "active" : true,
+      "name" : "Royal Melbourne Hospital",
+      "contact" : [{
+        "name" : [{
+          "use" : "official",
+          "text" : "Laboratory Services Administration"
+        }],
+        "telecom" : [{
+          "system" : "phone",
+          "value" : "+61 3 9342 7000",
+          "use" : "work"
+        },
+        {
+          "system" : "email",
+          "value" : "labservices@rmh.org.au",
+          "use" : "work"
+        }],
+        "address" : {
+          "use" : "work",
+          "type" : "physical",
+          "line" : ["300 Grattan Street"],
+          "city" : "Melbourne",
+          "state" : "Victoria",
+          "postalCode" : "3050",
+          "country" : "AU"
+        }
+      }]
+    },
+    "request" : {
+      "method" : "POST",
+      "url" : "Organization"
+    }
+  },
+  {
+    "fullUrl" : "urn:uuid:ab1ecb26-1942-4855-a32d-ee82c62e5327",
+    "resource" : {
+      "resourceType" : "Practitioner",
+      "id" : "ab1ecb26-1942-4855-a32d-ee82c62e5327",
+      "meta" : {
+        "profile" : ["https://fhir.senaite.org/StructureDefinition/SenaitePractitioner"]
+      },
+      "text" : {
+        "status" : "generated",
+        "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><a name=\"Practitioner_ab1ecb26-1942-4855-a32d-ee82c62e5327\"> </a><p class=\"res-header-id\"><b>Generated Narrative: Practitioner ab1ecb26-1942-4855-a32d-ee82c62e5327</b></p><a name=\"ab1ecb26-1942-4855-a32d-ee82c62e5327\"> </a><a name=\"hcab1ecb26-1942-4855-a32d-ee82c62e5327\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-SenaitePractitioner.html\">SenaitePractitioner</a></p></div><p><b>identifier</b>: PRACT-DR-SULLIVAN\u00a0(use:\u00a0secondary,\u00a0)</p><p><b>active</b>: true</p><p><b>name</b>: Catherine Sullivan (Official)</p><p><b>telecom</b>: <a href=\"mailto:c.sullivan@rmh.org.au\">c.sullivan@rmh.org.au</a>, <a href=\"tel:+61393428800\">+61 3 9342 8800</a></p><p><b>gender</b>: Female</p><p><b>birthDate</b>: 1978-06-12</p><p><b>address</b>: Department of Gastroenterology Royal Melbourne Hospital, 300 Grattan St Melbourne Victoria 3050 AU (work)</p></div>"
+      },
+      "identifier" : [{
+        "use" : "secondary",
+        "value" : "PRACT-DR-SULLIVAN"
+      }],
+      "active" : true,
+      "name" : [{
+        "use" : "official",
+        "family" : "Sullivan",
+        "given" : ["Catherine"],
+        "prefix" : ["Dr."],
+        "suffix" : ["MBBS FRACP"]
+      }],
+      "telecom" : [{
+        "system" : "email",
+        "value" : "c.sullivan@rmh.org.au",
+        "use" : "work"
+      },
+      {
+        "system" : "phone",
+        "value" : "+61 3 9342 8800",
+        "use" : "work"
+      }],
+      "gender" : "female",
+      "birthDate" : "1978-06-12",
+      "address" : [{
+        "use" : "work",
+        "line" : ["Department of Gastroenterology",
+        "Royal Melbourne Hospital, 300 Grattan St"],
+        "city" : "Melbourne",
+        "state" : "Victoria",
+        "postalCode" : "3050",
+        "country" : "AU"
+      }]
+    },
+    "request" : {
+      "method" : "POST",
+      "url" : "Practitioner"
+    }
+  },
+  {
+    "fullUrl" : "urn:uuid:9b8a478f-fd26-4765-8f09-3b3ea0ec6637",
+    "resource" : {
+      "resourceType" : "Specimen",
+      "id" : "9b8a478f-fd26-4765-8f09-3b3ea0ec6637",
+      "meta" : {
+        "profile" : ["https://fhir.senaite.org/StructureDefinition/SenaiteSpecimen"]
+      },
+      "text" : {
+        "status" : "generated",
+        "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><a name=\"Specimen_9b8a478f-fd26-4765-8f09-3b3ea0ec6637\"> </a><p class=\"res-header-id\"><b>Generated Narrative: Specimen 9b8a478f-fd26-4765-8f09-3b3ea0ec6637</b></p><a name=\"9b8a478f-fd26-4765-8f09-3b3ea0ec6637\"> </a><a name=\"hc9b8a478f-fd26-4765-8f09-3b3ea0ec6637\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-SenaiteSpecimen.html\">SenaiteSpecimen</a></p></div><p><b>type</b>: <span title=\"Codes:{http://snomed.info/sct 119364003}\">Serum specimen</span></p><blockquote><p><b>collection</b></p><p><b>collector</b>: <a href=\"Bundle-cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f.html#Practitioner_ab1ecb26-1942-4855-a32d-ee82c62e5327\">Practitioner Catherine Sullivan (official)</a></p><p><b>collected</b>: 2026-04-08 08:30:00+1000</p><h3>BodySites</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Concept</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://snomed.info/sct 49220004}\">Antecubital fossa</span></td></tr></table></blockquote><p><b>note</b>: </p><blockquote><div><p>Fasting specimen. No visible haemolysis.</p>\n</div></blockquote></div>"
+      },
+      "type" : {
+        "coding" : [{
+          "system" : "http://snomed.info/sct",
+          "code" : "119364003",
+          "display" : "Serum specimen"
+        }],
+        "text" : "Serum specimen"
+      },
+      "collection" : {
+        "collector" : {
+          "reference" : "Practitioner/ab1ecb26-1942-4855-a32d-ee82c62e5327"
+        },
+        "collectedDateTime" : "2026-04-08T08:30:00+10:00",
+        "bodySite" : {
+          "concept" : {
+            "coding" : [{
+              "system" : "http://snomed.info/sct",
+              "code" : "49220004",
+              "display" : "Antecubital fossa"
+            }],
+            "text" : "Antecubital fossa"
+          }
+        }
+      },
+      "note" : [{
+        "text" : "Fasting specimen. No visible haemolysis."
+      }]
+    },
+    "request" : {
+      "method" : "POST",
+      "url" : "Specimen"
+    }
+  },
+  {
+    "fullUrl" : "urn:uuid:2d6bb491-6b87-4558-a07f-2d181831e298",
+    "resource" : {
+      "resourceType" : "ServiceRequest",
+      "id" : "2d6bb491-6b87-4558-a07f-2d181831e298",
+      "meta" : {
+        "profile" : ["https://fhir.senaite.org/StructureDefinition/SenaiteServiceRequest"]
+      },
+      "text" : {
+        "status" : "extensions",
+        "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><a name=\"ServiceRequest_2d6bb491-6b87-4558-a07f-2d181831e298\"> </a><p class=\"res-header-id\"><b>Generated Narrative: ServiceRequest 2d6bb491-6b87-4558-a07f-2d181831e298</b></p><a name=\"2d6bb491-6b87-4558-a07f-2d181831e298\"> </a><a name=\"hc2d6bb491-6b87-4558-a07f-2d181831e298\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-SenaiteServiceRequest.html\">SenaiteServiceRequest</a></p></div><p><b>SENAITE Client</b>: <a href=\"Bundle-cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f.html#urn-uuid-6c248ba7-a4c4-4606-b4a0-efbff71fb902\">Organization Royal Melbourne Hospital</a></p><p><b>identifier</b>: EXT-LIVER-001\u00a0(use:\u00a0secondary,\u00a0)</p><p><b>status</b>: Active</p><p><b>intent</b>: Order</p><p><b>category</b>: <span title=\"Codes:{http://snomed.info/sct 108252007}\">Laboratory procedure</span></p><p><b>priority</b>: Routine</p><h3>Codes</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Concept</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://loinc.org 24325-3}\">Hepatic Function Panel</span></td></tr></table><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 1742-6}\">ALT [Enzymatic activity/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 1920-8}\">AST [Enzymatic activity/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 6768-6}\">Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 1975-2}\">Bilirubin.total [Mass/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 1968-7}\">Bilirubin.direct [Mass/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 2885-2}\">Protein [Mass/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 1751-7}\">Albumin [Mass/volume] in Serum or Plasma</span></td></tr></table></blockquote><blockquote><p><b>orderDetail</b></p><h3>Parameters</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Code</b></td><td><b>Value[x]</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://terminology.hl7.org/CodeSystem/v3-ObservationValue LOINC}\">Test Code</span></td><td><span title=\"Codes:{http://loinc.org 5902-2}\">Prothrombin time (PT)</span></td></tr></table></blockquote><p><b>subject</b>: <a href=\"Bundle-cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f.html#Patient_ddaf107d-a44d-4b7b-966b-65d82de495cc\">James Nguyen (official) Male, DoB: 1985-09-14 ( MRN-20394857\u00a0(use:\u00a0secondary,\u00a0))</a></p><p><b>requester</b>: <a href=\"Bundle-cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f.html#Practitioner_ab1ecb26-1942-4855-a32d-ee82c62e5327\">Practitioner Catherine Sullivan (official)</a></p><p><b>specimen</b>: <a href=\"Bundle-cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f.html#Specimen_9b8a478f-fd26-4765-8f09-3b3ea0ec6637\">Specimen: type = Serum specimen; note = Fasting specimen. No visible haemolysis.</a></p><p><b>note</b>: </p><blockquote><div><p>Fasting specimen. Clinician suspects hepatic steatosis. Please process urgently.</p>\n</div></blockquote></div>"
+      },
+      "extension" : [{
+        "url" : "https://fhir.senaite.org/StructureDefinition/SenaiteClient",
+        "valueReference" : {
+          "reference" : "urn:uuid:6c248ba7-a4c4-4606-b4a0-efbff71fb902"
+        }
+      }],
+      "identifier" : [{
+        "use" : "secondary",
+        "value" : "EXT-LIVER-001"
+      }],
+      "status" : "active",
+      "intent" : "order",
+      "category" : [{
+        "coding" : [{
+          "system" : "http://snomed.info/sct",
+          "code" : "108252007",
+          "display" : "Laboratory procedure"
+        }],
+        "text" : "Laboratory procedure"
+      }],
+      "priority" : "routine",
+      "code" : {
+        "concept" : {
+          "coding" : [{
+            "system" : "http://loinc.org",
+            "code" : "24325-3",
+            "display" : "Hepatic function 2000 panel - Serum or Plasma"
+          }],
+          "text" : "Hepatic Function Panel"
+        }
+      },
+      "orderDetail" : [{
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "1742-6",
+              "display" : "ALT [Enzymatic activity/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "1920-8",
+              "display" : "AST [Enzymatic activity/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "6768-6",
+              "display" : "Alkaline phosphatase [Enzymatic activity/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "1975-2",
+              "display" : "Bilirubin.total [Mass/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "1968-7",
+              "display" : "Bilirubin.direct [Mass/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "2885-2",
+              "display" : "Protein [Mass/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "1751-7",
+              "display" : "Albumin [Mass/volume] in Serum or Plasma"
+            }]
+          }
+        }]
+      },
+      {
+        "parameter" : [{
+          "code" : {
+            "coding" : [{
+              "system" : "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+              "code" : "LOINC",
+              "display" : "Test Code"
+            }]
+          },
+          "valueCodeableConcept" : {
+            "coding" : [{
+              "system" : "http://loinc.org",
+              "code" : "5902-2",
+              "display" : "Prothrombin time (PT)"
+            }]
+          }
+        }]
+      }],
+      "subject" : {
+        "reference" : "Patient/ddaf107d-a44d-4b7b-966b-65d82de495cc"
+      },
+      "requester" : {
+        "reference" : "Practitioner/ab1ecb26-1942-4855-a32d-ee82c62e5327",
+        "type" : "Practitioner"
+      },
+      "specimen" : [{
+        "reference" : "Specimen/9b8a478f-fd26-4765-8f09-3b3ea0ec6637"
+      }],
+      "note" : [{
+        "text" : "Fasting specimen. Clinician suspects hepatic steatosis. Please process urgently."
+      }]
+    },
+    "request" : {
+      "method" : "POST",
+      "url" : "ServiceRequest"
+    }
+  }]
+}
