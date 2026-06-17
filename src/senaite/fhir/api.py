@@ -423,23 +423,14 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
 
         return resource
 
-    mapping = dict(FHIR_RESOURCE_TO_PORTAL_TYPE)
-    if api.is_uid(thing):
-        uid = thing
-        thing = api.get_object_by_uid(uid, default=None)
-        # Fallback: the UID may be a FHIR resource ID, not a SENAITE UID
-        if not thing and resource_type:
-            portal_type = mapping.get(resource_type)
-            if portal_type:
-                brains = search_by_fhir_uid(uid, portal_type)
-                if len(brains) == 1:
-                    thing = api.get_object(brains[0])
-        if not thing:
-            if default is _marker:
-                fail(msg="Not Found", status=404)
-            return default
+    # get the object to build the FHIR Resource from
+    obj = get_object(thing, default=None)
+    if not obj:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
 
-    obj = api.get_object(thing)
+    # get the ContentToFHIR adapter
     adapter = queryAdapter(obj, IContentToFHIR)
     if not adapter:
         if default is _marker:
