@@ -5,6 +5,8 @@ Changelog
 ------------------
 
 - #5 Build DiagnosticReport resources from SENAITE report data
+- #7 Move the _runtime marker from response body to Server-Timing header
+- #6 Build Patient FHIR resource from underlying SENAITE patient data
 - #3 Implement pollable DiagnosticReport fetch API
 - #4 Fix FHIR datetime formatting with timezone offset
 - #2 Implement DiagnosticReport PDF report fetch API

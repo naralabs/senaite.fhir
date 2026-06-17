@@ -2,6 +2,9 @@
 
 from bika.lims import api
 from senaite.core.api import dtime
+from senaite.core.schema.addressfield import OTHER_ADDRESS
+from senaite.core.schema.addressfield import PHYSICAL_ADDRESS
+from senaite.core.schema.addressfield import POSTAL_ADDRESS
 from senaite.fhir import api as fapi
 from senaite.fhir.converter import group_by
 from senaite.fhir.converter import to_content_address
@@ -36,6 +39,23 @@ GENDER_TO_FHIR = {
     "": "unknown",
 }
 
+# SENAITE address type -> FHIR Address use/type
+# FHIR use:  home | work | temp | old | billing
+# FHIR type: postal | physical | both
+ADDRESS_USE_TO_FHIR = {
+    PHYSICAL_ADDRESS: "home",
+    POSTAL_ADDRESS: "home",
+    OTHER_ADDRESS: "temp",
+}
+ADDRESS_TYPE_TO_FHIR = {
+    PHYSICAL_ADDRESS: "physical",
+    POSTAL_ADDRESS: "postal",
+    OTHER_ADDRESS: "both",
+}
+
+# FHIR ContactPoint use value set: home | work | temp | old | mobile
+VALID_CONTACT_USES = frozenset(["home", "work", "temp", "old", "mobile"])
+
 
 @adapter(IPatient)
 @implementer(IContentToFHIR)
@@ -58,14 +78,112 @@ class PatientToResource(object):
         # remove empties
         return list(filter(None, identifiers))
 
+    def get_fhir_addresses(self):
+        """Returns a list of FHIR Address dicts built from the SENAITE patient
+        address records, skipping any that carry no meaningful content.
+        """
+        addresses = []
+        for record in self.patient.getAddress() or []:
+            atype = record.get("type", "")
+            street = record.get("address", "").strip()
+            city = record.get("city", "").strip()
+            zip_code = record.get("zip", "").strip()
+            country = record.get("country", "").strip()
+            state = record.get("subdivision1", "").strip()
+            district = record.get("subdivision2", "").strip()
+
+            if not any([street, city, zip_code, country, state, district]):
+                continue
+
+            fhir_addr = {}
+            use = ADDRESS_USE_TO_FHIR.get(atype)
+            if use:
+                fhir_addr["use"] = use
+            addr_type = ADDRESS_TYPE_TO_FHIR.get(atype)
+            if addr_type:
+                fhir_addr["type"] = addr_type
+            if street:
+                fhir_addr["line"] = [api.safe_unicode(street)]
+            if city:
+                fhir_addr["city"] = api.safe_unicode(city)
+            if zip_code:
+                fhir_addr["postalCode"] = api.safe_unicode(zip_code)
+            if state:
+                fhir_addr["state"] = api.safe_unicode(state)
+            if district:
+                fhir_addr["district"] = api.safe_unicode(district)
+            if country:
+                fhir_addr["country"] = api.safe_unicode(country)
+
+            addresses.append(fhir_addr)
+        return addresses
+
+    def get_fhir_telecom(self):
+        """Returns a list of FHIR ContactPoint dicts built from the SENAITE
+        patient email and phone fields.
+        """
+        contacts = []
+
+        # Primary email
+        primary_email = self.patient.getEmail()
+        if primary_email:
+            contacts.append({
+                "system": "email",
+                "value": api.safe_unicode(primary_email),
+                "use": "home",
+            })
+
+        # Additional emails
+        for record in self.patient.getAdditionalEmails() or []:
+            value = record.get("email", "").strip()
+            if not value:
+                continue
+            name = record.get("name", "").strip().lower()
+            use = name if name in VALID_CONTACT_USES else "work"
+            contacts.append({
+                "system": "email",
+                "value": api.safe_unicode(value),
+                "use": use,
+            })
+
+        # Primary phone
+        primary_phone = self.patient.getPhone()
+        if primary_phone:
+            contacts.append({
+                "system": "phone",
+                "value": api.safe_unicode(primary_phone),
+                "use": "home",
+            })
+
+        # Additional phone numbers
+        for record in self.patient.getAdditionalPhoneNumbers() or []:
+            value = record.get("phone", "").strip()
+            if not value:
+                continue
+            name = record.get("name", "").strip().lower()
+            use = name if name in VALID_CONTACT_USES else "work"
+            contacts.append({
+                "system": "phone",
+                "value": api.safe_unicode(value),
+                "use": use,
+            })
+
+        return contacts
+
     def to_fhir_resource(self):
         modified = api.get_modification_date(self.patient)
         modified = to_fhir_datetime(modified)
-        uuid = fapi.get_uuid(self.patient)
+
+        # Get or generate the FHIR Patient ID (separate from SENAITE UID)
+        fhir_id = fapi.get_fhir_resource_id(self.patient, "Patient")
+        if not fhir_id:
+            fhir_id = fapi.generate_UUID().hex
+            fapi.set_fhir_resource_id(self.patient, "Patient", fhir_id)
+
         profile_url = to_fhir_profile_url("Patient")
         data = {
             "resourceType": "Patient",
-            "id": str(uuid),
+            "id": str(fapi.get_uuid(fhir_id)),
             "status": api.get_review_status(self.patient),
             "meta": {
                 "profile": [profile_url],
@@ -74,18 +192,43 @@ class PatientToResource(object):
             "identifier": self.get_fhir_identifiers(),
         }
 
+        # FHIR Patient.name is an array of HumanName
         given = [self.patient.getFirstname(), self.patient.getMiddlename()]
-        data["name"] = {
+        data["name"] = [{
             "family": self.patient.getLastname(),
             "given": list(filter(None, given)),
             "use": "official",
-        }
+        }]
 
+        # Date of birth
         dob = self.patient.getBirthdate()
-        data["birthDate"] = dtime.date_to_string(dob)
+        if dob:
+            data["birthDate"] = dtime.date_to_string(dob)
 
+        # Estimated birthdate carried as a FHIR extension
+        if self.patient.getEstimatedBirthdate():
+            data["extension"] = [{
+                "url": to_fhir_profile_url("EstimatedDateBirth"),
+                "valueBoolean": True,
+            }]
+
+        # Gender
         gender = self.patient.getGender() or ""
         data["gender"] = GENDER_TO_FHIR.get(gender, "unknown")
+
+        # Deceased
+        if self.patient.getDeceased():
+            data["deceasedBoolean"] = True
+
+        # Address
+        addresses = self.get_fhir_addresses()
+        if addresses:
+            data["address"] = addresses
+
+        # Telecom (phone + email)
+        telecom = self.get_fhir_telecom()
+        if telecom:
+            data["telecom"] = telecom
 
         return PatientResource(data)
 
@@ -287,13 +430,27 @@ class ResourceToPatient(object):
         return element[0].value if element else None
 
     def get_additional_emails(self):
-        emails = []
-        for email in self.get_email_elements():
-            emails.append({
+        emails = self.get_email_elements()
+        grouped = group_by(emails, key="use")
+        # mirror the primary-selection logic from get_primary_email so the
+        # primary entry is not duplicated into the additional list
+        if grouped.get("home"):
+            primary_use = "home"
+        elif grouped.get("work"):
+            primary_use = "work"
+        else:
+            primary_use = None
+        skipped = False
+        result = []
+        for email in emails:
+            if not skipped and email.use == primary_use:
+                skipped = True
+                continue
+            result.append({
                 u"name": api.safe_unicode(email.use),
-                u"email": api.safe_unicode(email.value)
+                u"email": api.safe_unicode(email.value),
             })
-        return emails
+        return result
 
     def get_phone_elements(self):
         # get all phones of this patient
@@ -302,7 +459,7 @@ class ResourceToPatient(object):
         return grouped.get("phone") or []
 
     def get_primary_phone(self):
-        """Returns the primary email address
+        """Returns the primary phone number
         """
         phones = self.get_phone_elements()
         grouped = group_by(phones, key="use")
@@ -312,10 +469,24 @@ class ResourceToPatient(object):
         return element[0].value if element else None
 
     def get_additional_phones(self):
-        phones = []
-        for phone in self.get_phone_elements():
-            phones.append({
+        phones = self.get_phone_elements()
+        grouped = group_by(phones, key="use")
+        # mirror the primary-selection logic from get_primary_phone so the
+        # primary entry is not duplicated into the additional list
+        if grouped.get("home"):
+            primary_use = "home"
+        elif grouped.get("work"):
+            primary_use = "work"
+        else:
+            primary_use = None
+        skipped = False
+        result = []
+        for phone in phones:
+            if not skipped and phone.use == primary_use:
+                skipped = True
+                continue
+            result.append({
                 u"name": api.safe_unicode(phone.use),
-                u"phone": api.safe_unicode(phone.value)
+                u"phone": api.safe_unicode(phone.value),
             })
-        return phones
+        return result
