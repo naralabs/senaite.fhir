@@ -123,8 +123,11 @@ def get_resource_type(obj):
         return obj.resourceType
 
     # reverse-lookup the resource type for the object's portal type
-    obj = api.get_object(obj)
-    portal_type = api.get_portal_type(obj)
+    if api.is_string(obj) and not is_uuid(obj):
+        portal_type = obj
+    else:
+        obj = api.get_object(obj)
+        portal_type = api.get_portal_type(obj)
 
     # looks for the first match
     mapping = sorted(FHIR_RESOURCE_TO_PORTAL_TYPE)
@@ -342,11 +345,14 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     # do the search
     brains = search_by_fhir_uid(fhir_uid, portal_type=portal_type)
 
-    # resource_type must match with portal_type
+    # resource_type must match with portal_type or with its resourceType
     for brain in brains:
         uids = get_fhir_uids(brain)
         portal_type = get_portal_type(brain)
         if uids.get(portal_type) == fhir_uid:
+            return api.get_object(brain)
+        resource_type = get_resource_type(portal_type)
+        if uids.get(resource_type) == fhir_uid:
             return api.get_object(brain)
 
     if default is _marker:
