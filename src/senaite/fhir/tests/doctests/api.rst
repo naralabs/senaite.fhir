@@ -580,15 +580,11 @@ SENAITE UID) is delegated to the core API::
     >>> fapi.get_uid(resolved) == fapi.get_uid(created)
     True
 
-A bare FHIR id string has no portal-type context, so it is treated as a plain
-SENAITE UID by core and does not resolve (use ``get_object_by_fhir_uid`` with
-a portal type instead)::
+A bare FHIR id string that is not a SENAITE UID is resolved too, by searching
+the FHIR catalog across all portal types::
 
     >>> fhir_id = fapi.get_uid(fresh)
-    >>> fapi.get_object(fhir_id, default=None) is None
-    True
-
-    >>> resolved = fapi.get_object_by_fhir_uid(fhir_id, "Patient")
+    >>> resolved = fapi.get_object(fhir_id)
     >>> fapi.get_uid(resolved) == fapi.get_uid(created)
     True
 
@@ -651,7 +647,7 @@ When there is no single match it raises, unless a default is given::
     ...     "99999999-9999-5999-9999-999999999999", "Patient")
     Traceback (most recent call last):
     ...
-    FHIRAPIError: No object found for FHIR UID 99999999-9999-5999-9999-999999999999
+    FHIRAPIError: No object found for FHIR UID 99999999999959999999999999999999
 
     >>> fapi.get_object_by_fhir_uid(
     ...     "99999999-9999-5999-9999-999999999999", "Patient",

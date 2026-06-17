@@ -1,5 +1,6 @@
 <configure xmlns="http://namespaces.zope.org/zope">
 
   <adapter name="fhir_uids" factory=".indexer.fhir_uids" />
+  <adapter name="fhir_resource_types" factory=".indexer.fhir_resource_types" />
 
 </configure>
