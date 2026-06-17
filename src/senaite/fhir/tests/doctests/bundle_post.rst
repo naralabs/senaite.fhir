@@ -49,7 +49,7 @@ Variables:
 
 Load the example bundle from the test data:
 
-    >>> raw = resource_string("senaite.fhir.tests", "data/request_bundle.json")
+    >>> raw = resource_string("senaite.fhir.tests", "data/Bundle.01.json")
     >>> bundle = json.loads(raw)
     >>> bundle["resourceType"]
     u'Bundle'
