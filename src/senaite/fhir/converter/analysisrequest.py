@@ -204,13 +204,10 @@ class ResourceToAnalysisRequest(object):
     def get_patient(self):
         """Returns the patient assigned to this ServiceRequest
         """
-        # Try with the reference UID first
-        ref = self.get_reference("subject")
-        uid = ref.UID()
+        uid = self.resource.subject.UID()
         obj = fapi.get_object(uid, default=None)
         if obj:
             return obj
-
         raise ValueError("%r: No Patient for %s" % (self.resource, uid))
 
     @memoize

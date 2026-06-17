@@ -1,7 +1,11 @@
 <configure xmlns="http://namespaces.zope.org/zope">
 
-  <!-- Search FHIR Organization's Client counterpart -->
+  <!-- Find a Client object given a FHIR Organization resource -->
   <adapter for="senaite.fhir.interfaces.IOrganizationResource"
            factory=".client.ClientFinder"/>
+
+  <!-- Find a Patient object given a FHIR Patient resource -->
+  <adapter for="senaite.fhir.interfaces.IPatientResource"
+           factory=".patient.PatientFinder"/>
 
 </configure>

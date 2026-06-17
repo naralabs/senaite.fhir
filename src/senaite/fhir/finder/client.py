@@ -11,8 +11,8 @@ from zope.interface import implementer
 @adapter(IOrganizationResource)
 @implementer(IContentFinder)
 class ClientFinder(object):
-    """Adapter in charge of searching clients that match with the Organization
-    FHIR Resource
+    """Adapter in charge of searching the counterpart Client object of a FHIR
+    Organization resource
     """
 
     def __init__(self, resource):
