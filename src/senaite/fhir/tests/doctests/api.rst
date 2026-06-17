@@ -62,59 +62,6 @@ The separator can be customised or removed::
     >>> fapi.slugify("Hello World", repl="")
     'helloworld'
 
-
-get_fhir_resource_id / set_fhir_resource_id
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``get_fhir_resource_id`` returns ``None`` (without creating annotation storage)
-for objects that have never been assigned a FHIR ID::
-
-    >>> plain = api.create(
-    ...     portal.patients, "Patient",
-    ...     mrn=u"PAT-PLAIN",
-    ...     firstname=u"Alice",
-    ...     lastname=u"Smith",
-    ... )
-    >>> fapi.get_fhir_resource_id(plain, "Patient") is None
-    True
-
-``set_fhir_resource_id`` writes the id and creates storage on demand::
-
-    >>> fapi.set_fhir_resource_id(plain, "Patient", "aabbccdd" * 4)
-    >>> fapi.get_fhir_resource_id(plain, "Patient")
-    'aabbccddaabbccddaabbccddaabbccdd'
-
-The helper is generic and supports any resource type on the same object::
-
-    >>> fapi.set_fhir_resource_id(plain, "DiagnosticReport", "11223344" * 4)
-    >>> fapi.get_fhir_resource_id(plain, "DiagnosticReport")
-    '11223344112233441122334411223344'
-
-Each type uses its own key so they do not collide::
-
-    >>> fapi.get_fhir_resource_id(plain, "Patient")
-    'aabbccddaabbccddaabbccddaabbccdd'
-
-
-get_object_by_fhir_id
-~~~~~~~~~~~~~~~~~~~~~
-
-``get_object_by_fhir_id`` scans the catalog for an object whose stored FHIR ID
-matches the given value.  It returns ``None`` when no match is found.
-
-Compare by UID rather than Python identity, because the catalog returns
-acquisition-wrapped objects that are not ``is``-identical to the original::
-
-    >>> found = fapi.get_object_by_fhir_id(
-    ...     "aabbccddaabbccddaabbccddaabbccdd", "Patient", "Patient")
-    >>> fapi.get_uid(found) == fapi.get_uid(plain)
-    True
-
-    >>> fapi.get_object_by_fhir_id("00000000000000000000000000000000",
-    ...                             "Patient", "Patient") is None
-    True
-
-
 fail
 ~~~~
 
@@ -211,10 +158,82 @@ returns the corresponding ``uuid.UUID``::
     True
 
 
-is_fhir_content / is_fhir_resource / get_fhir_uid
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+get_resource_type
+~~~~~~~~~~~~~~~~~
 
-A freshly-created Patient is not yet linked to any FHIR resource::
+``fapi.get_resource_type`` returns the FHIR resource type for a given
+thing. For a content object, it is resolved from the object's portal type::
+
+    >>> fapi.get_resource_type(patient)
+    'Patient'
+
+It also accepts a catalog brain or a UID resolving to a content object::
+
+    >>> fapi.get_resource_type(patient_uid)
+    'Patient'
+
+The lookup is a true reverse of ``FHIR_RESOURCE_TO_PORTAL_TYPE`` (an immutable
+tuple of ``(resource_type, portal_type)`` pairs), so a portal type resolves
+back to its FHIR resource type even when the two names differ. A SENAITE
+``Client`` maps to a FHIR ``Organization``::
+
+    >>> client = api.create(portal.clients, "Client", title="Acme")
+    >>> fapi.get_resource_type(client)
+    'Organization'
+
+For a FHIR resource, its own ``resourceType`` is returned::
+
+    >>> a_resource = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "52f941c6-81a0-51be-b1a6-f92ac079be34",
+    ... })
+    >>> fapi.get_resource_type(a_resource)
+    'Patient'
+
+Portal types without a mapping in ``FHIR_RESOURCE_TO_PORTAL_TYPE`` are
+returned unchanged::
+
+    >>> fapi.get_resource_type(portal.clients) == api.get_portal_type(
+    ...     portal.clients)
+    True
+
+
+get_portal_type
+~~~~~~~~~~~~~~~
+
+``fapi.get_portal_type`` is the inverse of ``get_resource_type``. For a
+content object it returns the object's portal type, and it likewise accepts a
+catalog brain or a UID resolving to one::
+
+    >>> fapi.get_portal_type(patient)
+    'Patient'
+
+    >>> fapi.get_portal_type(patient_uid)
+    'Patient'
+
+For a FHIR resource, the portal type is looked up from its ``resourceType``
+through ``FHIR_RESOURCE_TO_PORTAL_TYPE``, so a FHIR ``Organization`` resolves
+to a SENAITE ``Client``::
+
+    >>> org = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "44444444-4444-5444-9444-444444444444",
+    ... })
+    >>> org["resourceType"] = "Organization"
+    >>> fapi.get_portal_type(org)
+    'Client'
+
+Resource types without a mapping fall back to the resource type itself::
+
+    >>> org["resourceType"] = "Encounter"
+    >>> fapi.get_portal_type(org)
+    'Encounter'
+
+
+is_fhir_content / is_fhir_resource
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A freshly-created Patient is not yet linked to any external FHIR resource::
 
     >>> fapi.is_fhir_content(patient)
     False
@@ -222,7 +241,78 @@ A freshly-created Patient is not yet linked to any FHIR resource::
     >>> fapi.is_fhir_resource(patient)
     False
 
-    >>> fapi.get_fhir_uid(patient) is None
+
+get_fhir_uid
+~~~~~~~~~~~~
+
+``fapi.get_fhir_uid`` returns the FHIR UID (hex) of the counterpart resource
+of the given object for a resource type, defaulting to the object's own
+resource type when none is passed.
+
+For a FHIR resource, its own UID is returned::
+
+    >>> fapi.get_fhir_uid(a_resource) == fapi.get_uid(a_resource)
+    True
+
+An object not linked to a separate FHIR resource falls back to its own
+SENAITE UID, so a derived resource keeps a stable identity::
+
+    >>> fapi.get_fhir_uid(patient) == fapi.get_uid(patient)
+    True
+
+The resource type can be given explicitly; one with no UID associated to the
+object returns ``None``::
+
+    >>> fapi.get_fhir_uid(patient, resource_type="Patient") == fapi.get_uid(patient)
+    True
+
+    >>> fapi.get_fhir_uid(patient, resource_type="Observation") is None
+    True
+
+
+get_fhir_id
+~~~~~~~~~~~
+
+``fapi.get_fhir_id`` is the canonical dashed UUID form of ``get_fhir_uid``
+(which returns the UID in hex). For a FHIR resource it returns its own id::
+
+    >>> fapi.get_fhir_id(a_resource)
+    '52f941c6-81a0-51be-b1a6-f92ac079be34'
+
+It is the dashed-form counterpart of the hex UID from ``get_fhir_uid``::
+
+    >>> fapi.get_uuid(fapi.get_fhir_id(patient)).hex == fapi.get_fhir_uid(patient)
+    True
+
+A resource type with no UID associated to the object returns ``None``::
+
+    >>> fapi.get_fhir_id(patient, resource_type="Observation") is None
+    True
+
+
+get_fhir_uids
+~~~~~~~~~~~~~
+
+``fapi.get_fhir_uids`` returns all FHIR UIDs (hex) assigned to a thing,
+grouped by resource type. For a FHIR resource it is a single-entry mapping::
+
+    >>> fapi.get_fhir_uids(a_resource) == {"Patient": fapi.get_uid(a_resource)}
+    True
+
+For a content object, the object's own UID is injected for both its FHIR
+resource type and its portal type. For a Patient the two coincide::
+
+    >>> fapi.get_fhir_uids(patient) == {"Patient": fapi.get_uid(patient)}
+    True
+
+When the resource type and the portal type differ, both keys are present: a
+``Client`` is exposed as a FHIR ``Organization``::
+
+    >>> uids = fapi.get_fhir_uids(client)
+    >>> sorted(uids.keys())
+    ['Client', 'Organization']
+
+    >>> uids["Organization"] == uids["Client"] == fapi.get_uid(client)
     True
 
 
@@ -404,9 +494,12 @@ storage. It is what ``create`` / ``update`` use internally::
 
     >>> storage = fapi.get_fhir_storage(patient)
     >>> sorted(storage.keys())
-    ['data', 'fhir_patient_id', 'uid']
+    ['data', 'uids']
 
-    >>> storage["uid"] == fapi.get_uid(resource)
+The resource's UID is also tracked in the ``uids`` mapping, keyed by
+resource type, so a single object can hold several FHIR ids per type::
+
+    >>> storage["uids"]["Patient"] == fapi.get_uid(resource)
     True
 
     >>> storage["data"]["resourceType"]
@@ -453,7 +546,7 @@ The SENAITE UID is not overwritten; it keeps its own generated value::
 
 The incoming FHIR id is preserved in the annotation storage::
 
-    >>> fapi.get_fhir_resource_id(created, "Patient") == fapi.get_uid(fresh)
+    >>> fapi.get_fhir_uid(created, "Patient") == fapi.get_uid(fresh)
     True
 
     >>> fapi.get_fhir_uid(created) == fapi.get_uid(fresh)
@@ -474,26 +567,32 @@ The incoming FHIR id is preserved in the annotation storage::
 get_object
 ~~~~~~~~~~
 
-``fapi.get_object`` resolves a FHIR resource into the linked content.
-Passing a FHIR resource object supplies the resource-type context needed
-to trigger the FHIR-ID fallback scan::
+``fapi.get_object`` resolves a FHIR resource into its counterpart SENAITE
+content, looking it up through the FHIR catalog by the resource's FHIR UID::
 
     >>> fapi.get_uid(fapi.get_object(fresh)) == fapi.get_uid(created)
     True
 
-Passing a bare FHIR ID string has no resource-type context, so the
-fallback scan is skipped and the lookup fails (use ``get_object_by_fhir_id``
-when you need to look up by a known FHIR ID and portal type)::
+Anything that is not a FHIR resource (a content object, catalog brain or
+SENAITE UID) is delegated to the core API::
+
+    >>> resolved = fapi.get_object(fapi.get_uid(created))
+    >>> fapi.get_uid(resolved) == fapi.get_uid(created)
+    True
+
+A bare FHIR id string has no portal-type context, so it is treated as a plain
+SENAITE UID by core and does not resolve (use ``get_object_by_fhir_uid`` with
+a portal type instead)::
 
     >>> fhir_id = fapi.get_uid(fresh)
     >>> fapi.get_object(fhir_id, default=None) is None
     True
 
-    >>> found = fapi.get_object_by_fhir_id(fhir_id, "Patient", "Patient")
-    >>> fapi.get_uid(found) == fapi.get_uid(created)
+    >>> resolved = fapi.get_object_by_fhir_uid(fhir_id, "Patient")
+    >>> fapi.get_uid(resolved) == fapi.get_uid(created)
     True
 
-An unknown UID raises unless a default is provided::
+An unknown FHIR resource raises unless a default is provided::
 
     >>> orphan = fapi.to_fhir_resource({
     ...     "resourceType": "Patient",
@@ -502,10 +601,93 @@ An unknown UID raises unless a default is provided::
     >>> fapi.get_object(orphan)
     Traceback (most recent call last):
     ...
-    APIError: No object found for UID 99999999999959999999999999999999
+    FHIRAPIError: No object found for FHIR UID 99999999999959999999999999999999
 
     >>> fapi.get_object(orphan, default=None) is None
     True
+
+
+search_by_fhir_uid
+~~~~~~~~~~~~~~~~~~
+
+``fapi.search_by_fhir_uid`` looks up the FHIR catalog by its ``fhir_uids``
+index and returns the matching brains::
+
+    >>> brains = fapi.search_by_fhir_uid(fapi.get_uid(fresh))
+    >>> fapi.get_uid(brains[0]) == fapi.get_uid(created)
+    True
+
+A dashed FHIR id is harmonized to a hex UID, so either form works. With
+``as_brains=False`` the matching objects are woken up and returned::
+
+    >>> objs = fapi.search_by_fhir_uid(
+    ...     fapi.get_fhir_id(created), "Patient", as_brains=False)
+    >>> fapi.get_uid(objs[0]) == fapi.get_uid(created)
+    True
+
+An unknown UID yields an empty result::
+
+    >>> len(fapi.search_by_fhir_uid("99999999-9999-5999-9999-999999999999"))
+    0
+
+
+get_object_by_fhir_uid
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``fapi.get_object_by_fhir_uid`` resolves a single object by its FHIR UID
+through the FHIR catalog. Either a hex UID or a dashed FHIR id works::
+
+    >>> obj = fapi.get_object_by_fhir_uid(fapi.get_uid(fresh), "Patient")
+    >>> fapi.get_uid(obj) == fapi.get_uid(created)
+    True
+
+    >>> obj = fapi.get_object_by_fhir_uid(fapi.get_fhir_id(created), "Patient")
+    >>> fapi.get_uid(obj) == fapi.get_uid(created)
+    True
+
+When there is no single match it raises, unless a default is given::
+
+    >>> fapi.get_object_by_fhir_uid(
+    ...     "99999999-9999-5999-9999-999999999999", "Patient")
+    Traceback (most recent call last):
+    ...
+    FHIRAPIError: No object found for FHIR UID 99999999-9999-5999-9999-999999999999
+
+    >>> fapi.get_object_by_fhir_uid(
+    ...     "99999999-9999-5999-9999-999999999999", "Patient",
+    ...     default=None) is None
+    True
+
+
+set_fhir_uids
+~~~~~~~~~~~~~
+
+``fapi.set_fhir_uids`` persists FHIR UIDs against an object, keyed by resource
+type, and indexes it in the FHIR catalog so it can be found again with
+``search_by_fhir_uid``::
+
+    >>> linked = api.create(portal.patients, "Patient", mrn=u"PAT-UIDS")
+    >>> specimen_uid = fapi.generate_UUID().hex
+    >>> fapi.set_fhir_uids(linked, Specimen=specimen_uid)
+
+The UID is now part of the object's FHIR UIDs, keyed by resource type::
+
+    >>> fapi.get_fhir_uid(linked, "Specimen") == specimen_uid
+    True
+
+And the object is resolvable through the FHIR catalog::
+
+    >>> brains = fapi.search_by_fhir_uid(specimen_uid, "Patient")
+    >>> fapi.get_uid(brains[0]) == fapi.get_uid(linked)
+    True
+
+Stored entries for other resource types are kept; passing a new resource type
+adds to the mapping rather than replacing it::
+
+    >>> service_request_uid = fapi.generate_UUID().hex
+    >>> fapi.set_fhir_uids(linked, ServiceRequest=service_request_uid)
+    >>> sorted(fapi.get_fhir_uids(linked).keys())
+    ['Patient', 'ServiceRequest', 'Specimen']
 
 
 update
@@ -557,7 +739,7 @@ A brand-new resource produces a new content object::
 
 The FHIR id is stored separately; the SENAITE UID is distinct::
 
-    >>> fapi.get_fhir_resource_id(minted, "Patient") == fapi.get_uid(brand_new)
+    >>> fapi.get_fhir_uid(minted, "Patient") == fapi.get_uid(brand_new)
     True
     >>> fapi.get_uid(minted) == fapi.get_uid(brand_new)
     False

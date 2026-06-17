@@ -175,3 +175,52 @@ resource type segment):
     >>> browser.open("{}/{}".format(fhir_url, uid))
     >>> json.loads(browser.contents)["resourceType"]
     u'Patient'
+
+
+Patient created from a FHIR resource
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Patient above was created natively in SENAITE, so its FHIR ``id`` is
+derived from its own SENAITE UID. When a Patient is instead created *from* an
+incoming FHIR resource (e.g. POSTed in a Bundle), the resource's own ``id`` is
+preserved against the object as a distinct FHIR id:
+
+    >>> from senaite.fhir import api as fapi
+    >>> incoming = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa",
+    ...     "name": [{"use": "official", "family": "Stone", "given": ["Mark"]}],
+    ...     "gender": "male",
+    ...     "birthDate": "1970-02-03",
+    ...     "identifier": [{"use": "secondary", "value": "PAT-FHIR"}],
+    ... })
+    >>> created = fapi.create(incoming)
+    >>> transaction.commit()
+
+The object gets its own generated SENAITE UID, which differs from the incoming
+FHIR id (here shown in hex form):
+
+    >>> created_uid = api.get_uid(created)
+    >>> created_uid != "a1b2c3d4111151119111aaaaaaaaaaaa"
+    True
+
+Fetching the Patient by its SENAITE UID returns a resource whose ``id`` is the
+original FHIR id (in dashed UUID form), not the underlying object's UID:
+
+    >>> browser.open("{}/Patient/{}".format(fhir_url, created_uid))
+    >>> created_resource = json.loads(browser.contents)
+    >>> created_resource["id"]
+    u'a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa'
+
+    >>> created_resource["id"] != created_uid
+    True
+
+Fetching the Patient by its original FHIR resource id (which is not a SENAITE
+UID, so it is resolved through the FHIR catalog) returns the very same
+resource:
+
+    >>> browser.open("{}/Patient/{}".format(
+    ...     fhir_url, "a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa"))
+    >>> by_fhir_id = json.loads(browser.contents)
+    >>> by_fhir_id == created_resource
+    True

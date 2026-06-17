@@ -174,16 +174,10 @@ class PatientToResource(object):
         modified = api.get_modification_date(self.patient)
         modified = to_fhir_datetime(modified)
 
-        # Get or generate the FHIR Patient ID (separate from SENAITE UID)
-        fhir_id = fapi.get_fhir_resource_id(self.patient, "Patient")
-        if not fhir_id:
-            fhir_id = fapi.generate_UUID().hex
-            fapi.set_fhir_resource_id(self.patient, "Patient", fhir_id)
-
         profile_url = to_fhir_profile_url("Patient")
         data = {
             "resourceType": "Patient",
-            "id": str(fapi.get_uuid(fhir_id)),
+            "id": fapi.get_fhir_id(self.patient),
             "status": api.get_review_status(self.patient),
             "meta": {
                 "profile": [profile_url],

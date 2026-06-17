@@ -1,7 +1,22 @@
 # -*- coding: utf-8 -*-
-
+from senaite.core.setuphandlers import setup_core_catalogs
+from senaite.core.setuphandlers import setup_other_catalogs
 from senaite.fhir import logger
 from senaite.fhir import PRODUCT_NAME
+from senaite.fhir.catalog import FHIRCatalog
+
+
+CATALOGS = (
+    FHIRCatalog,
+)
+
+# Tuples of (catalog, index_name, index_attribute, index_type)
+INDEXES = [
+]
+
+# Tuples of (catalog, column_name)
+COLUMNS = [
+]
 
 
 def setup_handler(context):
@@ -11,7 +26,10 @@ def setup_handler(context):
         return
 
     logger.info("{} setup handler [BEGIN]".format(PRODUCT_NAME.upper()))
-    portal = context.getSite()  # noqa
+    portal = context.getSite()
+
+    # Setup catalogs
+    setup_catalogs(portal)
 
     logger.info("{} setup handler [DONE]".format(PRODUCT_NAME.upper()))
 
@@ -55,3 +73,10 @@ def post_uninstall(portal_setup):
     portal = context.getSite()  # noqa
 
     logger.info("{} uninstall handler [DONE]".format(PRODUCT_NAME.upper()))
+
+
+def setup_catalogs(portal):
+    """Setup patient catalogs
+    """
+    setup_core_catalogs(portal, catalog_classes=CATALOGS)
+    setup_other_catalogs(portal, indexes=INDEXES, columns=COLUMNS)
