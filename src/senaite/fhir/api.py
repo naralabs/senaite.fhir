@@ -21,6 +21,7 @@ from senaite.fhir.config import FHIR_STORAGE_KEY
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.exceptions import FHIRAPIError
 from senaite.fhir.interfaces import IContentActionToFHIR
+from senaite.fhir.interfaces import IContentFinder
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.interfaces import IFHIRContent
 from senaite.fhir.interfaces import IFHIRResource
@@ -397,6 +398,24 @@ def get_object(thing, default=_marker):
     return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
 
 
+def find_object_for(resource):
+    if not is_fhir_resource(resource):
+        fail("Type is not supported: %r" % resource)
+
+    # search by fhir UID exact match first
+    match = get_object(resource, default=None)
+    if match:
+        return match
+
+    # search using a content finder adapter
+    adapter = queryAdapter(resource, IContentFinder)
+    if not adapter:
+        logger.debug("No ContentFinder adapter available: %r" % resource)
+        return None
+
+    return adapter.find()
+
+
 def get_available_reasons():
     """Returns available rejection reasons
     """
@@ -502,24 +521,11 @@ def can_create_or_update(resource):
     return True
 
 
-def create_or_update(resource):
-    """Creates a counterpart object for the given FHIR resource if it does
-    not exist yet. Updates the existing object otherwise.
+def update(obj, resource):
+    """Updates the object with the data provided in the resource
     """
-    if not is_fhir_resource(resource):
-        raise ValueError("Type not supported: {}".format(repr(type(resource))))
-
-    obj = get_object(resource, default=None)
-    if not obj:
-        return create(resource)
-    return update(resource)
-
-
-def update(resource):
-    """Updates the counterpart object for the given FHIR resource
-    """
+    # convert the resource to a dict suitable for updating AT/DX contents
     data = to_content_dict(resource)
-    obj = get_object(resource)
 
     # loop through data and set field values
     fields = api.get_fields(obj)

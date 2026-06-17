@@ -217,33 +217,10 @@ class ResourceToAnalysisRequest(object):
     def get_client(self):
         """Returns the client the sample where the sample has to be created
         """
-        # try with the reference first
-        ref = self.resource.client
-        uid = ref.UID()
+        uid = self.resource.client.UID()
         obj = fapi.get_object(uid, default=None)
         if obj:
             return obj
-
-        # get the sibling from the bundle, if any
-        sibling = self.get_bundle_sibling(ref)
-        if not sibling:
-            raise ValueError("%r: No Client for %s" % (self.resource, uid))
-
-        # TODO Consider to add a search function in fapi and use adapters
-        # search by client ID (use=secondary)
-        client_id = sibling.get_external_id()
-        if client_id:
-            query = dict(portal_type="Client", getClientID=client_id)
-            brains = api.search(query, SETUP_CATALOG)
-            if len(brains) == 1:
-                return api.get_object(brains[0])
-
-        # fallback to search by title (ignorecase)
-        query = dict(portal_type="Client", sortable_title=sibling.name)
-        brains = api.search(query, SETUP_CATALOG)
-        if len(brains) == 1:
-            return api.get_object(brains[0])
-
         raise ValueError("%r: No Client for %s" % (self.resource, uid))
 
     @memoize

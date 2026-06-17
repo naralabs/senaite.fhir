@@ -60,17 +60,14 @@ Load the example bundle from the test data:
 Setup objects
 ~~~~~~~~~~~~~
 
-Only the ``Client`` must pre-exist. We link it to the ``Organization``
-resource of the bundle by its FHIR UID, so the bundle's ``Organization`` is
-resolved to this Client (and updated) instead of creating a new one:
-
-    >>> organization = [e["resource"] for e in bundle["entry"]
-    ...                 if e["resource"]["resourceType"] == "Organization"][0]
-    >>> org_uid = fapi.get_uuid(organization["id"]).hex
+Only the ``Client`` must pre-exist. The bundle's ``Organization`` is resolved
+to it by the ``ClientFinder`` (an ``IContentFinder`` adapter): it matches on
+the Organization's external identifier (the Client's ``ClientID``) and falls
+back to the title, so the Organization is *updated* rather than created anew:
 
     >>> client = api.create(portal.clients, "Client",
-    ...                     Name="Royal Melbourne Hospital", ClientID="RMH")
-    >>> fapi.set_fhir_uids(client, Organization=org_uid)
+    ...                     Name="Royal Melbourne Hospital",
+    ...                     ClientID="ORG-RMH-MEL")
 
 The ``SampleType`` is matched by the specimen's SNOMED display
 (``Serum specimen``), so it must exist too:
