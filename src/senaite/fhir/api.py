@@ -323,16 +323,17 @@ def search_by_fhir_uid(fhir_uid, portal_type=None, as_brains=True):
 
 
 def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
-    """Returns the single SENAITE object holding the given FHIR UID.
+    """Returns the SENAITE object holding the given FHIR UID.
 
-    Resolves through the FHIR catalog (see ``search_by_fhir_uid``) and expects
-    exactly one match for the given portal type. The ``fhir_uid`` can be a hex
-    UID or a dashed FHIR id, as it is harmonized before searching.
+    Resolves through the FHIR catalog (see ``search_by_fhir_uid``). The
+    ``fhir_uid`` can be a hex UID or a dashed FHIR id, as it is harmonized
+    before searching. The lookup can be constrained to a ``portal_type``; when
+    none is given, all portal types are searched (less performant).
 
     :param fhir_uid: FHIR UID (hex) or FHIR id (dashed UUID) to look up
-    :param portal_type: portal type the matching object must be of
-    :param default: value to return when there is not exactly one match; when
-        omitted, a ``FHIRAPIError`` is raised instead
+    :param portal_type: optional portal type to constrain the search
+    :param default: value to return when no object holds the UID; when omitted,
+        a ``FHIRAPIError`` is raised instead
     :returns: the matching content object, or ``default``
     """
     # harmonize just in case it was a fhir_id
