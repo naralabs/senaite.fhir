@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import json
 import re
 from uuid import UUID
 
@@ -230,6 +231,12 @@ def get_fhir_uids(obj):
         # TODO Include uids of references from inside the resource maybe?
         return {obj.resourceType: get_uid(obj)}
 
+    if api.is_brain(obj):
+        # if is a brain from fhir_catalog, rely on fhir_resources_types
+        resource_types = getattr(obj, "fhir_resource_types", None)
+        if resource_types:
+            return json.loads(resource_types)
+
     # get object's FHIR annotations storage, but don't use get_fhir_storage to
     # not do a write-on-read
     obj = api.get_object(obj)
@@ -315,50 +322,70 @@ def search_by_fhir_uid(fhir_uid, portal_type=None, as_brains=True):
     return [api.get_object(brain) for brain in brains]
 
 
-def get_object_by_fhir_uid(fhir_uid, portal_type, default=_marker):
-    """Returns the single SENAITE object holding the given FHIR UID.
+def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
+    """Returns the SENAITE object holding the given FHIR UID.
 
-    Resolves through the FHIR catalog (see ``search_by_fhir_uid``) and expects
-    exactly one match for the given portal type. The ``fhir_uid`` can be a hex
-    UID or a dashed FHIR id, as it is harmonized before searching.
+    Resolves through the FHIR catalog (see ``search_by_fhir_uid``). The
+    ``fhir_uid`` can be a hex UID or a dashed FHIR id, as it is harmonized
+    before searching. The lookup can be constrained to a ``portal_type``; when
+    none is given, all portal types are searched (less performant).
 
     :param fhir_uid: FHIR UID (hex) or FHIR id (dashed UUID) to look up
-    :param portal_type: portal type the matching object must be of
-    :param default: value to return when there is not exactly one match; when
-        omitted, a ``FHIRAPIError`` is raised instead
+    :param portal_type: optional portal type to constrain the search
+    :param default: value to return when no object holds the UID; when omitted,
+        a ``FHIRAPIError`` is raised instead
     :returns: the matching content object, or ``default``
     """
+    # harmonize just in case it was a fhir_id
+    fhir_uid = get_uuid(fhir_uid).hex
+
+    # do the search
     brains = search_by_fhir_uid(fhir_uid, portal_type=portal_type)
-    if len(brains) != 1:
-        if default is _marker:
-            fail("No object found for FHIR UID {}".format(fhir_uid))
-        return default
-    return api.get_object(brains[0])
+
+    # resource_type must match with portal_type
+    for brain in brains:
+        uids = get_fhir_uids(brain)
+        portal_type = get_portal_type(brain)
+        if uids.get(portal_type) == fhir_uid:
+            return api.get_object(brain)
+
+    if default is _marker:
+        fail("No object found for FHIR UID {}".format(fhir_uid))
+    return default
 
 
 def get_object(thing, default=_marker):
     """Resolves the given thing into a SENAITE content object.
 
-    For a FHIR resource, the counterpart SENAITE object is resolved through the
-    FHIR catalog by the resource's FHIR UID and portal type (see
-    ``get_object_by_fhir_uid``). Anything else (a content object, catalog brain
-    or SENAITE UID) is delegated to the core ``bika.lims.api.get_object``.
+    Resolution order:
 
-    Note that a bare FHIR id *string* is not resolved here: without a resource
-    it has no portal-type context and is treated as a plain UID by core (which
-    only knows SENAITE UIDs). Pass the FHIR resource, or use
-    ``get_object_by_fhir_uid`` with an explicit portal type.
+    1. A content object, catalog brain or SENAITE UID is resolved through the
+       core ``bika.lims.api.get_object``.
+    2. If that misses (or a FHIR resource is passed), the counterpart object is
+       resolved through the FHIR catalog by its FHIR UID (see
+       ``get_object_by_fhir_uid``). A bare FHIR id/UID string is resolved this
+       way too, by searching across all portal types; a FHIR resource narrows
+       the search to its mapped portal type.
 
-    :param thing: FHIR resource, content object, catalog brain or SENAITE UID
-    :param default: value to return when not found; when omitted an error is
-        raised (``FHIRAPIError`` for a FHIR resource, ``APIError`` otherwise)
+    :param thing: FHIR resource, content object, catalog brain, SENAITE UID or
+        FHIR UID/id
+    :param default: value to return when not found; when omitted, a
+        ``FHIRAPIError`` is raised
     :returns: the resolved content object, or ``default``
     """
     if not is_fhir_resource(thing):
         # delegate to core's api
-        return api.get_object(thing, default=default)
+        obj = api.get_object(thing, default=None)
+        if obj:
+            return obj
 
     # fallback to search by FHIR UID
+    if is_uuid(thing):
+        # search without portal_type (less performant)
+        fhir_uid = get_uuid(thing).hex
+        return get_object_by_fhir_uid(fhir_uid, default=default)
+
+    # have a fhir_resource
     fhir_uid = get_uid(thing)
     portal_type = get_portal_type(thing)
     return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
