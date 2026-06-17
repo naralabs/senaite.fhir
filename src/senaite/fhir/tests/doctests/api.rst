@@ -567,26 +567,32 @@ The incoming FHIR id is preserved in the annotation storage::
 get_object
 ~~~~~~~~~~
 
-``fapi.get_object`` resolves a FHIR resource into the linked content.
-Passing a FHIR resource object supplies the resource-type context needed
-to trigger the FHIR-ID fallback scan::
+``fapi.get_object`` resolves a FHIR resource into its counterpart SENAITE
+content, looking it up through the FHIR catalog by the resource's FHIR UID::
 
     >>> fapi.get_uid(fapi.get_object(fresh)) == fapi.get_uid(created)
     True
 
-Passing a bare FHIR ID string has no resource-type context, so the
-catalog fallback is skipped and the lookup fails (use ``search_by_fhir_uid``
-when you need to look up by a known FHIR ID and portal type)::
+Anything that is not a FHIR resource (a content object, catalog brain or
+SENAITE UID) is delegated to the core API::
+
+    >>> resolved = fapi.get_object(fapi.get_uid(created))
+    >>> fapi.get_uid(resolved) == fapi.get_uid(created)
+    True
+
+A bare FHIR id string has no portal-type context, so it is treated as a plain
+SENAITE UID by core and does not resolve (use ``get_object_by_fhir_uid`` with
+a portal type instead)::
 
     >>> fhir_id = fapi.get_uid(fresh)
     >>> fapi.get_object(fhir_id, default=None) is None
     True
 
-    >>> brains = fapi.search_by_fhir_uid(fhir_id, "Patient")
-    >>> fapi.get_uid(brains[0]) == fapi.get_uid(created)
+    >>> resolved = fapi.get_object_by_fhir_uid(fhir_id, "Patient")
+    >>> fapi.get_uid(resolved) == fapi.get_uid(created)
     True
 
-An unknown UID raises unless a default is provided::
+An unknown FHIR resource raises unless a default is provided::
 
     >>> orphan = fapi.to_fhir_resource({
     ...     "resourceType": "Patient",
@@ -595,7 +601,7 @@ An unknown UID raises unless a default is provided::
     >>> fapi.get_object(orphan)
     Traceback (most recent call last):
     ...
-    APIError: No object found for UID 99999999999959999999999999999999
+    FHIRAPIError: No object found for FHIR UID 99999999999959999999999999999999
 
     >>> fapi.get_object(orphan, default=None) is None
     True
@@ -623,6 +629,34 @@ An unknown UID yields an empty result::
 
     >>> len(fapi.search_by_fhir_uid("99999999-9999-5999-9999-999999999999"))
     0
+
+
+get_object_by_fhir_uid
+~~~~~~~~~~~~~~~~~~~~~~~
+
+``fapi.get_object_by_fhir_uid`` resolves a single object by its FHIR UID
+through the FHIR catalog. Either a hex UID or a dashed FHIR id works::
+
+    >>> obj = fapi.get_object_by_fhir_uid(fapi.get_uid(fresh), "Patient")
+    >>> fapi.get_uid(obj) == fapi.get_uid(created)
+    True
+
+    >>> obj = fapi.get_object_by_fhir_uid(fapi.get_fhir_id(created), "Patient")
+    >>> fapi.get_uid(obj) == fapi.get_uid(created)
+    True
+
+When there is no single match it raises, unless a default is given::
+
+    >>> fapi.get_object_by_fhir_uid(
+    ...     "99999999-9999-5999-9999-999999999999", "Patient")
+    Traceback (most recent call last):
+    ...
+    FHIRAPIError: No object found for FHIR UID 99999999-9999-5999-9999-999999999999
+
+    >>> fapi.get_object_by_fhir_uid(
+    ...     "99999999-9999-5999-9999-999999999999", "Patient",
+    ...     default=None) is None
+    True
 
 
 set_fhir_uids

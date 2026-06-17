@@ -4,6 +4,7 @@ import re
 from uuid import UUID
 
 from bika.lims import api
+from bika.lims.api import _marker  # noqa
 from bika.lims.api.security import check_permission
 from bika.lims.interfaces import IInternalUse
 from bika.lims.utils.analysisrequest import create_analysisrequest
@@ -27,8 +28,6 @@ from zope.annotation.interfaces import IAnnotations
 from zope.component import getUtility
 from zope.component import queryAdapter
 from zope.interface import alsoProvides
-
-_marker = object()
 
 
 def fail(msg, status=500):
@@ -316,30 +315,53 @@ def search_by_fhir_uid(fhir_uid, portal_type=None, as_brains=True):
     return [api.get_object(brain) for brain in brains]
 
 
+def get_object_by_fhir_uid(fhir_uid, portal_type, default=_marker):
+    """Returns the single SENAITE object holding the given FHIR UID.
+
+    Resolves through the FHIR catalog (see ``search_by_fhir_uid``) and expects
+    exactly one match for the given portal type. The ``fhir_uid`` can be a hex
+    UID or a dashed FHIR id, as it is harmonized before searching.
+
+    :param fhir_uid: FHIR UID (hex) or FHIR id (dashed UUID) to look up
+    :param portal_type: portal type the matching object must be of
+    :param default: value to return when there is not exactly one match; when
+        omitted, a ``FHIRAPIError`` is raised instead
+    :returns: the matching content object, or ``default``
+    """
+    brains = search_by_fhir_uid(fhir_uid, portal_type=portal_type)
+    if len(brains) != 1:
+        if default is _marker:
+            fail("No object found for FHIR UID {}".format(fhir_uid))
+        return default
+    return api.get_object(brains[0])
+
+
 def get_object(thing, default=_marker):
-    resource_type = None
-    if is_fhir_resource(thing):
-        resource_type = thing.resourceType
-        thing = get_uid(thing)
+    """Resolves the given thing into a SENAITE content object.
 
-    # Fast path: direct SENAITE UID lookup
-    obj = api.get_object(thing, default=None)
-    if obj:
-        return obj
+    For a FHIR resource, the counterpart SENAITE object is resolved through the
+    FHIR catalog by the resource's FHIR UID and portal type (see
+    ``get_object_by_fhir_uid``). Anything else (a content object, catalog brain
+    or SENAITE UID) is delegated to the core ``bika.lims.api.get_object``.
 
-    # Fallback: search by stored FHIR resource ID when the resource type
-    # is in the migrated set (i.e. its FHIR ID no longer equals SENAITE UID)
-    mapping = dict(FHIR_RESOURCE_TO_PORTAL_TYPE)
-    if is_uuid(thing) and resource_type:
-        portal_type = mapping.get(resource_type)
-        if portal_type:
-            brains = search_by_fhir_uid(thing, portal_type)
-            if len(brains) == 1:
-                return api.get_object(brains[0])
+    Note that a bare FHIR id *string* is not resolved here: without a resource
+    it has no portal-type context and is treated as a plain UID by core (which
+    only knows SENAITE UIDs). Pass the FHIR resource, or use
+    ``get_object_by_fhir_uid`` with an explicit portal type.
 
-    if default is _marker:
-        return api.get_object(thing)
-    return default
+    :param thing: FHIR resource, content object, catalog brain or SENAITE UID
+    :param default: value to return when not found; when omitted an error is
+        raised (``FHIRAPIError`` for a FHIR resource, ``APIError`` otherwise)
+    :returns: the resolved content object, or ``default``
+    """
+    if not is_fhir_resource(thing):
+        # delegate to core's api
+        return api.get_object(thing, default=default)
+
+    # fallback to search by FHIR UID
+    fhir_uid = get_uid(thing)
+    portal_type = get_portal_type(thing)
+    return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
 
 
 def get_available_reasons():

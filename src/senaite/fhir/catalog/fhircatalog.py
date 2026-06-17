@@ -19,7 +19,6 @@ INDEXES = [
 COLUMNS = [
     # attribute name
     "allowedRolesAndUsers",
-    "fhir_uids",
     "portal_type",
     "UID",
 ]
