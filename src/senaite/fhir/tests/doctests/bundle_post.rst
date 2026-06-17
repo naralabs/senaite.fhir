@@ -186,3 +186,18 @@ The Patient created from the bundle carries its medical record number:
 
     >>> patients[0].getMRN()
     'MRN-20394857'
+
+The patient demographics from the bundle are also copied onto the Sample.
+The public accessors (``getMedicalRecordNumberValue`` etc.) are guarded by
+senaite.patient's ``@check_installed``, which requires the senaite.patient
+browser layer on the *current* request -- not present in this test thread
+after the POST -- so we read the stored field values directly:
+
+    >>> sample.getField("MedicalRecordNumber").get(sample).get("value")
+    'MRN-20394857'
+
+    >>> sample.getField("PatientFullName").get_fullname(sample)
+    'James Nguyen'
+
+    >>> sample.getField("Sex").get(sample)
+    'm'

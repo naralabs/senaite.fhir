@@ -694,33 +694,23 @@ adds to the mapping rather than replacing it::
 update
 ~~~~~~
 
-``fapi.update`` re-applies the resource fields to the existing linked
-content::
+``fapi.update`` re-applies the resource fields to an already-resolved
+content object (the caller resolves it first, e.g. via ``get_object`` or
+``find_object_for``)::
 
     >>> fresh["name"] = [
     ...     {"use": "official", "family": "Smith", "given": ["Anne"]},
     ... ]
-    >>> updated = fapi.update(fresh)
+    >>> obj = fapi.get_object(fresh)
+    >>> updated = fapi.update(obj, fresh)
     >>> fapi.get_uid(updated) == fapi.get_uid(created)
     True
     >>> updated.getLastname()
     'Smith'
 
 
-create_or_update
-~~~~~~~~~~~~~~~~
-
-``fapi.create_or_update`` dispatches to ``update`` when a counterpart
-exists, and to ``create`` otherwise::
-
-    >>> fresh["name"] = [
-    ...     {"use": "official", "family": "Stone", "given": ["Anne"]},
-    ... ]
-    >>> result = fapi.create_or_update(fresh)
-    >>> fapi.get_uid(result) == fapi.get_uid(created)
-    True
-    >>> result.getLastname()
-    'Stone'
+create (brand-new resource)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A brand-new resource produces a new content object::
 
@@ -732,7 +722,7 @@ A brand-new resource produces a new content object::
     ...     "birthDate": "2000-01-01",
     ...     "identifier": [{"use": "secondary", "value": "PAT-MINT"}],
     ... })
-    >>> minted = fapi.create_or_update(brand_new)
+    >>> minted = fapi.create(brand_new)
     >>> fapi.is_fhir_content(minted)
     True
     >>> minted.getLastname()
