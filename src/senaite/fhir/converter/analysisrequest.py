@@ -190,7 +190,7 @@ class ResourceToAnalysisRequest(object):
         obj = fapi.find_object_for(sibling)
         if obj:
             return obj
-        raise ValueError("%r: No Patient for %s" % (self.resource, uid))
+        raise ValueError("%r: No Patient for %r" % (self.resource, sibling))
 
     @memoize
     def get_client(self):
@@ -201,7 +201,7 @@ class ResourceToAnalysisRequest(object):
         obj = fapi.find_object_for(sibling)
         if obj:
             return obj
-        raise ValueError("%r: No Client for %s" % (self.resource, uid))
+        raise ValueError("%r: No Client for %r" % (self.resource, sibling))
 
     @memoize
     def get_specifications(self):
