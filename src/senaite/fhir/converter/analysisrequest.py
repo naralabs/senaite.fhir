@@ -185,8 +185,9 @@ class ResourceToAnalysisRequest(object):
     def get_patient(self):
         """Returns the patient assigned to this ServiceRequest
         """
-        uid = self.resource.subject.UID()
-        obj = fapi.get_object(uid, default=None)
+        ref = self.resource.subject
+        sibling = self.get_bundle_sibling(ref)
+        obj = fapi.find_object_for(sibling)
         if obj:
             return obj
         raise ValueError("%r: No Patient for %s" % (self.resource, uid))
@@ -195,8 +196,9 @@ class ResourceToAnalysisRequest(object):
     def get_client(self):
         """Returns the client the sample where the sample has to be created
         """
-        uid = self.resource.client.UID()
-        obj = fapi.get_object(uid, default=None)
+        ref = self.resource.client
+        sibling = self.get_bundle_sibling(ref)
+        obj = fapi.find_object_for(sibling)
         if obj:
             return obj
         raise ValueError("%r: No Client for %s" % (self.resource, uid))
