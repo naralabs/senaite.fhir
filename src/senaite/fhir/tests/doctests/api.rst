@@ -477,9 +477,10 @@ Non-resources are rejected with ``ValueError``::
 link_fhir_resource / get_fhir_storage
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``fapi.link_fhir_resource`` marks an object as ``IFHIRContent`` and
-writes the resource's UID + serialized data into the FHIR annotation
-storage. It is what ``create`` / ``update`` use internally::
+``fapi.link_fhir_resource`` marks an object as ``IFHIRContent`` and records
+the resource's UID in the object's ``uids`` mapping (keyed by resource type),
+plus the serialized payload under ``data``, in the FHIR annotation storage.
+It is what ``create`` / ``update`` use internally::
 
     >>> fapi.link_fhir_resource(patient, resource)
     >>> fapi.is_fhir_content(patient)
@@ -522,10 +523,9 @@ create
 ~~~~~~
 
 ``fapi.create`` creates a counterpart content object for the given FHIR
-resource and links the two via ``link_fhir_resource``.  For resource types
-listed in ``FHIR_RESOURCE_TO_PORTAL_TYPE`` (Patient is one of them) the FHIR
-logical id is stored as a separate annotation field so that the SENAITE UID
-keeps its own generated value::
+resource and links the two via ``link_fhir_resource``. The object gets its
+own generated SENAITE UID; the resource's FHIR id is preserved separately in
+the object's ``uids`` mapping, so the two identities stay distinct::
 
     >>> fresh = fapi.to_fhir_resource({
     ...     "resourceType": "Patient",
@@ -601,6 +601,25 @@ An unknown FHIR resource raises unless a default is provided::
 
     >>> fapi.get_object(orphan, default=None) is None
     True
+
+
+find_object_for
+~~~~~~~~~~~~~~~
+
+``fapi.find_object_for`` resolves the SENAITE counterpart of a FHIR resource:
+first by an exact FHIR-UID match (via ``get_object``), then via the
+resource's ``IContentFinder`` adapter -- matching by business keys -- when
+the UID match misses::
+
+    >>> fapi.get_uid(fapi.find_object_for(fresh)) == fapi.get_uid(created)
+    True
+
+Non-resources are rejected::
+
+    >>> fapi.find_object_for({"foo": "bar"})
+    Traceback (most recent call last):
+    ...
+    FHIRAPIError: Type is not supported: {'foo': 'bar'}
 
 
 search_by_fhir_uid
@@ -746,3 +765,35 @@ the counterpart already exists::
     Traceback (most recent call last):
     ...
     ValueError: Counterpart object already exists: <PatientResource ...>
+
+
+get_system_code
+~~~~~~~~~~~~~~~
+
+``fapi.get_system_code`` returns the coding system URL configured for a
+resource type::
+
+    >>> fapi.get_system_code("Specimen")
+    'http://snomed.info/sct'
+
+Unknown types raise unless a default is provided::
+
+    >>> fapi.get_system_code("Unknown")
+    Traceback (most recent call last):
+    ...
+    ValueError: No system code defined for Unknown
+
+    >>> fapi.get_system_code("Unknown", default=None) is None
+    True
+
+
+generate_UUID
+~~~~~~~~~~~~~
+
+``fapi.generate_UUID`` returns a fresh ``uuid.UUID``::
+
+    >>> generated = fapi.generate_UUID()
+    >>> isinstance(generated, UUID)
+    True
+    >>> fapi.generate_UUID() != generated
+    True
