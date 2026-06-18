@@ -201,3 +201,44 @@ after the POST -- so we read the stored field values directly:
 
     >>> sample.getField("Sex").get(sample)
     'm'
+
+
+Re-post the same Bundle (idempotent update)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Posting the same Bundle again resolves every resource to its existing
+counterpart and updates it in place, instead of creating duplicates. We
+tweak the ServiceRequest priority (``routine`` -> ``stat``) to observe that
+the change is propagated to the Sample. The Sample is currently routine::
+
+    >>> sample.getPriority()
+    '5'
+
+Bump the priority on the same ServiceRequest and re-post the Bundle::
+
+    >>> service_request = [e["resource"] for e in bundle["entry"]
+    ...                    if e["resource"]["resourceType"] == "ServiceRequest"][0]
+    >>> service_request["priority"] = "stat"
+    >>> browser.post("{}/Bundle".format(fhir_url), json.dumps(bundle),
+    ...              content_type="application/json")
+    >>> response = json.loads(browser.contents)
+
+The same four resources are reported, now consistently as updated::
+
+    >>> entries = response["entry"]
+    >>> sorted([e["fullUrl"].split("/")[0] for e in entries])
+    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest']
+
+    >>> sorted(set(e["response"]["status"] for e in entries))
+    [u'201 Updated']
+
+No duplicates are created -- it is still the same Sample, now ``stat``::
+
+    >>> portal._p_jar.sync()
+    >>> samples = client.objectValues("AnalysisRequest")
+    >>> len(samples)
+    1
+    >>> fapi.get_uid(samples[0]) == fapi.get_uid(sample)
+    True
+    >>> samples[0].getPriority()
+    '1'
