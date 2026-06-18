@@ -92,7 +92,7 @@ class ResourceToAnalysisRequest(object):
             "SampleType": sample_type,
             "SamplePoint": sample_point,
             "DateSampled": date_sampled,
-            "Profiles": [profile] if profile else [],
+            "Profiles": [api.get_uid(profile)] if profile else [],
             "Priority": priority,
             # "Sampler": collector,
             # "Remarks": remarks,
