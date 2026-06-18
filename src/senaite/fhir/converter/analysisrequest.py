@@ -127,32 +127,13 @@ class ResourceToAnalysisRequest(object):
     def get_sample_type(self):
         """Returns the SampleType object associated to this ServiceRequest
         """
-        # Try with the reference UID first
-        ref = self.get_reference("specimen")
-        uid = ref.UID()
-        obj = fapi.get_object(uid, default=None)
+        ref = self.resource.specimen[0]
+        sibling = self.get_bundle_sibling(ref)
+        obj = fapi.find_object_for(sibling)
         if obj:
             return obj
-
-        # get the sibling from the bundle, if any
-        sibling = self.get_bundle_sibling(ref)
-        if not sibling:
-            raise ValueError("%r: No SampleType for specimen: %s" %
-                             (self.resource, uid))
-
-        # search by code / title
-        # TODO Consider to add a search function in fapi and use adapters
-        # TODO Add a field to SampleType (SNOMED code) to search by code
-        code = sibling.get_code()
-        display = code.display.lower()
-        # use sortable_title for an ignore case search
-        query = dict(portal_type="SampleType", sortable_title=display.lower())
-        brains = api.search(query, SETUP_CATALOG)
-        if len(brains) == 1:
-            return api.get_object(brains[0])
-
-        raise ValueError("%r: No SampleType for specimen: %s" %
-                         (self.resource, uid))
+        raise ValueError("%r: No SampleType for specimen: %r" %
+                         (self.resource, sibling))
 
     @memoize
     def get_requester(self):

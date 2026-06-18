@@ -11,6 +11,7 @@ FHIR_RESOURCE_TO_PORTAL_TYPE = (
     ("Practitioner", "Contact"),
     ("Observation", "Analysis"),
     ("DiagnosticReport", "ResultsReport"),
+    ("Specimen", "SampleType"),
 )
 
 SYSTEM_CODES = (
