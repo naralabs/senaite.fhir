@@ -1,0 +1,15 @@
+<configure xmlns="http://namespaces.zope.org/zope">
+
+  <!-- Find a Client object given a FHIR Organization resource -->
+  <adapter for="senaite.fhir.interfaces.IOrganizationResource"
+           factory=".client.ClientFinder"/>
+
+  <!-- Find a Patient object given a FHIR Patient resource -->
+  <adapter for="senaite.fhir.interfaces.IPatientResource"
+           factory=".patient.PatientFinder"/>
+
+  <!-- Find a SampleType object given a FHIR Specimen resource -->
+  <adapter for="senaite.fhir.interfaces.ISpecimenResource"
+           factory=".sampletype.SampleTypeFinder"/>
+
+</configure>

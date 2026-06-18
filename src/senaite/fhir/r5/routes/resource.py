@@ -8,6 +8,7 @@ from bika.lims.workflow import doActionFor as do_action_for
 from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
+from senaite.fhir.api import find_object_for
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IBundleResource
 from senaite.fhir.r5 import add_route
@@ -83,13 +84,13 @@ def post(context, request, resource_type=None):
             continue
 
         # create or update the counterpart object
-        obj = fapi.get_object(resource, default=None)
+        obj = find_object_for(resource)
         try:
             if not obj:
                 obj = fapi.create(resource)
                 status = "201 Created"
             else:
-                obj = fapi.update(resource)
+                obj = fapi.update(obj, resource)
                 status = "201 Updated"
         except Exception as e:
             errored = True

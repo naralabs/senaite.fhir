@@ -21,6 +21,7 @@ from senaite.fhir.config import FHIR_STORAGE_KEY
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.exceptions import FHIRAPIError
 from senaite.fhir.interfaces import IContentActionToFHIR
+from senaite.fhir.interfaces import IContentFinder
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.interfaces import IFHIRContent
 from senaite.fhir.interfaces import IFHIRResource
@@ -32,7 +33,11 @@ from zope.interface import alsoProvides
 
 
 def fail(msg, status=500):
-    """API Error
+    """Raises a ``FHIRAPIError`` carrying the given message and HTTP status.
+
+    :param msg: the error message (a default is used when ``None``)
+    :param status: the HTTP status code to attach (500 by default)
+    :raises FHIRAPIError: always
     """
     if msg is None:
         msg = "Reason not given."
@@ -123,8 +128,11 @@ def get_resource_type(obj):
         return obj.resourceType
 
     # reverse-lookup the resource type for the object's portal type
-    obj = api.get_object(obj)
-    portal_type = api.get_portal_type(obj)
+    if api.is_string(obj) and not is_uuid(obj):
+        portal_type = obj
+    else:
+        obj = api.get_object(obj)
+        portal_type = api.get_portal_type(obj)
 
     # looks for the first match
     mapping = sorted(FHIR_RESOURCE_TO_PORTAL_TYPE)
@@ -215,6 +223,9 @@ def get_fhir_uids(obj):
 
     For a FHIR resource, a single-entry mapping ``{resourceType: uid}`` is
     returned.
+
+    For a brain coming from the FHIR catalog, the precomputed mapping is read
+    directly from its ``fhir_resource_types`` metadata (no object wake-up).
 
     For a content object (or a brain/UID resolving to one), the persisted FHIR
     UIDs are read from the object's annotation storage (without creating it, to
@@ -342,11 +353,14 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     # do the search
     brains = search_by_fhir_uid(fhir_uid, portal_type=portal_type)
 
-    # resource_type must match with portal_type
+    # resource_type must match with portal_type or with its resourceType
     for brain in brains:
         uids = get_fhir_uids(brain)
         portal_type = get_portal_type(brain)
         if uids.get(portal_type) == fhir_uid:
+            return api.get_object(brain)
+        resource_type = get_resource_type(portal_type)
+        if uids.get(resource_type) == fhir_uid:
             return api.get_object(brain)
 
     if default is _marker:
@@ -391,6 +405,41 @@ def get_object(thing, default=_marker):
     return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
 
 
+def find_object_for(resource):
+    """Finds the SENAITE object that corresponds to the given FHIR resource.
+
+    Resolution happens in two steps:
+
+    1. an exact match by FHIR UID through the FHIR catalog (see
+       ``get_object``);
+    2. when that misses, the ``IContentFinder`` adapter registered for the
+       resource (if any) is asked to find a suitable counterpart by business
+       keys (e.g. ``ClientFinder`` matches a Client by its ``ClientID``).
+
+    This is used by the bundle POST endpoint to resolve existing content
+    (so it gets updated instead of duplicated) before falling back to create.
+
+    :param resource: the FHIR resource to find a counterpart for
+    :returns: the matching content object, or ``None`` when none is found
+    :raises FHIRAPIError: if ``resource`` is not a FHIR resource
+    """
+    if not is_fhir_resource(resource):
+        fail("Type is not supported: %r" % resource)
+
+    # search by fhir UID exact match first
+    match = get_object(resource, default=None)
+    if match:
+        return match
+
+    # search using a content finder adapter
+    adapter = queryAdapter(resource, IContentFinder)
+    if not adapter:
+        logger.debug("No ContentFinder adapter available: %r" % resource)
+        return None
+
+    return adapter.find()
+
+
 def get_available_reasons():
     """Returns available rejection reasons
     """
@@ -399,7 +448,25 @@ def get_available_reasons():
 
 
 def to_fhir_resource(thing, default=_marker, resource_type=None):
-    """Converts the object to a FHIR resource
+    """Converts the given thing into a FHIR resource.
+
+    Accepts several inputs:
+
+    - a FHIR resource: returned as-is;
+    - a ``dict``: dispatched to the ``IFHIRResource`` adapter named after its
+      ``resourceType``;
+    - a content object, catalog brain or UID: resolved (see ``get_object``)
+      and converted through its ``IContentToFHIR`` adapter.
+
+    Empty/falsy input returns ``None``. On any other failure (missing/
+    unsupported resource type, object not found, no adapter) a
+    ``FHIRAPIError`` is raised unless ``default`` is provided.
+
+    :param thing: FHIR resource, dict, content object, catalog brain or UID
+    :param default: value to return instead of raising on failure
+    :param resource_type: optional resource type hint used when resolving a
+        bare UID that is a FHIR id rather than a SENAITE UID
+    :returns: the FHIR resource, ``None`` for empty input, or ``default``
     """
     if not thing:
         return None
@@ -423,23 +490,14 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
 
         return resource
 
-    mapping = dict(FHIR_RESOURCE_TO_PORTAL_TYPE)
-    if api.is_uid(thing):
-        uid = thing
-        thing = api.get_object_by_uid(uid, default=None)
-        # Fallback: the UID may be a FHIR resource ID, not a SENAITE UID
-        if not thing and resource_type:
-            portal_type = mapping.get(resource_type)
-            if portal_type:
-                brains = search_by_fhir_uid(uid, portal_type)
-                if len(brains) == 1:
-                    thing = api.get_object(brains[0])
-        if not thing:
-            if default is _marker:
-                fail(msg="Not Found", status=404)
-            return default
+    # get the object to build the FHIR Resource from
+    obj = get_object(thing, default=None)
+    if not obj:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
 
-    obj = api.get_object(thing)
+    # get the ContentToFHIR adapter
     adapter = queryAdapter(obj, IContentToFHIR)
     if not adapter:
         if default is _marker:
@@ -469,10 +527,17 @@ def to_fhir_action_resource(thing, fhir_action, default=_marker):
 
 
 def to_content_dict(resource, default=_marker):
-    """Converts the resource to a dict suitable for the creation or edition
-    of AT/DX contents their portal type suits well with the resource type.
-    Raises a ValueError if there is no IFHIRToContent adapter registered for
-    the given resource unless default is set, in which case returns default.
+    """Converts a FHIR resource into a content dict for the creation or
+    edition of the AT/DX content whose portal type matches the resource type.
+
+    The conversion is delegated to the ``IFHIRToContent`` adapter registered
+    for the resource. When no such adapter exists, a ``ValueError`` is raised
+    unless ``default`` is provided, in which case ``default`` is returned.
+
+    :param resource: the FHIR resource to convert
+    :param default: value to return instead of raising when no adapter exists
+    :returns: a dict of field name -> value (including ``portal_type`` and
+        ``parent_path``), or ``default``
     :rtype: dict
     """
     # convert the resource to a content dict
@@ -511,24 +576,20 @@ def can_create_or_update(resource):
     return True
 
 
-def create_or_update(resource):
-    """Creates a counterpart object for the given FHIR resource if it does
-    not exist yet. Updates the existing object otherwise.
+def update(obj, resource):
+    """Updates an existing object with the data carried by the FHIR resource.
+
+    The caller is expected to resolve the counterpart object first (e.g. via
+    ``get_object`` or ``find_object_for``). Each writable, permitted field
+    present in the resource's content dict is set, the resource is linked
+    (see ``link_fhir_resource``) and the object is re-cataloged.
+
+    :param obj: the existing content object to update
+    :param resource: the FHIR resource carrying the new field values
+    :returns: the updated object
     """
-    if not is_fhir_resource(resource):
-        raise ValueError("Type not supported: {}".format(repr(type(resource))))
-
-    obj = get_object(resource, default=None)
-    if not obj:
-        return create(resource)
-    return update(resource)
-
-
-def update(resource):
-    """Updates the counterpart object for the given FHIR resource
-    """
+    # convert the resource to a dict suitable for updating AT/DX contents
     data = to_content_dict(resource)
-    obj = get_object(resource)
 
     # loop through data and set field values
     fields = api.get_fields(obj)
@@ -561,7 +622,16 @@ def update(resource):
 
 
 def create(resource):
-    """Creates a counterpart object for the given FHIR Resource
+    """Creates a counterpart SENAITE object for the given FHIR resource.
+
+    The resource is converted to a content dict (see ``to_content_dict``) and
+    the object is created under the ``parent_path`` it resolves to
+    (AnalysisRequest samples are created through ``create_analysisrequest``).
+    The resource is then linked to the new object via ``link_fhir_resource``.
+
+    :param resource: the FHIR resource to create a counterpart for
+    :returns: the newly created content object
+    :raises ValueError: if a counterpart object already exists
     """
     # check if already exists
     obj = get_object(resource, default=None)
@@ -591,7 +661,16 @@ def create(resource):
 
 
 def link_fhir_resource(obj, resource):
-    """Assigns a FHIR resource to the given obj
+    """Links a FHIR resource to the given SENAITE object.
+
+    Marks the object with ``IFHIRContent`` and records the resource's UID in
+    the object's ``uids`` mapping (keyed by resource type, via
+    ``set_fhir_uids``, which also indexes it in the FHIR catalog). The
+    serialized resource is also stored under ``data`` for offline use.
+
+    :param obj: the content object to link the resource to
+    :param resource: the FHIR resource to link
+    :raises ValueError: if ``resource`` is not a FHIR resource
     """
     if not is_fhir_resource(resource):
         raise ValueError("Type not supported: {}".format(repr(type(resource))))
@@ -617,6 +696,18 @@ def link_fhir_resource(obj, resource):
 
 
 def slugify(value, repl="-"):
+    """Slugifies the given value.
+
+    Lowercases the input, strips non-word characters and collapses runs of
+    whitespace, underscores and hyphens into a single separator, trimming
+    leading/trailing separators.
+
+    :param value: the string to slugify
+    :param repl: separator to collapse runs into (``-`` by default; pass an
+        empty string to remove separators altogether)
+    :returns: the slugified string
+    :rtype: str
+    """
     repl = repl if repl else ""
     slug = value.lower().strip()
     slug = re.sub(r"[^\w\s-]", "", slug)
