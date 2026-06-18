@@ -242,3 +242,56 @@ No duplicates are created -- it is still the same Sample, now ``stat``::
     True
     >>> samples[0].getPriority()
     '1'
+
+
+Update a manually-created counterpart (matched by MRN)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A counterpart need not have been created through the FHIR layer to be
+updated: when there is no FHIR-UID match, the ``IContentFinder`` adapter
+resolves it by a business key. ``PatientFinder`` matches a Patient by its
+medical record number. Create a Patient manually first::
+
+    >>> manual = api.create(portal.patients, "Patient", mrn=u"MRN-MANUAL",
+    ...                     firstname=u"Manual", lastname=u"Patient")
+    >>> transaction.commit()
+    >>> before = len([obj for obj in portal.patients.objectValues()
+    ...               if api.get_portal_type(obj) == "Patient"])
+
+Post a Patient resource carrying a *different* logical id but the same MRN,
+so it can only be matched by MRN (not by FHIR UID)::
+
+    >>> incoming = {
+    ...     "resourceType": "Patient",
+    ...     "id": "bbbbbbbb-bbbb-5bbb-9bbb-bbbbbbbbbbbb",
+    ...     "name": [{"use": "official", "family": "Patient",
+    ...               "given": ["Manual"]}],
+    ...     "gender": "male",
+    ...     "birthDate": "1970-01-01",
+    ...     "identifier": [{"use": "secondary", "value": "MRN-MANUAL"}],
+    ... }
+    >>> browser.post("{}/Patient".format(fhir_url), json.dumps(incoming),
+    ...              content_type="application/json")
+    >>> response = json.loads(browser.contents)
+
+The existing Patient is matched and updated, not duplicated::
+
+    >>> entries = response["entry"]
+    >>> entries[0]["fullUrl"].split("/")[0]
+    u'Patient'
+    >>> entries[0]["response"]["status"]
+    u'201 Updated'
+
+    >>> portal._p_jar.sync()
+    >>> after = len([obj for obj in portal.patients.objectValues()
+    ...              if api.get_portal_type(obj) == "Patient"])
+    >>> after == before
+    True
+
+It is now linked to the posted resource's FHIR id, so resolving by that id
+returns the same manually-created Patient::
+
+    >>> match = fapi.get_object_by_fhir_uid(
+    ...     "bbbbbbbb-bbbb-5bbb-9bbb-bbbbbbbbbbbb", "Patient")
+    >>> fapi.get_uid(match) == fapi.get_uid(manual)
+    True
