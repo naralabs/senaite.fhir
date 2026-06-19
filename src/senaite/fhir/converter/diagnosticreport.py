@@ -5,6 +5,7 @@ import base64
 from bika.lims import api
 from senaite.core.interfaces import IResultsReport
 from senaite.fhir import api as fapi
+from senaite.fhir.config import DEFAULT_REPORT_PROFILE_CODE
 from senaite.fhir.config import DIAGNOSTIC_REPORT_STATUSES
 from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
 from senaite.fhir.converter import to_fhir_datetime
@@ -28,10 +29,6 @@ class ResultsReportToResource(object):
         self.report = report
 
     def to_fhir_resource(self):
-        outcome = self.validate()
-        if outcome:
-            return outcome
-
         profile_url = to_fhir_profile_url("SenaiteDiagnosticReport")
         data = {
             "resourceType": "DiagnosticReport",
@@ -51,20 +48,6 @@ class ResultsReportToResource(object):
 
         return DiagnosticReportResource(data)
 
-    def validate(self):
-        issues = []
-        sample = self.get_sample()
-        if not sample.getProfiles():
-            issues.append({
-                "severity": "error",
-                "code": "required",
-                "details": {"text": "No AnalysisProfile assigned to sample"},
-                "expression": ["DiagnosticReport.code"],
-            })
-
-        if issues:
-            return OperationOutcome({"issue": issues})
-        return None
 
     def get_sample(self):
         return self.report.getSample()
@@ -104,6 +87,10 @@ class ResultsReportToResource(object):
     def get_code(self):
         sample = self.get_sample()
         profiles = sample.getProfiles()
+        if len(profiles) != 1:
+            # Return the default DiagnosticReport code when 0 or more than 1
+            return dict(DEFAULT_REPORT_PROFILE_CODE)
+
         profile = profiles[0]
         system = fapi.get_system_code("AnalysisProfile")
         profile_key = profile.getProfileKey()

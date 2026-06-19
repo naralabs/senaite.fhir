@@ -84,3 +84,15 @@ ANALYSIS_REPORTABLE_STATUSES = (
     "verified",
     "published",
 )
+
+DEFAULT_REPORT_PROFILE_CODE = {
+    # TODO Make the default DiagnosticReport code configurable in setup
+    # Default DiagnosticReport code for when the number of profiles/panels
+    # assigned to a sample are different from 1
+    "text": "Relevant diagnostic tests/laboratory data note",
+    "coding": [{
+        "code": "30954-2",
+        "system": "http://loinc.org",
+        "display": "Relevant diagnostic tests/laboratory data note"
+      }]
+}
