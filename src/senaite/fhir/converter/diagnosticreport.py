@@ -12,7 +12,6 @@ from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.resource.diagnosticreport import DiagnosticReportResource
-from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.patient import api as papi
 from zope.component import adapter
 from zope.interface import implementer
@@ -47,7 +46,6 @@ class ResultsReportToResource(object):
         }
 
         return DiagnosticReportResource(data)
-
 
     def get_sample(self):
         return self.report.getSample()
