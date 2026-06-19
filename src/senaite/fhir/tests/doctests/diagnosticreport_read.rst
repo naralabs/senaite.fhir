@@ -250,12 +250,16 @@ without the resource-type prefix:
     u'DiagnosticReport'
 
 
-Validation Error: Missing AnalysisProfile
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Default Code: Missing AnalysisProfile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When a ``ResultsReport`` belongs to a sample that has no ``AnalysisProfile``
-assigned, ``to_fhir_resource`` must return an ``OperationOutcome`` rather than
-raising an exception.
+``DiagnosticReport.code`` has a cardinality of ``1..1``, but a sample can be
+registered without any ``AnalysisProfile`` assigned (individual tests ordered
+directly, with no panel). In that case the system must still be able to
+convert the ``ResultsReport`` to a ``DiagnosticReport``: instead of returning
+an ``OperationOutcome`` error, it falls back to the generic LOINC code
+`30954-2 Relevant diagnostic tests/laboratory data note
+<https://loinc.org/30954-2>`_.
 
 Create a sample without a profile:
 
@@ -273,31 +277,77 @@ Create a ``ResultsReport`` for it:
     ...     sample_no_profile, "ResultsReport",
     ...     sample=sample_no_profile.UID(),
     ... )
+    >>> report_no_profile.setPdf({
+    ...     "data": b"%PDF-1.4 fake diagnostic report",
+    ...     "filename": u"HH-report.pdf",
+    ...     "contentType": "application/pdf",
+    ... })
 
-Instantiate the converter and call ``to_fhir_resource`` — it must return an
-``OperationOutcome`` because ``validate()`` detects no profiles:
+Instantiate the converter and call ``to_fhir_resource`` — it returns a regular
+``DiagnosticReport`` resource, not an ``OperationOutcome``:
 
     >>> from senaite.fhir.converter.diagnosticreport import ResultsReportToResource
-    >>> from senaite.fhir.resource.operationoutcome import OperationOutcome
     >>> converter = ResultsReportToResource(report_no_profile)
     >>> result = converter.to_fhir_resource()
-    >>> isinstance(result, OperationOutcome)
-    True
-
-The resource type in the payload is ``OperationOutcome``:
-
     >>> result["resourceType"]
-    'OperationOutcome'
+    'DiagnosticReport'
 
-The single issue has severity ``error`` and code ``required``:
+The ``code`` falls back to the generic LOINC code ``30954-2``:
 
-    >>> issue = result.issue[0]
-    >>> issue.severity
-    'error'
-    >>> issue.code
-    'required'
+    >>> code = result["code"]
+    >>> code["text"]
+    'Relevant diagnostic tests/laboratory data note'
+    >>> code["coding"][0]["code"]
+    '30954-2'
+    >>> code["coding"][0]["system"]
+    'http://loinc.org'
 
-The expression points to the field that failed validation:
 
-    >>> issue.expression
-    ['DiagnosticReport.code']
+Default Code: Multiple AnalysisProfiles
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``DiagnosticReport.code`` cannot represent more than one profile/panel, so the
+same generic LOINC code ``30954-2`` is used as a fallback when the sample has
+more than one ``AnalysisProfile`` assigned.
+
+Create a second profile and a sample that carries both:
+
+    >>> profile2 = api.create(setup.analysisprofiles, "AnalysisProfile",
+    ...                       title="Extra Panel", ProfileKey="extra-panel")
+    >>> profile2.setServices([Cu.UID()])
+    >>> values_multi_profile = {
+    ...     "Client": client.UID(),
+    ...     "Contact": contact.UID(),
+    ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
+    ...     "SampleType": sampletype.UID(),
+    ...     "Profiles": [profile.UID(), profile2.UID()],
+    ... }
+    >>> sample_multi_profile = create_analysisrequest(
+    ...     client, request, values_multi_profile, [Cu.UID()])
+    >>> len(sample_multi_profile.getProfiles())
+    2
+
+Create a ``ResultsReport`` for it and convert:
+
+    >>> report_multi_profile = api.create(
+    ...     sample_multi_profile, "ResultsReport",
+    ...     sample=sample_multi_profile.UID(),
+    ... )
+    >>> report_multi_profile.setPdf({
+    ...     "data": b"%PDF-1.4 fake diagnostic report",
+    ...     "filename": u"HH-report.pdf",
+    ...     "contentType": "application/pdf",
+    ... })
+    >>> converter = ResultsReportToResource(report_multi_profile)
+    >>> result = converter.to_fhir_resource()
+    >>> result["resourceType"]
+    'DiagnosticReport'
+
+The ``code`` again falls back to the generic LOINC code ``30954-2`` rather
+than picking one of the two assigned profiles:
+
+    >>> code = result["code"]
+    >>> code["text"]
+    'Relevant diagnostic tests/laboratory data note'
+    >>> code["coding"][0]["code"]
+    '30954-2'
