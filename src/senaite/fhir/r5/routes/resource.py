@@ -270,7 +270,7 @@ def get_diagnostic_report_bundle(_context, request):
         # Get the most recent report for this sample
         last_report = reports[-1]
         dr = fapi.to_fhir_resource(last_report, default=None)
-        if not dr or isinstance(dr, OperationOutcome):
+        if not dr:
             continue
 
         total_match += 1
