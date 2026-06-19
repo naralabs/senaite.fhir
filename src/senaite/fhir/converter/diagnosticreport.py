@@ -5,6 +5,7 @@ import base64
 from bika.lims import api
 from senaite.core.interfaces import IResultsReport
 from senaite.fhir import api as fapi
+from senaite.fhir.config import DEFAULT_REPORT_PROFILE_CODE
 from senaite.fhir.config import DIAGNOSTIC_REPORT_STATUSES
 from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
 from senaite.fhir.converter import to_fhir_datetime
@@ -49,13 +50,6 @@ class ResultsReportToResource(object):
     def get_sample(self):
         return self.report.getSample()
 
-    def get_source_data(self):
-        sample = self.get_sample()
-        if not fapi.is_fhir_content(sample):
-            return {}
-        storage = fapi.get_fhir_storage(sample)
-        return storage.get("data") or {}
-
     def get_last_updated(self):
         sample = self.get_sample()
         modified = api.get_modification_date(sample)
@@ -76,21 +70,12 @@ class ResultsReportToResource(object):
         identifiers = [
             to_fhir_id("servicerequest-id", sample.getId(), use="usual"),
         ]
-
-        source_data = self.get_source_data()
-        for identifier in source_data.get("identifier", []):
-            if identifier.get("use") != "secondary":
-                continue
-            identifiers.append(identifier)
-
+        client_sample_id = sample.getClientSampleID()
+        if client_sample_id:
+            identifiers.append({"use": "secondary", "value": client_sample_id})
         return identifiers
 
     def get_based_on(self):
-        source_data = self.get_source_data()
-        based_on = source_data.get("basedOn") or []
-        if based_on:
-            return based_on
-
         sample = self.get_sample()
         return [{
             "type": "ServiceRequest",
@@ -98,8 +83,24 @@ class ResultsReportToResource(object):
         }]
 
     def get_code(self):
-        source_data = self.get_source_data()
-        return source_data.get("code")
+        sample = self.get_sample()
+        profiles = sample.getProfiles()
+        if len(profiles) != 1:
+            # Return the default DiagnosticReport code when 0 or more than 1
+            return dict(DEFAULT_REPORT_PROFILE_CODE)
+
+        profile = profiles[0]
+        system = fapi.get_system_code("AnalysisProfile")
+        profile_key = profile.getProfileKey()
+        title = api.get_title(profile)
+        return {
+            "coding": [{
+                "system": system,
+                "code": profile_key,
+                "display": title,
+            }],
+            "text": title,
+        }
 
     def get_subject(self):
         patient = self.get_patient()

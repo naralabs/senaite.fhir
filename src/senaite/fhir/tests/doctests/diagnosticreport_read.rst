@@ -63,6 +63,9 @@ Create the minimum set of objects needed to register a sample:
     >>> Cu = api.create(portal.bika_setup.bika_analysisservices,
     ...                 "AnalysisService", title="Copper", Keyword="Cu",
     ...                 Category=category.UID())
+    >>> profile = api.create(setup.analysisprofiles, "AnalysisProfile",
+    ...                      title="Metals Panel", ProfileKey="metals-panel")
+    >>> profile.setServices([Cu.UID()])
 
 
 Create the Sample
@@ -73,6 +76,7 @@ Create the Sample
     ...     "Contact": contact.UID(),
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
+    ...     "Profiles": [profile.UID()],
     ... }
     >>> sample = create_analysisrequest(client, request, values, [Cu.UID()])
     >>> sample
@@ -100,6 +104,7 @@ a published request:
     True
     >>> api.get_workflow_status_of(sample)
     'published'
+    >>> transaction.commit()
 
 
 Create the ResultsReport
@@ -180,6 +185,14 @@ The published sample maps to a FHIR ``final`` DiagnosticReport status:
     >>> resource["status"]
     u'final'
 
+The ``code`` field is derived from the sample's AnalysisProfile:
+
+    >>> code = resource["code"]
+    >>> code["text"]
+    u'Metals Panel'
+    >>> code["coding"][0]["code"]
+    u'metals-panel'
+
 The ``identifier`` list carries at least one entry whose ``value``
 matches the sample's internal ID:
 
@@ -235,3 +248,119 @@ without the resource-type prefix:
     >>> browser.open("{}/{}".format(fhir_url, report_uid))
     >>> json.loads(browser.contents)["resourceType"]
     u'DiagnosticReport'
+
+
+Default Code: Missing AnalysisProfile
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``DiagnosticReport.code`` has a cardinality of ``1..1``, but a sample can be
+registered without any ``AnalysisProfile`` assigned (individual tests ordered
+directly, with no panel). This must not prevent conversion: the converter
+always yields a valid ``DiagnosticReport`` — never an ``OperationOutcome`` and
+never ``None`` — falling back to the generic LOINC code `30954-2 Relevant
+diagnostic tests/laboratory data note <https://loinc.org/30954-2>`_ for the
+mandatory ``code`` element.
+
+Create a sample without a profile:
+
+    >>> values_no_profile = {
+    ...     "Client": client.UID(),
+    ...     "Contact": contact.UID(),
+    ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
+    ...     "SampleType": sampletype.UID(),
+    ... }
+    >>> sample_no_profile = create_analysisrequest(client, request, values_no_profile, [Cu.UID()])
+
+Create a ``ResultsReport`` for it:
+
+    >>> report_no_profile = api.create(
+    ...     sample_no_profile, "ResultsReport",
+    ...     sample=sample_no_profile.UID(),
+    ... )
+    >>> report_no_profile.setPdf({
+    ...     "data": b"%PDF-1.4 fake diagnostic report",
+    ...     "filename": u"HH-report.pdf",
+    ...     "contentType": "application/pdf",
+    ... })
+    >>> report_no_profile_uid = api.get_uid(report_no_profile)
+    >>> transaction.commit()
+
+Instantiate the converter and call ``to_fhir_resource`` — it returns a regular
+``DiagnosticReport`` resource, not an ``OperationOutcome``:
+
+    >>> from senaite.fhir.converter.diagnosticreport import ResultsReportToResource
+    >>> converter = ResultsReportToResource(report_no_profile)
+    >>> result = converter.to_fhir_resource()
+    >>> result["resourceType"]
+    'DiagnosticReport'
+
+The ``code`` falls back to the generic LOINC code ``30954-2``:
+
+    >>> code = result["code"]
+    >>> code["text"]
+    'Relevant diagnostic tests/laboratory data note'
+    >>> code["coding"][0]["code"]
+    '30954-2'
+    >>> code["coding"][0]["system"]
+    'http://loinc.org'
+
+The same holds end-to-end through the FHIR route: fetching the report returns
+the ``DiagnosticReport`` directly, with no 404 and no ``OperationOutcome``
+payload:
+
+    >>> browser.open("{}/DiagnosticReport/{}".format(fhir_url, report_no_profile_uid))
+    >>> resource = json.loads(browser.contents)
+    >>> resource["resourceType"]
+    u'DiagnosticReport'
+    >>> resource["code"]["coding"][0]["code"]
+    u'30954-2'
+
+
+Default Code: Multiple AnalysisProfiles
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``DiagnosticReport.code`` cannot represent more than one profile/panel, so the
+same generic LOINC code ``30954-2`` is used as a fallback when the sample has
+more than one ``AnalysisProfile`` assigned.
+
+Create a second profile and a sample that carries both:
+
+    >>> profile2 = api.create(setup.analysisprofiles, "AnalysisProfile",
+    ...                       title="Extra Panel", ProfileKey="extra-panel")
+    >>> profile2.setServices([Cu.UID()])
+    >>> values_multi_profile = {
+    ...     "Client": client.UID(),
+    ...     "Contact": contact.UID(),
+    ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
+    ...     "SampleType": sampletype.UID(),
+    ...     "Profiles": [profile.UID(), profile2.UID()],
+    ... }
+    >>> sample_multi_profile = create_analysisrequest(
+    ...     client, request, values_multi_profile, [Cu.UID()])
+    >>> len(sample_multi_profile.getProfiles())
+    2
+
+Create a ``ResultsReport`` for it and convert:
+
+    >>> report_multi_profile = api.create(
+    ...     sample_multi_profile, "ResultsReport",
+    ...     sample=sample_multi_profile.UID(),
+    ... )
+    >>> report_multi_profile.setPdf({
+    ...     "data": b"%PDF-1.4 fake diagnostic report",
+    ...     "filename": u"HH-report.pdf",
+    ...     "contentType": "application/pdf",
+    ... })
+    >>> converter = ResultsReportToResource(report_multi_profile)
+    >>> result = converter.to_fhir_resource()
+    >>> result["resourceType"]
+    'DiagnosticReport'
+
+The ``code`` again falls back to the generic LOINC code ``30954-2`` rather
+than picking one of the two assigned profiles:
+
+    >>> code = result["code"]
+    >>> code["text"]
+    'Relevant diagnostic tests/laboratory data note'
+    >>> code["coding"][0]["code"]
+    '30954-2'

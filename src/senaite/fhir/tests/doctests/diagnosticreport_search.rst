@@ -24,6 +24,7 @@ Needed imports:
     >>> from bika.lims import api
     >>> from bika.lims.utils.analysisrequest import create_analysisrequest
     >>> from bika.lims.workflow import doActionFor as do_action_for
+    >>> from senaite.fhir import api as fapi
 
 Variables:
 
@@ -58,6 +59,9 @@ Create the minimum set of objects needed to register a sample:
     >>> Hb = api.create(portal.bika_setup.bika_analysisservices,
     ...                 "AnalysisService", title="Haemoglobin", Keyword="Hb",
     ...                 Category=category.UID())
+    >>> profile = api.create(setup.analysisprofiles, "AnalysisProfile",
+    ...                      title="CBC Panel", ProfileKey="cbc-panel")
+    >>> profile.setServices([Hb.UID()])
 
 
 Create and publish the sample
@@ -68,10 +72,12 @@ Create and publish the sample
     ...     "Contact": contact.UID(),
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
+    ...     "Profiles": [profile.UID()],
     ... }
     >>> sample = create_analysisrequest(client, request, values, [Hb.UID()])
     >>> sample
     <AnalysisRequest at /plone/clients/...>
+    >>> sample_uid = api.get_uid(sample)
     >>> sample_id = api.get_id(sample)
 
     >>> do_action_for(sample, "receive")[0]
@@ -85,6 +91,21 @@ Create and publish the sample
     True
     >>> api.get_workflow_status_of(sample)
     'published'
+    >>> fapi.link_fhir_resource(sample, fapi.to_fhir_resource({
+    ...     "resourceType": "ServiceRequest",
+    ...     "id": str(uuid.UUID(sample_uid)),
+    ...     "code": {
+    ...         "concept": {
+    ...             "coding": [{
+    ...                 "system": "http://loinc.org",
+    ...                 "code": "718-7",
+    ...                 "display": "Haemoglobin",
+    ...             }],
+    ...             "text": "CBC",
+    ...         },
+    ...     },
+    ... }))
+    >>> transaction.commit()
 
 
 Create the ResultsReport
