@@ -1,0 +1,335 @@
+{
+  "resourceType": "Bundle",
+  "id": "a3f8c210-0e5b-4d92-bf47-1c6e30d85a77",
+  "meta": {
+    "profile": [
+      "https://fhir.senaite.org/StructureDefinition/SenaiteRequestBundle"
+    ]
+  },
+  "type": "transaction",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:c7d2e491-5f1a-4b83-a629-8e4f0c3d9b12",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "c7d2e491-5f1a-4b83-a629-8e4f0c3d9b12",
+        "meta": {
+          "profile": [
+            "https://fhir.senaite.org/StructureDefinition/SenaitePatient"
+          ]
+        },
+        "identifier": [
+          {
+            "use": "secondary",
+            "value": "PAT-2026-00841"
+          }
+        ],
+        "name": [
+          {
+            "use": "official",
+            "family": "Okonkwo",
+            "given": [
+              "Adaeze",
+              "Chisom"
+            ],
+            "prefix": [
+              "Ms."
+            ]
+          }
+        ],
+        "gender": "female",
+        "birthDate": "1978-03-22",
+        "telecom": [
+          {
+            "system": "phone",
+            "value": "+1-345-555-0193",
+            "use": "mobile"
+          }
+        ],
+        "address": [
+          {
+            "use": "home",
+            "line": [
+              "14 Harbour View Road"
+            ],
+            "city": "George Town",
+            "country": "KY"
+          }
+        ],
+        "maritalStatus": {
+          "coding": [
+            {
+              "system": "http://terminology.hl7.org/CodeSystem/v3-MaritalStatus",
+              "code": "S",
+              "display": "Never Married"
+            }
+          ]
+        }
+      },
+      "request": {
+        "method": "POST",
+        "url": "Patient"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:915dbafe-1f2f-496d-9042-1de936f234e1",
+      "resource": {
+        "resourceType": "Organization",
+        "id": "915dbafe-1f2f-496d-9042-1de936f234e1",
+        "meta": {
+          "profile": [
+            "https://fhir.senaite.org/StructureDefinition/SenaiteOrganization"
+          ]
+        },
+        "identifier": [
+          {
+            "use": "secondary",
+            "value": "ORG-HLTH-CYM-001"
+          }
+        ],
+        "active": true,
+        "name": "Cayman Islands Health Services Authority",
+        "contact": [
+          {
+            "telecom": [
+              {
+                "system": "phone",
+                "value": "+1-345-555-0140",
+                "use": "work"
+              },
+              {
+                "system": "email",
+                "value": "labservices@hsa.ky",
+                "use": "work"
+              }
+            ],
+            "address": {
+              "use": "work",
+              "type": "physical",
+              "line": [
+                "Hospital Road"
+              ],
+              "city": "George Town",
+              "country": "KY"
+            }
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Organization"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:81b6d3f7-2ae4-4c5e-9070-d5c8f2b14a63",
+      "resource": {
+        "resourceType": "Practitioner",
+        "id": "81b6d3f7-2ae4-4c5e-9070-d5c8f2b14a63",
+        "meta": {
+          "profile": [
+            "https://fhir.senaite.org/StructureDefinition/SenaitePractitioner"
+          ]
+        },
+        "identifier": [
+          {
+            "use": "secondary",
+            "value": "PRACT-DR-MBEKI"
+          }
+        ],
+        "active": true,
+        "name": [
+          {
+            "use": "official",
+            "family": "Mbeki",
+            "given": [
+              "Thabo"
+            ],
+            "prefix": [
+              "Dr."
+            ],
+            "suffix": [
+              "MBChB MRCP"
+            ]
+          }
+        ],
+        "gender": "male",
+        "birthDate": "1971-11-04",
+        "telecom": [
+          {
+            "system": "email",
+            "value": "t.mbeki@hsa.ky",
+            "use": "work"
+          },
+          {
+            "system": "phone",
+            "value": "+1-345-555-0201",
+            "use": "work"
+          }
+        ],
+        "address": [
+          {
+            "use": "work",
+            "line": [
+              "Department of Internal Medicine",
+              "Cayman Islands Hospital, Hospital Road"
+            ],
+            "city": "George Town",
+            "country": "KY"
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Practitioner"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:3e9a5c84-7d10-4f2b-a851-6b0e3c97d428",
+      "resource": {
+        "resourceType": "Specimen",
+        "id": "3e9a5c84-7d10-4f2b-a851-6b0e3c97d428",
+        "meta": {
+          "profile": [
+            "https://fhir.senaite.org/StructureDefinition/SenaiteSpecimen"
+          ]
+        },
+        "type": {
+          "coding": [
+            {
+              "system": "http://snomed.info/sct",
+              "code": "119364003",
+              "display": "Serum"
+            }
+          ],
+          "text": "Serum"
+        },
+        "collection": {
+          "collectedDateTime": "2026-06-17T07:45:00+01:00",
+          "collector": {
+            "reference": "Practitioner/81b6d3f7-2ae4-4c5e-9070-d5c8f2b14a63"
+          },
+          "bodySite": {
+            "concept": {
+              "coding": [
+                {
+                  "system": "http://snomed.info/sct",
+                  "code": "49852007",
+                  "display": "Median cubital vein"
+                }
+              ],
+              "text": "Median cubital vein"
+            }
+          }
+        },
+        "note": [
+          {
+            "text": "Gold-top SST tube. No visible haemolysis."
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "Specimen"
+      }
+    },
+    {
+      "fullUrl": "urn:uuid:d52f8a1e-b743-4c9d-8e06-f3a7b0c2e517",
+      "resource": {
+        "resourceType": "ServiceRequest",
+        "id": "d52f8a1e-b743-4c9d-8e06-f3a7b0c2e517",
+        "meta": {
+          "profile": [
+            "https://fhir.senaite.org/StructureDefinition/SenaiteServiceRequest"
+          ]
+        },
+        "extension": [
+          {
+            "url": "https://fhir.senaite.org/StructureDefinition/SenaiteClient",
+            "valueReference": {
+              "reference": "Organization/915dbafe-1f2f-496d-9042-1de936f234e1"
+            }
+          }
+        ],
+        "identifier": [
+          {
+            "use": "secondary",
+            "value": "EXT-ELEC-2026-00317"
+          }
+        ],
+        "status": "active",
+        "intent": "order",
+        "priority": "asap",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "http://snomed.info/sct",
+                "code": "108252007",
+                "display": "Laboratory procedure"
+              }
+            ],
+            "text": "Laboratory procedure"
+          }
+        ],
+        "code": {
+          "concept": {
+            "coding": [
+              {
+                "code": "108252007",
+                "system": "http://snomed.info/sct",
+                "display": "Laboratory procedure"
+              }
+            ]
+          }
+        },
+        "orderDetail": [
+          {
+            "parameter": [
+              {
+                "code": {
+                  "coding": [
+                    {
+                      "system": "http://terminology.hl7.org/CodeSystem/v3-ObservationValue",
+                      "code": "LOINC",
+                      "display": "Test Code"
+                    }
+                  ]
+                },
+                "valueCodeableConcept": {
+                  "coding": [
+                    {
+                      "system": "http://loinc.org",
+                      "code": "19123-9",
+                      "display": "Magnesium"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/c7d2e491-5f1a-4b83-a629-8e4f0c3d9b12"
+        },
+        "requester": {
+          "reference": "Practitioner/81b6d3f7-2ae4-4c5e-9070-d5c8f2b14a63",
+          "type": "Practitioner"
+        },
+        "specimen": [
+          {
+            "reference": "Specimen/3e9a5c84-7d10-4f2b-a851-6b0e3c97d428"
+          }
+        ],
+        "note": [
+          {
+            "text": "Electrolyte panel requested. Patient presenting with generalised fatigue and muscle cramps. Rule out electrolyte imbalance."
+          }
+        ]
+      },
+      "request": {
+        "method": "POST",
+        "url": "ServiceRequest"
+      }
+    }
+  ]
+}
