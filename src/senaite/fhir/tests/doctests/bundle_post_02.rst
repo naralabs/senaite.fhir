@@ -10,8 +10,6 @@ in the instance. Resolving the (optional) analysis profile must therefore
 cope with the missing values and yield no profile, rather than failing with
 ``500 'NoneType' object has no attribute 'lower'``.
 
-See https://github.com/naralabs/dex.lims/issues/17
-
 Running this test from the buildout directory:
 
     bin/test test_doctests -t bundle_post_02

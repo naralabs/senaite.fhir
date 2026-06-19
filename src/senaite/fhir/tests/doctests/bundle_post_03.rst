@@ -18,8 +18,6 @@ Expected: a new electrolyte Sample is created, a new Patient (Adaeze Chisom
 Okonkwo) and a new Practitioner/Contact (Dr. Thabo Mbeki, under the Cayman
 client).
 
-See https://github.com/naralabs/dex.lims/issues/17
-
 Running this test from the buildout directory:
 
     bin/test test_doctests -t bundle_post_03
