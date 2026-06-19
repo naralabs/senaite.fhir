@@ -311,34 +311,45 @@ class ResourceToAnalysisRequest(object):
 
     @memoize
     def get_profile(self):
-        """Returns an analysis profile
+        """Returns an analysis profile, or None when the ServiceRequest does
+        not reference a panel we can resolve. The panel (``code.concept``) and
+        its codings/text are all optional, so each is guarded against None.
         """
-        panel = self.resource.code.concept
+        code = getattr(self.resource, "code", None)
+        panel = code.concept if code else None
+        if not panel:
+            return None
+
         system = fapi.get_system_code("AnalysisProfile")
-        coding = first_by(panel.coding, system=system)
+        coding = None
+        if panel.coding:
+            coding = first_by(panel.coding, system=system)
 
         # search by profile_key
-        query = dict(portal_type="AnalysisProfile", profile_key=coding.code)
-        brains = api.search(query, SETUP_CATALOG)
-        if len(brains) == 1:
-            return api.get_object(brains[0])
+        if coding and coding.code:
+            query = dict(portal_type="AnalysisProfile",
+                         profile_key=coding.code)
+            brains = api.search(query, SETUP_CATALOG)
+            if len(brains) == 1:
+                return api.get_object(brains[0])
 
         # search by title (from concept.coding.display)
-        display = coding.display
+        display = coding.display if coding else None
         if display:
             # use sortable_title for an ignore case search
-            title = display.lower()
-            query = dict(portal_type="AnalysisProfile", sortable_title=title)
+            query = dict(portal_type="AnalysisProfile",
+                         sortable_title=display.lower())
             brains = api.search(query, SETUP_CATALOG)
             if len(brains) == 1:
                 return api.get_object(brains[0])
 
         # search by title (from concept.text)
-        title = panel.text.lower()
-        query = dict(portal_type="AnalysisProfile", sortable_title=title)
-        brains = api.search(query, SETUP_CATALOG)
-        if len(brains) == 1:
-            return api.get_object(brains[0])
+        if panel.text:
+            query = dict(portal_type="AnalysisProfile",
+                         sortable_title=panel.text.lower())
+            brains = api.search(query, SETUP_CATALOG)
+            if len(brains) == 1:
+                return api.get_object(brains[0])
 
         return None
 
