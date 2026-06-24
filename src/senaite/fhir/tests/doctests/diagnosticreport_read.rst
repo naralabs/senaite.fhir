@@ -200,20 +200,11 @@ matches the sample's internal ID:
     >>> any(i.get("value") == sample_id for i in identifiers)
     True
 
-The ``basedOn`` list contains a single reference that points back to the
-parent sample as a ``ServiceRequest``:
+Internally created samples do not have a backing FHIR ``ServiceRequest``,
+so ``basedOn`` is omitted:
 
-    >>> based_on = resource["basedOn"]
-    >>> len(based_on)
-    1
-    >>> based_on[0]["type"]
-    u'ServiceRequest'
-
-The reference's UID segment resolves to the same sample:
-
-    >>> ref_uid = based_on[0]["reference"].split("/")[-1]
-    >>> uuid.UUID(ref_uid).hex == sample_uid
-    True
+    >>> "basedOn" in resource
+    False
 
 The ``result`` list contains one ``Observation`` reference per reportable
 analysis. After publishing, the Copper analysis is reportable, so exactly

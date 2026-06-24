@@ -191,6 +191,15 @@ Every entry has ``search.mode`` set to ``"match"`` and wraps a
     ...     for e in entries)
     True
 
+FHIR-linked samples keep a ``basedOn`` reference to the linked
+``ServiceRequest``:
+
+    >>> report_entry = [e for e in entries
+    ...                 if uuid.UUID(e["resource"]["id"]).hex == report_uid][0]
+    >>> report_entry["resource"]["basedOn"][0]["reference"] == \
+    ...     u"ServiceRequest/%s" % str(uuid.UUID(sample_uid))
+    True
+
 The summary mode strips the base64 PDF payload from ``presentedForm``
 while keeping attachment metadata:
 
@@ -314,8 +323,13 @@ With ``_include=Observation:result`` the bundle also contains
 
 Each included Observation has a ``fullUrl`` prefixed with ``Observation/``:
 
-    >>> all(e["fullUrl"].startswith("Observation/")
-    ...     for e in include_entries)
+    >>> all(e["fullUrl"].startswith("Observation/") for e in include_entries)
+    True
+
+Included Observations also point back to the linked ``ServiceRequest``:
+
+    >>> include_entries[0]["resource"]["basedOn"][0]["reference"] == \
+    ...     u"ServiceRequest/%s" % str(uuid.UUID(sample_uid))
     True
 
 The number of included Observations matches the reportable analyses on
