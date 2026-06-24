@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from bika.lims.interfaces import IAnalysisRequest
+from senaite.fhir.config import DEFAULT_REPORT_PROFILE_CODE
 from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.exceptions import ServiceRequestValidationError
 from senaite.fhir.interfaces import IContentActionToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
@@ -274,12 +276,31 @@ class ResourceToAnalysisRequest(object):
 
         return None
 
+    def is_default_panel(self):
+        """Returns True when carries the default panel code
+        """
+        code = getattr(self.resource, "code", None)
+        if not code or not code.concept:
+            return False
+        system = fapi.get_system_code("AnalysisProfile")
+        coding = first_by(code.concept.coding or [], system=system)
+        if not coding or not coding.code:
+            return False
+        default_codes = {
+            c["code"]
+            for c in DEFAULT_REPORT_PROFILE_CODE.get("coding", [])
+            if c.get("code")
+        }
+        return coding.code in default_codes
+
     @memoize
     def get_services(self):
         """Returns the list of services to assign to this sample
         """
-        services = []
         system = fapi.get_system_code("AnalysisService")
+
+        # Resolve every test code listed in orderDetail
+        order_services = []
         for param in self.resource.orderDetail:
             # get the coding info
             concept = param.valueCodeableConcept
@@ -287,8 +308,38 @@ class ResourceToAnalysisRequest(object):
             # search by code
             service = self.get_service(coding.code)
             if service:
-                services.append(service)
-        return services
+                order_services.append(service)
+
+        is_default = self.is_default_panel()
+
+        if is_default:
+            # orderDetail must have at least one test
+            if not order_services:
+                raise ServiceRequestValidationError(
+                    message="meaningless request",
+                    expression=["ServiceRequest.orderDetail"],
+                )
+
+            # No panel-membership validation for the default code
+            return order_services
+
+        # if orderDetail is absent, defer to the panel entirely
+        if not order_services:
+            return []
+
+        # orderDetail is present, every test defined in the panel must appear
+        profile = self.get_profile()
+        if profile:
+            panel_uids = {api.get_uid(svc) for svc in profile.getServices()}
+            order_uids = {api.get_uid(svc) for svc in order_services}
+            missing_uids = panel_uids - order_uids
+            if missing_uids:
+                raise ServiceRequestValidationError(
+                    message="partial subsets are not allowed",
+                    expression=["ServiceRequest.orderDetail"],
+                )
+
+        return order_services
 
     def get_service(self, code):
         # search by keyword
