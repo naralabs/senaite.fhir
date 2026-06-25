@@ -4,9 +4,11 @@ from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentActionToFHIR
+from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevokedResource  # noqa: E501
+from senaite.fhir.resource.specimen import SpecimenResource
 from zope.component import adapter
 from zope.interface import implementer
 from bika.lims import api
@@ -59,6 +61,60 @@ class AnalysisRequestRevokedToResource(object):
             data["note"] = [{"text": reasons}]
 
         return ServiceRequestRevokedResource(data)
+
+
+@adapter(IAnalysisRequest)
+@implementer(IContentToFHIR)
+class AnalysisRequestToSpecimen(object):
+    """Converts a native SENAITE AnalysisRequest to a FHIR Specimen resource
+    """
+
+    def __init__(self, context):
+        self.context = context
+
+    def to_fhir_resource(self):
+
+        ar = self.context
+        sample_type = ar.getSampleType()
+        if not sample_type:
+            return None
+
+        specimen_id = str(fapi.get_uuid(api.get_uid(ar)))
+
+        system = fapi.get_system_code("Specimen")
+        data = {
+            "resourceType": "Specimen",
+            "id": specimen_id,
+            "type": {
+                "coding": [{
+                    "system": system,
+                    "display": sample_type.Title(),
+                }]
+            },
+        }
+
+        collection = {}
+
+        date_sampled = ar.getDateSampled()
+        if date_sampled:
+            collection["collectedDateTime"] = to_fhir_datetime(date_sampled)
+
+        sample_point = ar.getSamplePoint()
+        if sample_point:
+            sp_system = fapi.get_system_code("SamplePoint")
+            collection["bodySite"] = {
+                "concept": {
+                    "coding": [{
+                        "system": sp_system,
+                        "display": sample_point.Title(),
+                    }]
+                }
+            }
+
+        if collection:
+            data["collection"] = collection
+
+        return SpecimenResource(data)
 
 
 @adapter(IServiceRequestResource)

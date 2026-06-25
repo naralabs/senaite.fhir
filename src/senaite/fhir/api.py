@@ -515,6 +515,13 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
         stored = get_stored_fhir_resource(obj, resource_type)
         if stored:
             return stored
+        # Try a named IContentToFHIR adapter for this specific resource type
+        # (e.g. "Specimen" on an AnalysisRequest)
+        named = queryAdapter(obj, IContentToFHIR, name=resource_type)
+        if named:
+            result = named.to_fhir_resource()
+            if result:
+                return result
         if default is _marker:
             fail(msg="Not Found", status=404)
         return default

@@ -53,11 +53,21 @@ def get(context, request, resource_type=None, uid=None):
         # pass the resource type so to_fhir_resource can fall back to a
         # fhir_<resource_type>_id search when the SENAITE UID lookup misses
         fhir_type = resource_type if not fapi.is_uuid(resource_type) else None
-        return fapi.to_fhir_resource(uid, resource_type=fhir_type)
+        resource = fapi.to_fhir_resource(
+            uid, resource_type=fhir_type, default=None
+        )
+        if resource:
+            return resource
+
+        fapi.fail(msg="Not Found", status=404)
 
     # DiagnosticReport search (polling endpoint)
     if resource_type == "DiagnosticReport" and not uid:
         return get_diagnostic_report_bundle(context, request)
+
+    # Specimen listing: annotation-backed, no native SENAITE content type
+    if resource_type == "Specimen" and not uid:
+        return get_specimen_bundle(context, request)
 
     # all resources from the defined type
     portal_type = japi.resource_to_portal_type(resource_type)
@@ -303,6 +313,56 @@ def revoke(context, request, resource_type, uid):
 
     resource = fapi.to_fhir_action_resource(obj, "revoke")
     return resource
+
+
+def get_specimen_bundle(context, request):
+    """Return all Specimens as a FHIR searchset bundle.
+
+    Specimens have no independent SENAITE content type. For ARs created via
+    the FHIR bundle API the Specimen is stored as annotation data and returned
+    as-is. For ARs created natively in SENAITE (no annotation) a Specimen is
+    synthesized on-the-fly from the AR's SampleType and DateSampled so that
+    FHIR clients never need to know about SENAITE internals.
+
+    Supports optional ``_lastUpdated`` (e.g. ``gt2026-01-01T00:00:00Z``) to
+    filter by the underlying AR's modification date.
+    """
+    params = request.form
+    since = parse_last_updated(params.get("_lastUpdated", ""))
+    if isinstance(since, OperationOutcome):
+        return since
+
+    query = {"portal_type": "AnalysisRequest"}
+    if since:
+        query["modified"] = {"query": since, "range": "min"}
+    brains = api.search(query)
+
+    entries = []
+    for brain in brains:
+        ar = api.get_object(brain, default=None)
+        if not ar:
+            continue
+        specimen = fapi.to_fhir_resource(
+            ar, resource_type="Specimen", default=None
+        )
+        if not specimen:
+            continue
+        entries.append({
+            "fullUrl": "Specimen/{}".format(specimen.id),
+            "resource": dict(specimen),
+            "search": {"mode": "match"},
+        })
+
+    bundle_data = {
+        "resourceType": "Bundle",
+        "id": str(fapi.generate_UUID()),
+        "type": "searchset",
+        "total": len(entries),
+    }
+    if entries:
+        bundle_data["entry"] = entries
+
+    return ResultsBundleResource(bundle_data)
 
 
 def get_diagnostic_report_bundle(_context, request):
