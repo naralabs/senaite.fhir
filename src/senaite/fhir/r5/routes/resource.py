@@ -198,6 +198,11 @@ def process_bundle_specimen(sr_resource, ar_obj, ar_status, ar_modified):
         # its UID in the FHIR catalog so search_by_fhir_uid can find the AR.
         fapi.store_fhir_resource(ar_obj, specimen)
 
+        sample_type = SampleTypeFinder(specimen).find()
+        if sample_type and ar_obj.getSampleType() != sample_type:
+            ar_obj.setSampleType(sample_type)
+            ar_obj.reindexObject()
+
         entries.append({
             "fullUrl": "Specimen/{}".format(specimen.id),
             "response": {
