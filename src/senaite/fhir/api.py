@@ -341,6 +341,10 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     before searching. The lookup can be constrained to a ``portal_type``; when
     none is given, all portal types are searched (less performant).
 
+    Primary match: the UID belongs to the object's own portal/resource type.
+    Secondary match: the UID was stored for a different resource type on the
+    same object (e.g. a Specimen UID stored on an AnalysisRequest).
+
     :param fhir_uid: FHIR UID (hex) or FHIR id (dashed UUID) to look up
     :param portal_type: optional portal type to constrain the search
     :param default: value to return when no object holds the UID; when omitted,
@@ -353,15 +357,22 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     # do the search
     brains = search_by_fhir_uid(fhir_uid, portal_type=portal_type)
 
-    # resource_type must match with portal_type or with its resourceType
+    secondary = []
     for brain in brains:
         uids = get_fhir_uids(brain)
         portal_type = get_portal_type(brain)
+        # primary match: uid belongs to the object's own portal/resource type
         if uids.get(portal_type) == fhir_uid:
             return api.get_object(brain)
         resource_type = get_resource_type(portal_type)
         if uids.get(resource_type) == fhir_uid:
             return api.get_object(brain)
+        # secondary match: uid stored for a different resource type
+        if fhir_uid in uids.values():
+            secondary.append(brain)
+
+    if secondary:
+        return api.get_object(secondary[0])
 
     if default is _marker:
         fail("No object found for FHIR UID {}".format(fhir_uid))
@@ -493,6 +504,17 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
     # get the object to build the FHIR Resource from
     obj = get_object(thing, default=None)
     if not obj:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
+
+    # When the caller requested a specific resource type that differs from the
+    # object's primary type, try the annotation store first before falling
+    # through to the ContentToFHIR adapter
+    if resource_type and resource_type != get_resource_type(obj):
+        stored = get_stored_fhir_resource(obj, resource_type)
+        if stored:
+            return stored
         if default is _marker:
             fail(msg="Not Found", status=404)
         return default
@@ -720,6 +742,51 @@ def get_system_code(resource_type, default=_marker):
     if default is _marker:
         raise ValueError("No system code defined for %s" % resource_type)
     return default
+
+
+def store_fhir_resource(obj, resource):
+    """Persists a secondary FHIR resource against a SENAITE object.
+
+    Use this when a FHIR resource type has no direct SENAITE content
+    counterpart but must survive round-trips through the API (e.g. a Specimen
+    stored on an AnalysisRequest). The resource dict is written into a
+    type-keyed slot under ``fhir_storage["resources"]`` and its UID is linked
+    via ``set_fhir_uids`` so the FHIR catalog can resolve it back.
+
+    :param obj: content object, catalog brain or UID
+    :param resource: the FHIR resource to store
+    """
+    if not is_fhir_resource(resource):
+        raise ValueError("Type not supported: {}".format(repr(type(resource))))
+
+    resource_type = resource.resourceType
+    uid = get_uid(resource)
+
+    storage = get_fhir_storage(obj)
+    storage.setdefault("resources", {})[resource_type] = resource.to_dict()
+
+    set_fhir_uids(obj, **{resource_type: uid})
+
+
+def get_stored_fhir_resource(obj, resource_type):
+    """Returns a previously stored secondary FHIR resource from the object's
+    annotation storage, or ``None`` when none is found.
+
+    Reads from the type-keyed slot written by ``store_fhir_resource`` without
+    waking up the object unnecessarily.
+
+    :param obj: content object, catalog brain or UID
+    :param resource_type: FHIR resource type to retrieve, e.g. ``"Specimen"``
+    :returns: the FHIR resource, or ``None``
+    """
+    obj = api.get_object(obj)
+    annotation = IAnnotations(obj)
+    storage = annotation.get(FHIR_STORAGE_KEY) or {}
+    resources = storage.get("resources") or {}
+    data = resources.get(resource_type)
+    if not data:
+        return None
+    return to_fhir_resource(data, default=None)
 
 
 def generate_UUID():

@@ -10,7 +10,9 @@ from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
 from senaite.fhir.api import find_object_for
 from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.finder.sampletype import SampleTypeFinder
 from senaite.fhir.interfaces import IBundleResource
+from senaite.fhir.interfaces import ISpecimenResource
 from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
 from senaite.fhir.resource.operationoutcome import OperationOutcome
@@ -75,6 +77,13 @@ def post(context, request, resource_type=None):
     # get the FHIR resources from the request
     resources = get_fhir_resources()
 
+    # Pre-flight: if any Specimen in the bundle has no matching SampleType in
+    # SENAITE the entire bundle must be rejected before any content is touched
+    issue = check_existing_sample_type(resources)
+    if issue:
+        request.response.setStatus(400)
+        return OperationOutcome({"issue": [issue]})
+
     entries = []
     errored = False
     for resource in resources:
@@ -119,6 +128,13 @@ def post(context, request, resource_type=None):
         if errored:
             break
 
+        # If the resource is a ServiceRequest, process any Specimen resources
+        if resource.resourceType == "ServiceRequest" and obj:
+            specimen_entries = process_bundle_specimen(
+                resource, obj, status, modified
+            )
+            entries.extend(specimen_entries)
+
     # create the BundleResponse
     resp = {
         "resourceType": "Bundle",
@@ -130,6 +146,67 @@ def post(context, request, resource_type=None):
         "entry": entries,
     }
     return BundleResponseResource(resp)
+
+
+def check_existing_sample_type(resources):
+    """Return an OperationOutcome issue dict if any Specimen in the resource
+    list cannot be mapped to an existing SampleType in SENAITE, or None when
+    all Specimens are resolvable
+    """
+    for resource in resources:
+        if not ISpecimenResource.providedBy(resource):
+            continue
+
+        if not SampleTypeFinder(resource).find():
+            return {
+                "severity": "error",
+                "code": "not-found",
+                "details": {
+                    "text": "Specimen has no matching SampleType in SENAITE"
+                },
+                "expression": ["Specimen.type"],
+            }
+    return None
+
+
+def process_bundle_specimen(sr_resource, ar_obj, ar_status, ar_modified):
+    """Store each Specimen referenced by a ServiceRequest into the AR's
+    annotation storage and return bundle-response entries for them.
+
+    Specimen has no independent SENAITE content type: it is persisted as
+    annotation data on the AnalysisRequest so it can be fetched later via
+    GET /Specimen/<uid> without callers needing to know SENAITE internals.
+    The Specimen status mirrors the ServiceRequest/AR status per design.
+
+    :param sr_resource: the ServiceRequest FHIR resource (carries ``_bundle``)
+    :param ar_obj: the AnalysisRequest content object
+    :param ar_status: HTTP status string used for the AR entry
+    :param ar_modified: ISO-formatted last-modified timestamp of the AR
+    :returns: list of bundle-response entry dicts, one per specimen
+    """
+    bundle = sr_resource.get("_bundle")
+    if not bundle or not sr_resource.specimen:
+        return []
+
+    entries = []
+    for spec_ref in sr_resource.specimen:
+        specimen = bundle.first_entry("id", str(spec_ref.UUID()))
+        if not specimen:
+            continue
+
+        # Persist the Specimen dict in the AR's annotation storage and index
+        # its UID in the FHIR catalog so search_by_fhir_uid can find the AR.
+        fapi.store_fhir_resource(ar_obj, specimen)
+
+        entries.append({
+            "fullUrl": "Specimen/{}".format(specimen.id),
+            "response": {
+                "status": ar_status,
+                "lastModified": ar_modified,
+            },
+        })
+
+    return entries
 
 
 @add_route("/<string:resource_type>/<string(length=32):uid>/$revoke",
