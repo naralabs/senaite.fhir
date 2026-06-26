@@ -98,6 +98,7 @@ class AnalysisRequestToSpecimen(object):
         date_sampled = ar.getDateSampled()
         if date_sampled:
             collection["collectedDateTime"] = to_fhir_datetime(date_sampled)
+            # TODO: map getSampler() to collection["collector"]
 
         sample_point = ar.getSamplePoint()
         if sample_point:
