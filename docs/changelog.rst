@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #11 Build Specimen resources from SENAITE Analysis Request data
 - #8 FHIR id system: decouple FHIR resource ids from SENAITE UIDs
 - #5 Build DiagnosticReport resources from SENAITE report data
 - #7 Move the _runtime marker from response body to Server-Timing header
