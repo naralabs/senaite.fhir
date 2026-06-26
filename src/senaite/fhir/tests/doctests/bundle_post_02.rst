@@ -87,7 +87,7 @@ The Bundle is accepted (no ``500`` from the unresolved panel):
 
     >>> entries = response["entry"]
     >>> sorted([e["fullUrl"].split("/")[0] for e in entries])
-    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest']
+    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest', u'Specimen']
 
     >>> status = dict((e["fullUrl"].split("/")[0], e["response"]["status"])
     ...               for e in entries)
@@ -98,6 +98,8 @@ The Bundle is accepted (no ``500`` from the unresolved panel):
     >>> status["Practitioner"]
     u'201 Created'
     >>> status["ServiceRequest"]
+    u'201 Created'
+    >>> status["Specimen"]
     u'201 Created'
 
 
