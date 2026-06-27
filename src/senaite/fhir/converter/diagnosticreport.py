@@ -83,8 +83,10 @@ class ResultsReportToResource(object):
         if not fapi.is_fhir_content(sample):
             return []
 
-        storage = fapi.get_fhir_storage(sample)
-        service_request_uid = storage.get("uids").get("ServiceRequest")
+        sample = self.get_sample()
+        uids = fapi.get_fhir_uids(sample)
+        service_request_uid = uids.get("ServiceRequest")
+
         if not service_request_uid:
             return []
 
