@@ -314,8 +314,14 @@ class ResourceToAnalysisRequest(object):
         # if default panel set, orderDetail must have at least one test
         if self.is_default_panel():
             if not services:
+                default = DEFAULT_REPORT_PROFILE_CODE.get("coding")[0]
+                msg = ("orderDetail must be present and contain at least one "
+                       "test code when ServiceRequest.code is the default "
+                       "panel ({}). There is no panel definition to fall "
+                       "back on.").format(default.get("code"))
+
                 raise ServiceRequestValidationError(
-                    message="meaningless request",
+                    message=msg,
                     expression=["ServiceRequest.orderDetail"],
                 )
             # No panel-membership validation for the default code
@@ -328,12 +334,23 @@ class ResourceToAnalysisRequest(object):
         # orderDetail is present, every test defined in the panel must appear
         profile = self.get_profile()
         if profile:
-            panel_uids = set(profile.getRawServiceUIDs())
-            order_uids = {api.get_uid(svc) for svc in services}
-            missing_uids = panel_uids - order_uids
-            if missing_uids:
+            missing = set(profile.getServices()) - set(services)
+            if  missing:
+                # build the message
+                tests = ["%s %s" % (
+                    api.safe_unicode(service.getProtocolID()),
+                    api.safe_unicode(api.get_title(service))
+                ) for service in missing]
+                msg = ("orderDetail is a partial subset of panel {panel_key} "
+                       "({panel_name}). Missing tests: [{tests}]. Either omit "
+                       "orderDetail to use the full panel definition, or "
+                       "include all panel tests.").format(
+                    panel_key=api.safe_unicode(profile.getProfileKey()),
+                    panel_name=api.safe_unicode(api.get_title(profile)),
+                    tests=", ".join(tests))
+
                 raise ServiceRequestValidationError(
-                    message="partial subsets are not allowed",
+                    message=msg,
                     expression=["ServiceRequest.orderDetail"],
                 )
 
