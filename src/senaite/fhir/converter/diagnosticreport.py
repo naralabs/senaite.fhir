@@ -81,9 +81,9 @@ class ResultsReportToResource(object):
     def get_based_on(self):
         sample = self.get_sample()
         if not fapi.is_fhir_content(sample):
+            # not based on a FHIR resource, was generated internally
             return []
 
-        sample = self.get_sample()
         uids = fapi.get_fhir_uids(sample)
         service_request_uid = uids.get("ServiceRequest")
 
