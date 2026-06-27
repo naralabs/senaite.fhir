@@ -277,20 +277,23 @@ class ResourceToAnalysisRequest(object):
         return None
 
     def is_default_panel(self):
-        """Returns True when carries the default panel code
+        """Returns True when the FHIR resource carries the default panel code
         """
+        # the panel is always stored in code.concept
         code = getattr(self.resource, "code", None)
-        if not code or not code.concept:
+        panel = code.concept if code else None
+        if not panel:
             return False
+
+        # extract the first coding for the expected system
         system = fapi.get_system_code("AnalysisProfile")
-        coding = first_by(code.concept.coding or [], system=system)
-        if not coding or not coding.code:
+        coding = first_by(panel.coding, system=system)
+        if not coding:
             return False
-        default_codes = {
-            c["code"]
-            for c in DEFAULT_REPORT_PROFILE_CODE.get("coding", [])
-            if c.get("code")
-        }
+
+        # find a match with default profile code(s)
+        default_codings = DEFAULT_REPORT_PROFILE_CODE.get("coding")
+        default_codes = [default.get("code") for default in default_codings]
         return coding.code in default_codes
 
     @memoize
