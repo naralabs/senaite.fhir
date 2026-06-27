@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from bika.lims.interfaces import IAnalysisRequest
+from senaite.fhir.config import DEFAULT_REPORT_PROFILE_CODE
 from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.exceptions import ServiceRequestValidationError
 from senaite.fhir.interfaces import IContentActionToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
@@ -274,6 +276,26 @@ class ResourceToAnalysisRequest(object):
 
         return None
 
+    def is_default_panel(self):
+        """Returns True when the FHIR resource carries the default panel code
+        """
+        # the panel is always stored in code.concept
+        code = getattr(self.resource, "code", None)
+        panel = code.concept if code else None
+        if not panel:
+            return False
+
+        # extract the first coding for the expected system
+        system = fapi.get_system_code("AnalysisProfile")
+        coding = first_by(panel.coding, system=system)
+        if not coding:
+            return False
+
+        # find a match with default profile code(s)
+        default_codings = DEFAULT_REPORT_PROFILE_CODE.get("coding")
+        default_codes = [default.get("code") for default in default_codings]
+        return coding.code in default_codes
+
     @memoize
     def get_services(self):
         """Returns the list of services to assign to this sample
@@ -288,6 +310,50 @@ class ResourceToAnalysisRequest(object):
             service = self.get_service(coding.code)
             if service:
                 services.append(service)
+
+        # if default panel set, orderDetail must have at least one test
+        if self.is_default_panel():
+            if not services:
+                default = DEFAULT_REPORT_PROFILE_CODE.get("coding")[0]
+                msg = ("orderDetail must be present and contain at least one "
+                       "test code when ServiceRequest.code is the default "
+                       "panel ({}). There is no panel definition to fall "
+                       "back on.").format(default.get("code"))
+
+                raise ServiceRequestValidationError(
+                    message=msg,
+                    expression=["ServiceRequest.orderDetail"],
+                )
+            # No panel-membership validation for the default code
+            return services
+
+        # if orderDetail is absent, defer to the panel entirely
+        if not services:
+            return []
+
+        # orderDetail is present, every test defined in the panel must appear
+        profile = self.get_profile()
+        if profile:
+            missing = set(profile.getServices()) - set(services)
+            if missing:
+                # build the message
+                tests = ["%s %s" % (
+                    api.safe_unicode(test.getProtocolID()),
+                    api.safe_unicode(api.get_title(test))
+                ) for test in missing]
+                msg = ("orderDetail is a partial subset of panel {panel_key} "
+                       "({panel_name}). Missing tests: [{tests}]. Either omit "
+                       "orderDetail to use the full panel definition, or "
+                       "include all panel tests.").format(
+                    panel_key=api.safe_unicode(profile.getProfileKey()),
+                    panel_name=api.safe_unicode(api.get_title(profile)),
+                    tests=", ".join(tests))
+
+                raise ServiceRequestValidationError(
+                    message=msg,
+                    expression=["ServiceRequest.orderDetail"],
+                )
+
         return services
 
     def get_service(self, code):

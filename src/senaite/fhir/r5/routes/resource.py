@@ -15,6 +15,7 @@ from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
 from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.fhir.resource.resultsbundle import ResultsBundleResource
+from senaite.fhir.exceptions import ServiceRequestValidationError
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationError  # noqa: E501
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationResource  # noqa: E501
 from senaite.jsonapi import api as japi
@@ -92,6 +93,16 @@ def post(context, request, resource_type=None):
             else:
                 obj = fapi.update(obj, resource)
                 status = "201 Updated"
+        except ServiceRequestValidationError as e:
+            transaction.abort()
+            request.response.setStatus(400)
+            issue = {
+                "severity": "error",
+                "code": "business-rule",
+                "details": {"text": str(e)},
+                "expression": e.expression,
+            }
+            return OperationOutcome({"issue": [issue]})
         except Exception as e:
             errored = True
             status = "500 %s" % str(e)

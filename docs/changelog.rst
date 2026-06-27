@@ -5,6 +5,7 @@ Changelog
 ------------------
 
 - #10 Only emit FHIR basedOn for externally linked service requests
+- #9 Validate ServiceRequest orderDetail semantics in Bundle POST
 - #8 FHIR id system: decouple FHIR resource ids from SENAITE UIDs
 - #5 Build DiagnosticReport resources from SENAITE report data
 - #7 Move the _runtime marker from response body to Server-Timing header
