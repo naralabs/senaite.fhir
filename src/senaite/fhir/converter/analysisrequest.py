@@ -300,10 +300,8 @@ class ResourceToAnalysisRequest(object):
     def get_services(self):
         """Returns the list of services to assign to this sample
         """
+        services = []
         system = fapi.get_system_code("AnalysisService")
-
-        # Resolve every test code listed in orderDetail
-        order_services = []
         for param in self.resource.orderDetail:
             # get the coding info
             concept = param.valueCodeableConcept
@@ -311,30 +309,27 @@ class ResourceToAnalysisRequest(object):
             # search by code
             service = self.get_service(coding.code)
             if service:
-                order_services.append(service)
+                services.append(service)
 
-        is_default = self.is_default_panel()
-
-        if is_default:
-            # orderDetail must have at least one test
-            if not order_services:
+        # if default panel set, orderDetail must have at least one test
+        if self.is_default_panel():
+            if not services:
                 raise ServiceRequestValidationError(
                     message="meaningless request",
                     expression=["ServiceRequest.orderDetail"],
                 )
-
             # No panel-membership validation for the default code
-            return order_services
+            return services
 
         # if orderDetail is absent, defer to the panel entirely
-        if not order_services:
+        if not services:
             return []
 
         # orderDetail is present, every test defined in the panel must appear
         profile = self.get_profile()
         if profile:
-            panel_uids = {api.get_uid(svc) for svc in profile.getServices()}
-            order_uids = {api.get_uid(svc) for svc in order_services}
+            panel_uids = set(profile.getRawServiceUIDs())
+            order_uids = {api.get_uid(svc) for svc in services}
             missing_uids = panel_uids - order_uids
             if missing_uids:
                 raise ServiceRequestValidationError(
@@ -342,7 +337,7 @@ class ResourceToAnalysisRequest(object):
                     expression=["ServiceRequest.orderDetail"],
                 )
 
-        return order_services
+        return services
 
     def get_service(self, code):
         # search by keyword
