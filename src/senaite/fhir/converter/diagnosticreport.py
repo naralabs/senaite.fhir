@@ -39,11 +39,14 @@ class ResultsReportToResource(object):
             "status": self.get_status(),
             "code": self.get_code(),
             "identifier": self.get_identifier(),
-            "basedOn": self.get_based_on(),
             "subject": self.get_subject(),
             "result": self.get_result(),
             "presentedForm": self.get_presented_form(),
         }
+
+        based_on = self.get_based_on()
+        if based_on:
+            data["basedOn"] = based_on
 
         return DiagnosticReportResource(data)
 
@@ -77,9 +80,20 @@ class ResultsReportToResource(object):
 
     def get_based_on(self):
         sample = self.get_sample()
+        if not fapi.is_fhir_content(sample):
+            # not based on a FHIR resource, was generated internally
+            return []
+
+        uids = fapi.get_fhir_uids(sample)
+        service_request_uid = uids.get("ServiceRequest")
+
+        if not service_request_uid:
+            return []
+
         return [{
             "type": "ServiceRequest",
-            "reference": "ServiceRequest/{}".format(fapi.get_uuid(sample)),
+            "reference": "ServiceRequest/{}".format(
+                fapi.get_uuid(service_request_uid)),
         }]
 
     def get_code(self):

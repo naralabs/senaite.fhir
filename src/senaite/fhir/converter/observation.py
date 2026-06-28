@@ -33,10 +33,13 @@ class AnalysisToObservation(object):
                 "profile": [profile_url],
                 "lastUpdated": self.get_last_updated(),
             },
-            "basedOn": self.get_based_on(),
             "status": self.get_status(),
             "code": self.get_code(),
         }
+
+        based_on = self.get_based_on()
+        if based_on:
+            data["basedOn"] = based_on
 
         performer = self.get_performer()
         if performer:
@@ -120,9 +123,18 @@ class AnalysisToObservation(object):
             return source_data.get("basedOn")
 
         sample = self.get_sample()
+        if not fapi.is_fhir_content(sample):
+            return []
+
+        storage = fapi.get_fhir_storage(sample)
+        service_request_uid = storage.get("uids").get("ServiceRequest")
+        if not service_request_uid:
+            return []
+
         return [{
             "type": "ServiceRequest",
-            "reference": "ServiceRequest/{}".format(fapi.get_uuid(sample)),
+            "reference": "ServiceRequest/{}".format(
+                fapi.get_uuid(service_request_uid)),
         }]
 
     def get_performer(self):
