@@ -17,6 +17,7 @@ from bika.lims import api
 from senaite.core.catalog import SETUP_CATALOG
 from senaite.core.catalog import CONTACT_CATALOG
 from senaite.fhir import api as fapi
+from senaite.fhir.finder.sampletype import SampleTypeFinder
 from plone.memoize.instance import memoize
 
 
@@ -192,9 +193,10 @@ class ResourceToAnalysisRequest(object):
         """
         ref = self.resource.specimen[0]
         sibling = self.get_bundle_sibling(ref)
-        obj = fapi.find_object_for(sibling)
-        if obj:
-            return obj
+        if sibling:
+            sample_type = SampleTypeFinder(sibling).find()
+            if sample_type:
+                return sample_type
         raise ValueError("%r: No SampleType for specimen: %r" %
                          (self.resource, sibling))
 
