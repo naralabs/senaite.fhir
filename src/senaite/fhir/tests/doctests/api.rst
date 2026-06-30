@@ -328,6 +328,11 @@ to_fhir_resource
     ...     "name": [{"use": "official", "family": "Roe", "given": ["John"]}],
     ...     "gender": "male",
     ...     "birthDate": "1975-05-20",
+    ...     "maritalStatus": {
+    ...         "coding": [
+    ...             {"code": "M", "display": "Married"},
+    ...         ],
+    ...     },
     ...     "identifier": [
     ...         {"use": "secondary", "value": "PAT-999"},
     ...     ],
@@ -430,6 +435,8 @@ suitable for ``api.create`` / ``api.edit`` via the registered
     u'm'
     >>> content["gender"]
     u'm'
+    >>> content["marital_status"]
+    u'M'
 
 When no ``IFHIRToContent`` adapter is registered the call raises
 ``ValueError`` (or returns the supplied default)::

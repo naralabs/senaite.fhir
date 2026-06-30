@@ -186,6 +186,8 @@ The Patient created from the bundle carries its medical record number:
 
     >>> patients[0].getMRN()
     'MRN-20394857'
+    >>> patients[0].getMaritalStatus()
+    u'M'
 
 The patient demographics from the bundle are also copied onto the Sample.
 The public accessors (``getMedicalRecordNumberValue`` etc.) are guarded by
