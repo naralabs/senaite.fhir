@@ -290,7 +290,7 @@ class ResourceToPatient(object):
             "email": api.safe_unicode(primary_email),
             "additional_emails": additional_emails,
             "phone": api.safe_unicode(primary_phone),
-            "additional_phones": additional_phones,
+            "additional_phone_numbers": additional_phones,
         }
 
     def get_mrn(self):
