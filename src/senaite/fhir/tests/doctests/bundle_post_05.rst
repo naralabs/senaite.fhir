@@ -129,6 +129,15 @@ Thabo Mbeki, under the Cayman client)::
     1
     >>> patients[0].getFullname()
     'Adaeze Chisom Okonkwo'
+    >>> patients[0].getPhone()
+    ''
+    >>> numbers = patients[0].getAdditionalPhoneNumbers()
+    >>> len(numbers)
+    1
+    >>> numbers[0]["name"] == "mobile"
+    True
+    >>> numbers[0]["phone"] == "+1-345-555-0193"
+    True
 
     >>> contacts = [obj for obj in client.objectValues()
     ...             if api.get_portal_type(obj) == "Contact"]

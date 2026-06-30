@@ -187,6 +187,11 @@ The Patient created from the bundle carries its medical record number:
     >>> patients[0].getMRN()
     'MRN-20394857'
 
+The Patient telecom is mapped onto the patient record:
+
+    >>> patients[0].getPhone()
+    '+61 3 9000 1234'
+
 The patient demographics from the bundle are also copied onto the Sample.
 The public accessors (``getMedicalRecordNumberValue`` etc.) are guarded by
 senaite.patient's ``@check_installed``, which requires the senaite.patient
@@ -266,6 +271,9 @@ so it can only be matched by MRN (not by FHIR UID)::
     ...     "id": "bbbbbbbb-bbbb-5bbb-9bbb-bbbbbbbbbbbb",
     ...     "name": [{"use": "official", "family": "Patient",
     ...               "given": ["Manual"]}],
+    ...     "telecom": [{"system": "phone",
+    ...                  "value": "+61 3 9444 5555",
+    ...                  "use": "home"}],
     ...     "gender": "male",
     ...     "birthDate": "1970-01-01",
     ...     "identifier": [{"use": "secondary", "value": "MRN-MANUAL"}],
@@ -295,3 +303,5 @@ returns the same manually-created Patient::
     ...     "bbbbbbbb-bbbb-5bbb-9bbb-bbbbbbbbbbbb", "Patient")
     >>> fapi.get_uid(match) == fapi.get_uid(manual)
     True
+    >>> match.getPhone()
+    '+61 3 9444 5555'

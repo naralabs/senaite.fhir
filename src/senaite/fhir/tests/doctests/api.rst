@@ -531,6 +531,10 @@ the object's ``uids`` mapping, so the two identities stay distinct::
     ...     "resourceType": "Patient",
     ...     "id": "11111111-1111-5111-9111-111111111111",
     ...     "name": [{"use": "official", "family": "Newman", "given": ["Anne"]}],
+    ...     "telecom": [
+    ...         {"system": "phone", "value": "+61 3 9000 1234", "use": "home"},
+    ...         {"system": "phone", "value": "+61 412 345 678", "use": "mobile"},
+    ...     ],
     ...     "gender": "female",
     ...     "birthDate": "1990-06-15",
     ...     "identifier": [{"use": "secondary", "value": "PAT-NEW"}],
@@ -560,6 +564,17 @@ The incoming FHIR id is preserved in the annotation storage::
 
     >>> created.getLastname()
     'Newman'
+
+    >>> created.getPhone() == "+61 3 9000 1234"
+    True
+
+    >>> numbers = created.getAdditionalPhoneNumbers()
+    >>> len(numbers)
+    1
+    >>> numbers[0]["name"] == "mobile"
+    True
+    >>> numbers[0]["phone"] == "+61 412 345 678"
+    True
 
     >>> transaction.commit()
 
@@ -720,12 +735,17 @@ content object (the caller resolves it first, e.g. via ``get_object`` or
     >>> fresh["name"] = [
     ...     {"use": "official", "family": "Smith", "given": ["Anne"]},
     ... ]
+    >>> fresh["telecom"] = [
+    ...     {"system": "phone", "value": "+61-3-9111-2222", "use": "home"},
+    ... ]
     >>> obj = fapi.get_object(fresh)
     >>> updated = fapi.update(obj, fresh)
     >>> fapi.get_uid(updated) == fapi.get_uid(created)
     True
     >>> updated.getLastname()
     'Smith'
+    >>> updated.getPhone()
+    '+61-3-9111-2222'
 
 
 create (brand-new resource)
@@ -746,6 +766,33 @@ A brand-new resource produces a new content object::
     True
     >>> minted.getLastname()
     'Mint'
+
+A Patient carrying only a ``mobile`` phone stores that number in the
+additional phone numbers field::
+
+    >>> mobile_only = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "33333333-3333-5333-9333-333333333333",
+    ...     "name": [{"use": "official", "family": "Mobile", "given": ["Only"]}],
+    ...     "gender": "female",
+    ...     "birthDate": "1999-03-22",
+    ...     "identifier": [{"use": "secondary", "value": "PAT-MOBILE-ONLY"}],
+    ...     "telecom": [{
+    ...         "system": "phone",
+    ...         "value": "+1-345-555-0193",
+    ...         "use": "mobile",
+    ...     }],
+    ... })
+    >>> mobile_patient = fapi.create(mobile_only)
+    >>> mobile_patient.getPhone()
+    ''
+    >>> mobile_numbers = mobile_patient.getAdditionalPhoneNumbers()
+    >>> len(mobile_numbers)
+    1
+    >>> mobile_numbers[0]["name"] == "mobile"
+    True
+    >>> mobile_numbers[0]["phone"] == "+1-345-555-0193"
+    True
 
 The FHIR id is stored separately; the SENAITE UID is distinct::
 
