@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #13 Fix dropped marital status on FHIR patient import
 - #10 Only emit FHIR basedOn for externally linked service requests
 - #9 Validate ServiceRequest orderDetail semantics in Bundle POST
 - #8 FHIR id system: decouple FHIR resource ids from SENAITE UIDs
