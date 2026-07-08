@@ -42,4 +42,9 @@
   <adapter for="senaite.fhir.interfaces.IServiceRequestResource"
            factory=".analysisrequest.ResourceToAnalysisRequest"/>
 
+  <!-- Instrument To FHIR Device -->
+  <adapter for="bika.lims.interfaces.IInstrument"
+           factory=".device.InstrumentToDevice"
+           provides="senaite.fhir.interfaces.IContentToFHIR"/>
+
 </configure>
