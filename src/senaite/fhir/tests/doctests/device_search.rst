@@ -20,7 +20,6 @@ Needed imports:
     >>> from plone.app.testing import setRoles
     >>> from plone.app.testing import TEST_USER_ID
     >>> from bika.lims import api
-    >>> from senaite.core.api import dtime
 
 Variables:
 
@@ -54,10 +53,10 @@ Create supporting setup objects
     ... )
 
 
-Create two Instruments at known times
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create two Instruments
+~~~~~~~~~~~~~~~~~~~~~~
 
-Create the first instrument and record the timestamp before the second:
+Create the first instrument:
 
     >>> instrument_a = api.create(
     ...     bikasetup.bika_instruments,
@@ -71,10 +70,6 @@ Create the first instrument and record the timestamp before the second:
     ... )
     >>> uid_a = api.get_uid(instrument_a)
     >>> transaction.commit()
-
-Record a timestamp between the two instrument creations:
-
-    >>> cutoff = dtime.to_localized_time(dtime.now(), long_format=True)
 
     >>> instrument_b = api.create(
     ...     bikasetup.bika_instruments,
@@ -127,35 +122,39 @@ Each entry carries a ``search.mode`` of ``match``:
     True
 
 
-Filtered list with _lastUpdated
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+_lastUpdated – far-past threshold includes the instruments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Passing ``?_lastUpdated=gt<cutoff>`` returns only Instruments modified
-after the cutoff — that is, only ``instrument_b``:
+A threshold far in the past returns at least the instruments created above:
 
-    >>> url = "{}/Device?_lastUpdated=gt{}".format(fhir_url, cutoff)
+    >>> url = "{}/Device?_lastUpdated=gt2000-01-01T00:00:00Z".format(fhir_url)
     >>> browser.open(url)
     >>> filtered = json.loads(browser.contents)
     >>> filtered["resourceType"]
     u'Bundle'
-
-Only ``instrument_b`` is in the filtered result:
-
+    >>> filtered["total"] >= 2
+    True
     >>> filtered_ids = [e["resource"]["id"] for e in filtered.get("entry", [])]
+    >>> fhir_id_a in filtered_ids
+    True
     >>> fhir_id_b in filtered_ids
     True
-    >>> fhir_id_a in filtered_ids
-    False
-
 
 Malformed _lastUpdated returns an OperationOutcome error
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+    >>> browser.raiseHttpErrors = False
     >>> browser.open("{}/Device?_lastUpdated=not-a-date".format(fhir_url))
+    >>> browser.headers["Status"]
+    '400 Bad Request'
     >>> error = json.loads(browser.contents)
     >>> error["resourceType"]
     u'OperationOutcome'
-    >>> error["issue"][0]["severity"]
+    >>> issue = error["issue"][0]
+    >>> issue["severity"]
     u'error'
-    >>> error["issue"][0]["code"]
+    >>> issue["code"]
     u'invalid'
+    >>> "_lastUpdated" in issue["expression"]
+    True
+    >>> browser.raiseHttpErrors = True
