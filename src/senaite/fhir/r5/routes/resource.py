@@ -9,6 +9,7 @@ from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
 from senaite.fhir.api import find_object_for
+from senaite.fhir.config import INSTRUMENT_SERVICE_REQUEST_STATUSES
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IBundleResource
 from senaite.fhir.r5 import add_route
@@ -57,6 +58,10 @@ def get(context, request, resource_type=None, uid=None):
     # DiagnosticReport search (polling endpoint)
     if resource_type == "DiagnosticReport" and not uid:
         return get_diagnostic_report_bundle(context, request)
+
+    # ServiceRequest search (polling endpoint)
+    if resource_type == "ServiceRequest" and not uid:
+        return get_service_request_bundle(context, request)
 
     # all resources from the defined type
     portal_type = japi.resource_to_portal_type(resource_type)
@@ -316,6 +321,104 @@ def get_diagnostic_report_bundle(_context, request):
                 "resource": dict(obs),
                 "search": {"mode": "include"},
             })
+
+    now = dtime.to_localized_time(dtime.now(), long_format=True)
+    bundle_data = {
+        "resourceType": "Bundle",
+        "id": str(fapi.generate_UUID()),
+        "meta": {
+            "profile": [to_fhir_profile_url("SenaiteResultsBundle")],
+        },
+        "type": "searchset",
+        "timestamp": now,
+        "total": total_match,
+    }
+
+    if entries:
+        bundle_data["entry"] = entries
+
+    return ResultsBundleResource(bundle_data)
+
+
+def get_service_request_bundle(_context, request):
+    """Handle GET /ServiceRequest with _lastUpdated, intent, status
+    (polling endpoint).
+
+    Builds a SenaiteResultsBundle (searchset) containing the
+    instrument-scoped SenaiteInstrumentServiceRequest entries (intent
+    "filler-order") derived from Analyses, i.e. the ones created by
+    ``AnalysisToInstrumentServiceRequest``.
+    """
+    params = request.form
+
+    since = parse_last_updated(params.get("_lastUpdated", ""))
+    if isinstance(since, OperationOutcome):
+        return since
+
+    intent = params.get("intent", "")
+    if intent != "filler-order":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "required",
+            "details": {
+                "text": "intent=filler-order is required for this endpoint",
+            },
+            "diagnostics": "This endpoint only supports requests with intent=filler-order. Include intent=filler-order as a query parameter.",  # noqa: E501
+            "expression": ["intent"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    status = params.get("status", "")
+    if status != "active":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "required",
+            "details": {
+                "text": "status=active is required for this endpoint",
+            },
+            "diagnostics": "This endpoint only supports requests with status=active. Include status=active as a query parameter.",  # noqa: E501
+            "expression": ["status"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    # review_states of Analysis objects that map to the "active" FHIR status
+    active_statuses = [
+        review_state
+        for review_state, fhir_status in INSTRUMENT_SERVICE_REQUEST_STATUSES
+        if review_state and fhir_status == "active"
+    ]
+
+    query = {
+        "portal_type": "Analysis",
+        "review_state": active_statuses,
+    }
+    brains = api.search(query)
+
+    entries = []
+    total_match = 0
+
+    for brain in brains:
+        analysis = api.get_object(brain, default=None)
+        if not analysis:
+            continue
+
+        if since and api.get_modification_date(analysis) < since:
+            continue
+
+        sr = fapi.to_fhir_resource(
+            analysis, resource_type="ServiceRequest", default=None)
+        if not sr:
+            # never linked (no Instrument was ever assigned)
+            continue
+
+        total_match += 1
+        entries.append({
+            "fullUrl": "ServiceRequest/{}".format(sr.id),
+            "resource": dict(sr),
+            "search": {"mode": "match"},
+        })
 
     now = dtime.to_localized_time(dtime.now(), long_format=True)
     bundle_data = {
