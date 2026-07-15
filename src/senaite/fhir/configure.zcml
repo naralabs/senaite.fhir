@@ -10,6 +10,7 @@
   <include package=".catalog"/>
   <include package=".converter"/>
   <include package=".finder"/>
+  <include package=".monkeys"/>
   <include package=".r5"/>
   <include package=".resource"/>
 
