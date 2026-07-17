@@ -442,10 +442,10 @@ def get_service_request_bundle(_context, request):
     page = matches[offset:offset + count] if count > 0 else []
 
     entries = [{
-        "fullUrl": "ServiceRequest/{}".format(sr.id),
-        "resource": dict(sr),
+        "fullUrl": "ServiceRequest/{}".format(service_request.id),
+        "resource": dict(service_request),
         "search": {"mode": "match"},
-    } for _, sr in page]
+    } for _, service_request in page]
 
     now = dtime.to_localized_time(dtime.now(), long_format=True)
     bundle_data = {
