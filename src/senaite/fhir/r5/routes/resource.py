@@ -9,6 +9,7 @@ from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
 from senaite.fhir.api import find_object_for
+from senaite.fhir.config import DEFAULT_BUNDLE_PAGE_COUNT
 from senaite.fhir.config import INSTRUMENT_SERVICE_REQUEST_STATUSES
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IBundleResource
@@ -21,6 +22,7 @@ from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocation
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationResource  # noqa: E501
 from senaite.jsonapi import api as japi
 from senaite.jsonapi import request as req
+from six.moves.urllib_parse import urlencode
 
 ENDPOINT = "senaite.fhir.r5"
 ENDPOINT_GET = "%s.get" % ENDPOINT
@@ -341,8 +343,8 @@ def get_diagnostic_report_bundle(_context, request):
 
 
 def get_service_request_bundle(_context, request):
-    """Handle GET /ServiceRequest with _lastUpdated, intent, status
-    (polling endpoint).
+    """Handle GET /ServiceRequest with _lastUpdated, intent, status, _sort,
+    _count and _offset (polling endpoint).
 
     Builds a SenaiteResultsBundle (searchset) containing the
     instrument-scoped SenaiteInstrumentServiceRequest entries (intent
@@ -383,6 +385,25 @@ def get_service_request_bundle(_context, request):
         }
         return OperationOutcome({"issue": [issue]})
 
+    sort = params.get("_sort", "")
+    if sort != "lastUpdated":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "required",
+            "details": {
+                "text": "_sort=lastUpdated is required for this endpoint",
+            },
+            "diagnostics": "This endpoint requires a stable sort order so that _count/_offset pagination does not miss or duplicate results. Include _sort=lastUpdated as a query parameter.",  # noqa: E501
+            "expression": ["_sort"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    pagination = parse_pagination_params(params)
+    if isinstance(pagination, OperationOutcome):
+        return pagination
+    count, offset = pagination
+
     # review_states of Analysis objects that map to the "active" FHIR status
     active_statuses = [
         review_state
@@ -396,8 +417,7 @@ def get_service_request_bundle(_context, request):
     }
     brains = api.search(query)
 
-    entries = []
-    total_match = 0
+    matches = []
 
     for brain in brains:
         analysis = api.get_object(brain, default=None)
@@ -413,12 +433,19 @@ def get_service_request_bundle(_context, request):
             # never linked (no Instrument was ever assigned)
             continue
 
-        total_match += 1
-        entries.append({
-            "fullUrl": "ServiceRequest/{}".format(sr.id),
-            "resource": dict(sr),
-            "search": {"mode": "match"},
-        })
+        matches.append((dtime.to_dt(sr["authoredOn"]), sr))
+
+    # sort descending by authoredOn
+    matches.sort(key=lambda match: match[0], reverse=True)
+
+    total_match = len(matches)
+    page = matches[offset:offset + count] if count > 0 else []
+
+    entries = [{
+        "fullUrl": "ServiceRequest/{}".format(sr.id),
+        "resource": dict(sr),
+        "search": {"mode": "match"},
+    } for _, sr in page]
 
     now = dtime.to_localized_time(dtime.now(), long_format=True)
     bundle_data = {
@@ -430,12 +457,42 @@ def get_service_request_bundle(_context, request):
         "type": "searchset",
         "timestamp": now,
         "total": total_match,
+        "link": build_page_links(request, offset, count, total_match),
     }
 
     if entries:
         bundle_data["entry"] = entries
 
     return ResultsBundleResource(bundle_data)
+
+
+def build_page_links(request, offset, count, total):
+    """Build the Bundle.link "self"/"next"/"previous" entries for a paged
+    searchset, preserving the request's own query parameters.
+    """
+    links = [build_page_link(request, "self", offset, count)]
+
+    if count > 0 and offset + count < total:
+        links.append(build_page_link(request, "next", offset + count, count))
+
+    if offset > 0:
+        previous_offset = max(offset - count, 0) if count > 0 else 0
+        links.append(
+            build_page_link(request, "previous", previous_offset, count))
+
+    return links
+
+
+def build_page_link(request, relation, offset, count):
+    """Build a single Bundle.link entry for the given _offset/_count page
+    """
+    params = dict(request.form)
+    params["_count"] = count
+    params["_offset"] = offset
+    return {
+        "relation": relation,
+        "url": "%s?%s" % (request.URL, urlencode(params, doseq=True)),
+    }
 
 
 def parse_last_updated(value):
@@ -463,6 +520,32 @@ def parse_last_updated(value):
         return OperationOutcome({"issue": [issue]})
 
     return since
+
+
+def parse_pagination_params(params):
+    """Parse and validate the ``_count``/``_offset`` paging parameters
+    """
+    raw_count = params.get("_count", "")
+    raw_offset = params.get("_offset", "")
+
+    count = int(raw_count) if raw_count else DEFAULT_BUNDLE_PAGE_COUNT
+    offset = int(raw_offset) if raw_offset else 0
+
+    if count < 0 or offset < 0:
+        request = req.get_request()
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "invalid",
+            "details": {
+                "text": "Malformed _count/_offset value",
+            },
+            "diagnostics": "_count and _offset must be non-negative integers.",  # noqa: E501
+            "expression": ["_count", "_offset"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    return count, offset
 
 
 def strip_presented_form_data(dr_dict):

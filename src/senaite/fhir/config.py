@@ -132,3 +132,5 @@ DEFAULT_INSTRUMENT_SERVICE_REQUEST_CATEGORY = {
     }],
     "text": "Laboratory procedure",
 }
+
+DEFAULT_BUNDLE_PAGE_COUNT = 10
