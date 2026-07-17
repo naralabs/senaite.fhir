@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #15 Create FHIR instrument ServiceRequests when an instrument is assigned to an analysis
 - #13 Fix dropped marital status on FHIR patient import
 - #12 Use additional_phone_numbers for patient phone mapping
 - #10 Only emit FHIR basedOn for externally linked service requests
