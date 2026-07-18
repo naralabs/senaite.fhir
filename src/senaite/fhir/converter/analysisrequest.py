@@ -194,6 +194,16 @@ class ResourceToAnalysisRequest(object):
         ref = self.resource.specimen[0]
         sibling = self.get_bundle_sibling(ref)
         if sibling:
+            # Resolve the SampleType through the SampleTypeFinder adapter
+            # directly, instead of fapi.find_object_for. A Specimen has no
+            # counterpart content object in SENAITE (there is no "Specimen"
+            # type), so it must be matched to a SampleType by business key
+            # (its type.coding display), which is exactly what the adapter
+            # does. find_object_for would try an exact FHIR-UID match first
+            # and wrongly succeed: once a sample is created from the bundle,
+            # the incoming Specimen's UID is stored on that AnalysisRequest,
+            # so subsequent lookups resolve the Specimen UID back to the
+            # AnalysisRequest instead of the SampleType.
             sample_type = SampleTypeFinder(sibling).find()
             if sample_type:
                 return sample_type
@@ -252,7 +262,7 @@ class ResourceToAnalysisRequest(object):
         """
         ref = self.resource.subject
         sibling = self.get_bundle_sibling(ref)
-        obj = fapi.find_object_for(sibling)
+        obj = fapi.find_object_for(sibling, default=None)
         if obj:
             return obj
         raise ValueError("%r: No Patient for %r" % (self.resource, sibling))
@@ -263,7 +273,7 @@ class ResourceToAnalysisRequest(object):
         """
         ref = self.resource.client
         sibling = self.get_bundle_sibling(ref)
-        obj = fapi.find_object_for(sibling)
+        obj = fapi.find_object_for(sibling, default=None)
         if obj:
             return obj
         raise ValueError("%r: No Client for %r" % (self.resource, sibling))
