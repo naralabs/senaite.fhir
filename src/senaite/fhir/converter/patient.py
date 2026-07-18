@@ -286,11 +286,11 @@ class ResourceToPatient(object):
             "firstname": api.safe_unicode(firstname),
             "middlename": api.safe_unicode(middlename),
             "lastname": api.safe_unicode(lastname),
-            "marital": api.safe_unicode(marital),
+            "marital_status": api.safe_unicode(marital),
             "email": api.safe_unicode(primary_email),
             "additional_emails": additional_emails,
             "phone": api.safe_unicode(primary_phone),
-            "additional_phones": additional_phones,
+            "additional_phone_numbers": additional_phones,
         }
 
     def get_mrn(self):
