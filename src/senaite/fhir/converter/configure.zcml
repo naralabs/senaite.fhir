@@ -14,6 +14,12 @@
            factory=".observation.AnalysisToObservation"
            provides="senaite.fhir.interfaces.IContentToFHIR"/>
 
+  <!-- AnalysisRequest to FHIR Specimen (native SENAITE samples without annotation) -->
+  <adapter name="Specimen"
+           factory=".analysisrequest.AnalysisRequestToSpecimen"
+           for="bika.lims.interfaces.IAnalysisRequest"
+           provides="senaite.fhir.interfaces.IContentToFHIR"/>
+
   <!-- AnalysisRequest revoke transition to FHIR -->
   <adapter name="senaite.fhir.action.revoke"
            factory=".analysisrequest.AnalysisRequestRevokedToResource"
