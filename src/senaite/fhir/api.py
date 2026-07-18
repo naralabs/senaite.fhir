@@ -419,13 +419,25 @@ def get_object(thing, default=_marker):
 def find_object_for(resource, default=_marker):
     """Finds the SENAITE object that corresponds to the given FHIR resource.
 
-    Resolution happens in two steps:
+    The counterpart is always an object of the resource's mapped portal type
+    (see ``get_portal_type``), e.g. a Specimen resolves to a SampleType, an
+    Organization to a Client. Resolution happens in two steps, both scoped to
+    that portal type:
 
     1. an exact match by FHIR UID through the FHIR catalog (see
-       ``get_object``);
+       ``get_object_by_fhir_uid``);
     2. when that misses, the ``IContentFinder`` adapter registered for the
        resource (if any) is asked to find a suitable counterpart by business
-       keys (e.g. ``ClientFinder`` matches a Client by its ``ClientID``).
+       keys (e.g. ``ClientFinder`` matches a Client by its ``ClientID``,
+       ``SampleTypeFinder`` matches a SampleType by its display).
+
+    Constraining the UID lookup to the mapped portal type is what makes this
+    reliable for resources whose FHIR UID is cross-referenced elsewhere: a
+    Specimen's UID is stored on the AnalysisRequest that owns it, so an
+    unconstrained lookup (see ``get_object``) would resolve a Specimen to that
+    AnalysisRequest instead of to its SampleType counterpart. Callers can rely
+    on the result being of the mapped portal type without knowing any of these
+    FHIR-to-SENAITE mapping details.
 
     This is used by the bundle POST endpoint to resolve existing content
     (so it gets updated instead of duplicated) before falling back to create.
@@ -442,8 +454,13 @@ def find_object_for(resource, default=_marker):
             fail("Type is not supported: %r" % resource)
         return default
 
-    # search by fhir UID exact match first
-    match = get_object(resource, default=None)
+    # the counterpart is always of the resource's mapped portal type
+    portal_type = get_portal_type(resource)
+
+    # search by fhir UID exact match first, scoped to that portal type
+    fhir_uid = get_uid(resource)
+    match = get_object_by_fhir_uid(fhir_uid, portal_type=portal_type,
+                                   default=None)
     if match:
         return match
 
