@@ -1,13 +1,14 @@
-FHIR Bundle POST (Specimen pre-flight and SampleType re-linking)
+FHIR Bundle POST (Specimen SampleType validation and re-linking)
 ----------------------------------------------------------------
 
 Exercises three Specimen-specific behaviours introduced alongside the FHIR
 Specimen listing:
 
-1. **Pre-flight rejection**: when a ``Bundle`` contains a ``Specimen`` whose
-   ``type.coding.display`` does not match any ``SampleType`` in SENAITE, the
-   entire bundle is rejected with a ``400 OperationOutcome`` before any content
-   is created or modified.
+1. **Rejection on missing SampleType**: when a ``Bundle`` contains a
+   ``Specimen`` whose ``type.coding.display`` does not match any
+   ``SampleType`` in SENAITE, the ServiceRequest conversion raises and the
+   whole bundle is rejected with a ``400 OperationOutcome``. As the POST is a
+   single all-or-nothing transaction, no content is persisted.
 
 2. **Specimen appears in listing**: after a successful bundle POST the stored
    Specimen annotation is returned by ``GET /Specimen``.
@@ -80,12 +81,12 @@ test:
     >>> transaction.commit()
 
 
-Pre-flight rejection – missing SampleType
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Rejection – missing SampleType
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 When the ``Specimen`` in the bundle cannot be matched to an existing
-``SampleType`` in SENAITE the entire bundle is rejected before any content is
-created or modified:
+``SampleType`` in SENAITE the ServiceRequest conversion raises and the whole
+bundle is rejected; the transaction is rolled back so no content is persisted:
 
     >>> browser.post("{}/Bundle".format(fhir_url), json.dumps(bundle),
     ...              content_type="application/json")

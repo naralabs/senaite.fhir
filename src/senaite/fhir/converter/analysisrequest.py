@@ -195,8 +195,11 @@ class ResourceToAnalysisRequest(object):
         obj = fapi.find_object_for(sibling, default=None)
         if obj:
             return obj
-        raise ValueError("%r: No SampleType for specimen: %r" %
-                         (self.resource, sibling))
+        raise ServiceRequestValidationError(
+            "Specimen has no matching SampleType in SENAITE",
+            expression=["Specimen.type"],
+            code="not-found",
+        )
 
     @memoize
     def get_requester(self):

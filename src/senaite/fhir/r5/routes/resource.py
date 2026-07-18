@@ -12,7 +12,6 @@ from senaite.fhir.api import find_object_for
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.finder.sampletype import SampleTypeFinder
 from senaite.fhir.interfaces import IBundleResource
-from senaite.fhir.interfaces import ISpecimenResource
 from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
 from senaite.fhir.resource.operationoutcome import OperationOutcome
@@ -88,13 +87,6 @@ def post(context, request, resource_type=None):
     # get the FHIR resources from the request
     resources = get_fhir_resources()
 
-    # Pre-flight: if any Specimen in the bundle has no matching SampleType in
-    # SENAITE the entire bundle must be rejected before any content is touched
-    issue = check_existing_sample_type(resources)
-    if issue:
-        request.response.setStatus(400)
-        return OperationOutcome({"issue": [issue]})
-
     entries = []
     errored = False
     for resource in resources:
@@ -117,7 +109,7 @@ def post(context, request, resource_type=None):
             request.response.setStatus(400)
             issue = {
                 "severity": "error",
-                "code": "business-rule",
+                "code": getattr(e, "code", "business-rule"),
                 "details": {"text": str(e)},
                 "expression": e.expression,
             }
@@ -167,27 +159,6 @@ def post(context, request, resource_type=None):
         "entry": entries,
     }
     return BundleResponseResource(resp)
-
-
-def check_existing_sample_type(resources):
-    """Return an OperationOutcome issue dict if any Specimen in the resource
-    list cannot be mapped to an existing SampleType in SENAITE, or None when
-    all Specimens are resolvable
-    """
-    for resource in resources:
-        if not ISpecimenResource.providedBy(resource):
-            continue
-
-        if not SampleTypeFinder(resource).find():
-            return {
-                "severity": "error",
-                "code": "not-found",
-                "details": {
-                    "text": "Specimen has no matching SampleType in SENAITE"
-                },
-                "expression": ["Specimen.type"],
-            }
-    return None
 
 
 def process_bundle_specimen(sr_resource, ar_obj, ar_status, ar_modified):
