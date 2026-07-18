@@ -416,7 +416,7 @@ def get_object(thing, default=_marker):
     return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
 
 
-def find_object_for(resource):
+def find_object_for(resource, default=_marker):
     """Finds the SENAITE object that corresponds to the given FHIR resource.
 
     Resolution happens in two steps:
@@ -431,11 +431,16 @@ def find_object_for(resource):
     (so it gets updated instead of duplicated) before falling back to create.
 
     :param resource: the FHIR resource to find a counterpart for
+    :param default: value to return when ``resource`` is not a FHIR resource;
+        when omitted, a ``FHIRAPIError`` is raised instead
     :returns: the matching content object, or ``None`` when none is found
-    :raises FHIRAPIError: if ``resource`` is not a FHIR resource
+    :raises FHIRAPIError: if ``resource`` is not a FHIR resource and no
+        ``default`` was provided
     """
     if not is_fhir_resource(resource):
-        fail("Type is not supported: %r" % resource)
+        if default is _marker:
+            fail("Type is not supported: %r" % resource)
+        return default
 
     # search by fhir UID exact match first
     match = get_object(resource, default=None)
