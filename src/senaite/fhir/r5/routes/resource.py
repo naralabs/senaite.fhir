@@ -8,6 +8,7 @@ from bika.lims.workflow import doActionFor as do_action_for
 from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
+from senaite.fhir import logger
 from senaite.fhir.api import find_object_for
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.finder.sampletype import SampleTypeFinder
@@ -88,7 +89,6 @@ def post(context, request, resource_type=None):
     resources = get_fhir_resources()
 
     entries = []
-    errored = False
     for resource in resources:
 
         # Skip if creation or update of this resource is not supported
@@ -103,7 +103,7 @@ def post(context, request, resource_type=None):
                 status = "201 Created"
             else:
                 obj = fapi.update(obj, resource)
-                status = "201 Updated"
+                status = "200 OK"
         except ServiceRequestValidationError as e:
             transaction.abort()
             request.response.setStatus(400)
@@ -114,13 +114,25 @@ def post(context, request, resource_type=None):
                 "expression": e.expression,
             }
             return OperationOutcome({"issue": [issue]})
-        except Exception as e:
-            errored = True
-            status = "500 %s" % str(e)
-            # flush entries to only report back the errored resource
-            entries = []
-            # prevent partial commits
+        except Exception:
+            # Unexpected failure: roll back the whole bundle (all-or-none),
+            # log the details server-side and return a generic error. Never
+            # leak the internal exception text to the client.
             transaction.abort()
+            logger.exception(
+                "Bundle POST failed while processing %s/%s",
+                resource.resourceType, resource.id)
+            request.response.setStatus(500)
+            issue = {
+                "severity": "error",
+                "code": "exception",
+                "details": {
+                    "text": "Internal error while processing the %s resource"
+                            % resource.resourceType,
+                },
+                "expression": ["%s.id" % resource.resourceType],
+            }
+            return OperationOutcome({"issue": [issue]})
 
         # build the response entry
         fullUrl = "%s/%s" % (resource.resourceType, resource.id)
@@ -136,10 +148,6 @@ def post(context, request, resource_type=None):
             }
         }
         entries.append(entry)
-
-        # Skip further processing if errored
-        if errored:
-            break
 
         # If the resource is a ServiceRequest, process any Specimen resources
         if resource.resourceType == "ServiceRequest" and obj:
@@ -388,6 +396,8 @@ def get_diagnostic_report_bundle(_context, request):
 
     for brain in brains:
         sample = api.get_object(brain, default=None)
+        if not sample:
+            continue
         reports = sample.getReports()
         if not reports:
             continue
