@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #18 Fix bundle POST response status, error handling and None guard
 - #11 Build Specimen resources from SENAITE Analysis Request data
 - #13 Fix dropped marital status on FHIR patient import
 - #12 Use additional_phone_numbers for patient phone mapping
