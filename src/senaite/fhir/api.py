@@ -398,22 +398,30 @@ def get_object(thing, default=_marker):
         ``FHIRAPIError`` is raised
     :returns: the resolved content object, or ``default``
     """
-    if not is_fhir_resource(thing):
-        # delegate to core's api
-        obj = api.get_object(thing, default=None)
-        if obj:
-            return obj
+    # a FHIR resource: resolve its counterpart, narrowed to the mapped type.
+    # This must be checked before the ``is_uuid`` branch below, as a resource
+    # also satisfies ``is_uuid`` (its id is a UUID) and would otherwise be
+    # searched across all portal types, resolving e.g. a Specimen to the
+    # AnalysisRequest that cross-references its UID instead of a SampleType.
+    if is_fhir_resource(thing):
+        fhir_uid = get_uid(thing)
+        portal_type = get_portal_type(thing)
+        return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
 
-    # fallback to search by FHIR UID
+    # a content object, catalog brain or SENAITE UID: delegate to core's api
+    obj = api.get_object(thing, default=None)
+    if obj:
+        return obj
+
+    # a bare FHIR id/UID string: search across all portal types (type unknown)
     if is_uuid(thing):
-        # search without portal_type (less performant)
         fhir_uid = get_uuid(thing).hex
         return get_object_by_fhir_uid(fhir_uid, default=default)
 
-    # have a fhir_resource
-    fhir_uid = get_uid(thing)
-    portal_type = get_portal_type(thing)
-    return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
+    # not resolvable
+    if default is _marker:
+        fail(msg="Not Found", status=404)
+    return default
 
 
 def find_object_for(resource, default=_marker):
@@ -425,7 +433,7 @@ def find_object_for(resource, default=_marker):
     that portal type:
 
     1. an exact match by FHIR UID through the FHIR catalog (see
-       ``get_object_by_fhir_uid``);
+       ``get_object``, which narrows the lookup to that portal type);
     2. when that misses, the ``IContentFinder`` adapter registered for the
        resource (if any) is asked to find a suitable counterpart by business
        keys (e.g. ``ClientFinder`` matches a Client by its ``ClientID``,
@@ -454,13 +462,8 @@ def find_object_for(resource, default=_marker):
             fail("Type is not supported: %r" % resource)
         return default
 
-    # the counterpart is always of the resource's mapped portal type
-    portal_type = get_portal_type(resource)
-
-    # search by fhir UID exact match first, scoped to that portal type
-    fhir_uid = get_uid(resource)
-    match = get_object_by_fhir_uid(fhir_uid, portal_type=portal_type,
-                                   default=None)
+    # exact match by FHIR UID, scoped to the resource's mapped portal type
+    match = get_object(resource, default=None)
     if match:
         return match
 
