@@ -33,35 +33,6 @@ Variables:
     >>> transaction.commit()
 
 
-Reference Resource
-~~~~~~~~~~~~~~~~~~
-
-The expected Device fields for the Instrument we are about to create:
-
-    >>> reference = {
-    ...     "resourceType": "Device",
-    ...     "displayName": "Atomic Absorption Spectrometer",
-    ...     "identifier": [{"use": "usual", "value": "INS-001"}],
-    ...     "manufacturer": "Agilent Technologies",
-    ...     "modelNumber": "240FS AA",
-    ...     "serialNumber": "SN-20240101",
-    ...     "text": {
-    ...         "status": "generated",
-    ...         "div": (
-    ...             '<div xmlns="http://www.w3.org/1999/xhtml">'
-    ...             "Device of Atomic Absorption Spectrometer"
-    ...             " (Asset: INS-001, Serial number: SN-20240101)"
-    ...             "</div>"
-    ...         ),
-    ...     },
-    ...     "note": [
-    ...         {"text": "Description: High-throughput AA spectrometer for metals analysis"},
-    ...         {"text": "Location: Lab Room 4"},
-    ...         {"text": "Instrument Type: Atomic Absorption"},
-    ...     ],
-    ... }
-
-
 Create supporting setup objects
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -119,56 +90,68 @@ Calling ``/senaite/@@FHIR/r5/Device/<uid>`` returns the FHIR Device:
 
 The resource type is ``Device``:
 
-    >>> resource["resourceType"] == reference["resourceType"]
-    True
+    >>> resource["resourceType"]
+    u'Device'
 
 ``displayName`` maps to the Instrument title:
 
-    >>> resource["displayName"] == reference["displayName"]
+    >>> resource["displayName"] == api.get_title(instrument)
     True
 
 ``identifier`` carries the asset number with use ``usual``:
 
     >>> identifiers = resource.get("identifier", [])
     >>> usual = [i for i in identifiers if i.get("use") == "usual"]
-    >>> usual[0]["value"] == reference["identifier"][0]["value"]
+    >>> usual[0]["value"] == instrument.getAssetNumber()
     True
 
 ``manufacturer`` is the title of the linked Manufacturer object:
 
-    >>> resource["manufacturer"] == reference["manufacturer"]
+    >>> resource["manufacturer"] == api.get_title(instrument.getManufacturer())
     True
 
 ``modelNumber`` maps to the Model field:
 
-    >>> resource["modelNumber"] == reference["modelNumber"]
+    >>> resource["modelNumber"] == instrument.getModel()
     True
 
 ``serialNumber`` maps to the SerialNo field:
 
-    >>> resource["serialNumber"] == reference["serialNumber"]
+    >>> resource["serialNumber"] == instrument.getSerialNo()
     True
 
 ``text`` is a generated narrative with the device title, asset number, and serial number:
 
-    >>> resource["text"]["status"] == reference["text"]["status"]
-    True
-    >>> resource["text"]["div"] == reference["text"]["div"]
+    >>> resource["text"]["status"]
+    u'generated'
+    >>> expected_div = (
+    ...     u'<div xmlns="http://www.w3.org/1999/xhtml">'
+    ...     u"Device of {} (Asset: {}, Serial number: {})"
+    ...     u"</div>"
+    ... ).format(
+    ...     api.get_title(instrument),
+    ...     instrument.getAssetNumber(),
+    ...     instrument.getSerialNo(),
+    ... )
+    >>> resource["text"]["div"] == expected_div
     True
 
 ``note[0].text`` is the Instrument description, prefixed with ``Description: ``:
 
-    >>> resource["note"][0]["text"] == reference["note"][0]["text"]
+    >>> resource["note"][0]["text"] == u"Description: {}".format(
+    ...     instrument.Description())
     True
 
 ``note[1].text`` is the location, prefixed with ``Location: ``:
 
-    >>> resource["note"][1]["text"] == reference["note"][1]["text"]
+    >>> resource["note"][1]["text"] == u"Location: {}".format(
+    ...     api.get_title(instrument.getInstrumentLocation()))
     True
 
 ``note[2].text`` is the instrument type, prefixed with ``Instrument Type: ``:
 
-    >>> resource["note"][2]["text"] == reference["note"][2]["text"]
+    >>> resource["note"][2]["text"] == u"Instrument Type: {}".format(
+    ...     api.get_title(instrument.getInstrumentType()))
     True
 
 The FHIR resource ``id`` is a stable UUID:
