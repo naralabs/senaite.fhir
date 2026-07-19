@@ -98,11 +98,21 @@ The resource type is ``Device``:
     >>> resource["displayName"] == api.get_title(instrument)
     True
 
-``identifier`` carries the asset number with use ``usual``:
+``identifier`` follows the SenaiteDevice profile's two slices. The
+``senaiteId`` slice (``use`` ``usual``) carries the SENAITE-assigned id under
+the ``device-id`` NamingSystem:
 
     >>> identifiers = resource.get("identifier", [])
     >>> usual = [i for i in identifiers if i.get("use") == "usual"]
-    >>> usual[0]["value"] == instrument.getAssetNumber()
+    >>> usual[0]["value"] == api.get_id(instrument)
+    True
+    >>> usual[0]["system"]
+    u'https://fhir.senaite.org/NamingSystem/device-id'
+
+The ``externalId`` slice (``use`` ``secondary``) carries the asset number:
+
+    >>> secondary = [i for i in identifiers if i.get("use") == "secondary"]
+    >>> secondary[0]["value"] == instrument.getAssetNumber()
     True
 
 ``manufacturer`` is the title of the linked Manufacturer object:
@@ -230,11 +240,18 @@ The narrative degrades to just the title, with no asset/serial parenthesis:
     ... ).format(api.get_title(minimal))
     True
 
-Every optional field sourced from an empty Instrument field is omitted
+The SENAITE-assigned ``senaiteId`` identifier is always present, but the
+optional ``externalId`` (asset number) slice is omitted:
+
+    >>> min_ids = minimal_resource.get("identifier", [])
+    >>> [i["use"] for i in min_ids]
+    [u'usual']
+    >>> any(i.get("use") == "secondary" for i in min_ids)
+    False
+
+Every other optional field sourced from an empty Instrument field is omitted
 entirely (no ``null`` placeholder key):
 
-    >>> "identifier" in minimal_resource
-    False
     >>> "manufacturer" in minimal_resource
     False
     >>> "modelNumber" in minimal_resource

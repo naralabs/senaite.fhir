@@ -4,6 +4,7 @@ from bika.lims import api
 from bika.lims.interfaces import IInstrument
 from senaite.fhir import api as fapi
 from senaite.fhir.converter import to_fhir_datetime
+from senaite.fhir.converter import to_fhir_identifier
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.resource.device import DeviceResource
@@ -66,13 +67,28 @@ class InstrumentToDevice(object):
         return api.safe_unicode(api.get_title(self.instrument)) or None
 
     def get_identifier(self):
+        """Returns the Device.identifier slices defined by the SenaiteDevice
+        profile: the SENAITE-assigned id (use=usual, device-id NamingSystem)
+        and, when set, the asset register number as an external id
+        (use=secondary).
+        """
+        identifiers = []
+
+        # senaiteId slice: SENAITE server-generated id
+        senaite_id = to_fhir_identifier(
+            "device-id", api.get_id(self.instrument), use="usual")
+        if senaite_id:
+            identifiers.append(senaite_id)
+
+        # externalId slice: asset register number
         asset_number = self.instrument.getAssetNumber()
-        if not asset_number:
-            return []
-        return [{
-            "use": "usual",
-            "value": api.safe_unicode(asset_number),
-        }]
+        if asset_number:
+            identifiers.append({
+                "use": "secondary",
+                "value": api.safe_unicode(asset_number),
+            })
+
+        return identifiers
 
     def get_manufacturer(self):
         manufacturer = self.instrument.getManufacturer()
