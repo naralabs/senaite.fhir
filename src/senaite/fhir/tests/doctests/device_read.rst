@@ -154,6 +154,19 @@ The resource type is ``Device``:
     ...     api.get_title(instrument.getInstrumentType()))
     True
 
+``meta.profile`` advertises the SENAITE Device StructureDefinition:
+
+    >>> from senaite.fhir.converter import to_fhir_datetime
+    >>> from senaite.fhir.converter import to_fhir_profile_url
+    >>> resource["meta"]["profile"] == [to_fhir_profile_url("SenaiteDevice")]
+    True
+
+``meta.lastUpdated`` maps to the Instrument modification date:
+
+    >>> resource["meta"]["lastUpdated"] == to_fhir_datetime(
+    ...     api.get_modification_date(instrument))
+    True
+
 The FHIR resource ``id`` is a stable UUID:
 
     >>> fhir_id = resource.get("id")
