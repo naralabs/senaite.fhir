@@ -191,3 +191,55 @@ Re-fetching via the SENAITE UID returns the same stable ``id``:
     >>> browser.open("{}/Device/{}".format(fhir_url, uid))
     >>> json.loads(browser.contents)["id"] == fhir_id
     True
+
+
+Empty fields are omitted
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Create a minimally-populated Instrument — only a title, no asset number,
+manufacturer, model, serial number, location, type, or description:
+
+    >>> minimal = api.create(
+    ...     bikasetup.bika_instruments,
+    ...     "Instrument",
+    ...     title=u"Bare Instrument",
+    ... )
+    >>> minimal_uid = api.get_uid(minimal)
+    >>> transaction.commit()
+
+    >>> browser.open("{}/Device/{}".format(fhir_url, minimal_uid))
+    >>> minimal_resource = json.loads(browser.contents)
+
+The mandatory fields are still present:
+
+    >>> minimal_resource["resourceType"]
+    u'Device'
+    >>> minimal_resource["displayName"] == api.get_title(minimal)
+    True
+    >>> bool(minimal_resource.get("id"))
+    True
+    >>> bool(minimal_resource["meta"]["lastUpdated"])
+    True
+
+The narrative degrades to just the title, with no asset/serial parenthesis:
+
+    >>> minimal_resource["text"]["div"] == (
+    ...     u'<div xmlns="http://www.w3.org/1999/xhtml">'
+    ...     u"Device of {}"
+    ...     u"</div>"
+    ... ).format(api.get_title(minimal))
+    True
+
+Every optional field sourced from an empty Instrument field is omitted
+entirely (no ``null`` placeholder key):
+
+    >>> "identifier" in minimal_resource
+    False
+    >>> "manufacturer" in minimal_resource
+    False
+    >>> "modelNumber" in minimal_resource
+    False
+    >>> "serialNumber" in minimal_resource
+    False
+    >>> "note" in minimal_resource
+    False
