@@ -3,7 +3,8 @@ from bika.lims.interfaces import IAnalysis
 from DateTime import DateTime
 from senaite.fhir import api as fapi
 from senaite.fhir.converter import to_fhir_datetime
-from senaite.fhir.resource import FHIRResource
+from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.resource.instrumentservicerequest import InstrumentServiceRequestResource  # noqa: E501
 
 
 def setInstrument(self, value, **kwargs):
@@ -47,11 +48,14 @@ def link_instrument_service_request(analysis):
         return uid
 
     uid = fapi.generate_UUID().hex
-    resource = FHIRResource({
+    resource = InstrumentServiceRequestResource({
         "resourceType": "ServiceRequest",
         "id": str(fapi.get_uuid(uid)),
         "intent": "filler-order",
         "authoredOn": now,
+        "meta": {
+            "profile": [to_fhir_profile_url("SenaiteInstrumentServiceRequest")]
+        },
     })
     fapi.link_fhir_resource(analysis, resource)
     return uid
