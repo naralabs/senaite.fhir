@@ -33,7 +33,7 @@ def link_instrument_service_request(analysis):
         uid to
     :returns: the FHIR uid (hex), or ``None`` when no Instrument is assigned
     """
-    if not analysis.getInstrument():
+    if not analysis.getRawInstrument():
         return None
 
     now = to_fhir_datetime(DateTime())
