@@ -12,6 +12,7 @@ class ServiceRequestValidationError(Exception):
     """Raised when a ServiceRequest violates validation rules
     """
 
-    def __init__(self, message, expression=None):
+    def __init__(self, message, expression=None, code="business-rule"):
         super(ServiceRequestValidationError, self).__init__(message)
         self.expression = expression or []
+        self.code = code
