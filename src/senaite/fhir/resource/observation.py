@@ -50,6 +50,14 @@ class ObservationResource(FHIRResource):
         return self.get("performer") or []
 
     @property
+    def device(self):
+        """Reference to the Device (Instrument) that produced the result.
+        https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.device
+        """
+        element = self.get("device")
+        return Reference(element) if element else None
+
+    @property
     def valueQuantity(self):
         """Numeric result with unit.
         https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.value_x_

@@ -285,8 +285,16 @@ def set_fhir_uids(obj, **kwargs):
     """
     obj = api.get_object(obj)
     storage = get_fhir_storage(obj)
-    for resource_type, uid in kwargs.items():
-        storage.setdefault("uids", {})[resource_type] = uid
+    # Reassign "uids" as a whole (rather than mutating the dict returned by
+    # storage.setdefault("uids", {}) in place) so the PersistentDict's
+    # __setitem__ fires and the change is actually persisted. An in-place
+    # mutation of the nested dict doesn't mark ``storage`` as changed, so a
+    # second resource type linked in a later transaction (e.g. an Analysis'
+    # instrument-scoped ServiceRequest followed by an incoming Observation)
+    # would silently fail to persist.
+    uids = dict(storage.get("uids") or {})
+    uids.update(kwargs)
+    storage["uids"] = uids
 
     # index/reindex object in fhir_catalog. Use the low-level _indexObject so
     # the object is forced into the FHIR catalog: the high-level indexObject
@@ -610,7 +618,8 @@ def can_create_or_update(resource):
 
     # TODO Make this configurable with a senaite.fhir-specific control panel
     supported_types = [
-        "ServiceRequest", "Patient", "Practitioner", "Organization"
+        "ServiceRequest", "Patient", "Practitioner", "Organization",
+        "Observation",
     ]
     if resource.resourceType not in supported_types:
         return False
@@ -714,7 +723,9 @@ def link_fhir_resource(obj, resource):
     Marks the object with ``IFHIRContent`` and records the resource's UID in
     the object's ``uids`` mapping (keyed by resource type, via
     ``set_fhir_uids``, which also indexes it in the FHIR catalog). The
-    serialized resource is also stored under ``data`` for offline use.
+    serialized resource is also stored under ``data`` for offline use --
+    unless that slot already holds a snapshot of a *different* resource type,
+    in which case it is left untouched (see below).
 
     :param obj: the content object to link the resource to
     :param resource: the FHIR resource to link
@@ -738,9 +749,16 @@ def link_fhir_resource(obj, resource):
 
     # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the
-    # original information, even when connection with source is lost
+    # original information, even when connection with source is lost.
+    # ``data`` is a single slot, but an object can carry more than one linked
+    # FHIR identity (e.g. an Analysis carries both its instrument-scoped
+    # ServiceRequest, linked when an Instrument is assigned, and an incoming
+    # Observation result), so whichever resource type got there first keeps
+    # it; only overwrite when the slot is empty or already of this same type.
     annotation = get_fhir_storage(obj)
-    annotation["data"] = resource.to_dict()
+    existing_type = (annotation.get("data") or {}).get("resourceType")
+    if not existing_type or existing_type == resource_type:
+        annotation["data"] = resource.to_dict()
 
 
 def slugify(value, repl="-"):

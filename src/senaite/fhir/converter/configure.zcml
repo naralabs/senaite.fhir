@@ -48,6 +48,10 @@
   <adapter for="senaite.fhir.interfaces.IServiceRequestResource"
            factory=".analysisrequest.ResourceToAnalysisRequest"/>
 
+  <!-- FHIR Observation To Analysis result -->
+  <adapter for="senaite.fhir.interfaces.IObservationResource"
+           factory=".observation.ResourceToAnalysisResult"/>
+
   <!-- Instrument To FHIR Device -->
   <adapter for="bika.lims.interfaces.IInstrument"
            factory=".device.InstrumentToDevice"

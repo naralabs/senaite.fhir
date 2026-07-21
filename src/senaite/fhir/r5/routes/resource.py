@@ -16,6 +16,7 @@ from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
 from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.fhir.resource.resultsbundle import ResultsBundleResource
+from senaite.fhir.exceptions import ObservationValidationError
 from senaite.fhir.exceptions import ServiceRequestValidationError
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationError  # noqa: E501
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationResource  # noqa: E501
@@ -100,15 +101,15 @@ def post(context, request, resource_type=None):
             continue
 
         # create or update the counterpart object
-        obj = find_object_for(resource)
         try:
+            obj = find_object_for(resource)
             if not obj:
                 obj = fapi.create(resource)
                 status = "201 Created"
             else:
                 obj = fapi.update(obj, resource)
                 status = "201 Updated"
-        except ServiceRequestValidationError as e:
+        except (ServiceRequestValidationError, ObservationValidationError) as e:  # noqa: E501
             transaction.abort()
             request.response.setStatus(400)
             issue = {
@@ -151,6 +152,11 @@ def post(context, request, resource_type=None):
                 resource, obj, status, modified
             )
             entries.extend(specimen_entries)
+
+        # An Observation carries a result for an existing Analysis; once
+        # applied (see ResourceToAnalysisResult), submit it
+        if resource.resourceType == "Observation" and obj:
+            do_action_for(obj, "submit")
 
     # create the BundleResponse
     resp = {
