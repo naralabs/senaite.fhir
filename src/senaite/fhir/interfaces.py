@@ -89,6 +89,12 @@ class IObservationResource(IFHIRResource):
     """
 
 
+class IDeviceResource(IFHIRResource):
+    """Marker interface for a FHIR's Device resource
+    https://fhir.senaite.org/StructureDefinition-SenaiteDevice.html
+    """
+
+
 class IResultsBundleResource(IFHIRResource):
     """Marker interface for a FHIR searchset Bundle returned by the
     DiagnosticReport polling endpoint.

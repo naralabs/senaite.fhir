@@ -58,4 +58,10 @@
            provides="senaite.fhir.interfaces.IFHIRResource"
            factory=".specimen.SpecimenResource"/>
 
+  <!-- Device -->
+  <adapter name="Device"
+           for="dict"
+           provides="senaite.fhir.interfaces.IFHIRResource"
+           factory=".device.DeviceResource"/>
+
 </configure>

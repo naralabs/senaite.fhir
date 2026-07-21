@@ -5,6 +5,8 @@ Changelog
 ------------------
 
 - #17 Add pollable paginated ServiceRequest endpoint for active filler orders
+- #14 Expose SENAITE instruments as FHIR Device resources
+- #11 Build Specimen resources from SENAITE Analysis Request data
 - #13 Fix dropped marital status on FHIR patient import
 - #12 Use additional_phone_numbers for patient phone mapping
 - #10 Only emit FHIR basedOn for externally linked service requests

@@ -341,6 +341,10 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     before searching. The lookup can be constrained to a ``portal_type``; when
     none is given, all portal types are searched (less performant).
 
+    Primary match: the UID belongs to the object's own portal/resource type.
+    Secondary match: the UID was stored for a different resource type on the
+    same object (e.g. a Specimen UID stored on an AnalysisRequest).
+
     :param fhir_uid: FHIR UID (hex) or FHIR id (dashed UUID) to look up
     :param portal_type: optional portal type to constrain the search
     :param default: value to return when no object holds the UID; when omitted,
@@ -353,15 +357,22 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     # do the search
     brains = search_by_fhir_uid(fhir_uid, portal_type=portal_type)
 
-    # resource_type must match with portal_type or with its resourceType
+    secondary = []
     for brain in brains:
         uids = get_fhir_uids(brain)
         portal_type = get_portal_type(brain)
+        # primary match: uid belongs to the object's own portal/resource type
         if uids.get(portal_type) == fhir_uid:
             return api.get_object(brain)
         resource_type = get_resource_type(portal_type)
         if uids.get(resource_type) == fhir_uid:
             return api.get_object(brain)
+        # secondary match: uid stored for a different resource type
+        if fhir_uid in uids.values():
+            secondary.append(brain)
+
+    if secondary:
+        return api.get_object(secondary[0])
 
         # fall back to any other resource type the object carries alongside
         # its own portal_type/default resource type (e.g. an Analysis' own
@@ -393,46 +404,71 @@ def get_object(thing, default=_marker):
         ``FHIRAPIError`` is raised
     :returns: the resolved content object, or ``default``
     """
-    if not is_fhir_resource(thing):
-        # delegate to core's api
-        obj = api.get_object(thing, default=None)
-        if obj:
-            return obj
+    # a FHIR resource: resolve its counterpart, narrowed to the mapped type.
+    # This must be checked before the ``is_uuid`` branch below, as a resource
+    # also satisfies ``is_uuid`` (its id is a UUID) and would otherwise be
+    # searched across all portal types, resolving e.g. a Specimen to the
+    # AnalysisRequest that cross-references its UID instead of a SampleType.
+    if is_fhir_resource(thing):
+        fhir_uid = get_uid(thing)
+        portal_type = get_portal_type(thing)
+        return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
 
-    # fallback to search by FHIR UID
+    # a content object, catalog brain or SENAITE UID: delegate to core's api
+    obj = api.get_object(thing, default=None)
+    if obj:
+        return obj
+
+    # a bare FHIR id/UID string: search across all portal types (type unknown)
     if is_uuid(thing):
-        # search without portal_type (less performant)
         fhir_uid = get_uuid(thing).hex
         return get_object_by_fhir_uid(fhir_uid, default=default)
 
-    # have a fhir_resource
-    fhir_uid = get_uid(thing)
-    portal_type = get_portal_type(thing)
-    return get_object_by_fhir_uid(fhir_uid, portal_type, default=default)
+    # not resolvable
+    if default is _marker:
+        fail(msg="Not Found", status=404)
+    return default
 
 
-def find_object_for(resource):
+def find_object_for(resource, default=_marker):
     """Finds the SENAITE object that corresponds to the given FHIR resource.
 
-    Resolution happens in two steps:
+    The counterpart is always an object of the resource's mapped portal type
+    (see ``get_portal_type``), e.g. a Specimen resolves to a SampleType, an
+    Organization to a Client. Resolution happens in two steps, both scoped to
+    that portal type:
 
     1. an exact match by FHIR UID through the FHIR catalog (see
-       ``get_object``);
+       ``get_object``, which narrows the lookup to that portal type);
     2. when that misses, the ``IContentFinder`` adapter registered for the
        resource (if any) is asked to find a suitable counterpart by business
-       keys (e.g. ``ClientFinder`` matches a Client by its ``ClientID``).
+       keys (e.g. ``ClientFinder`` matches a Client by its ``ClientID``,
+       ``SampleTypeFinder`` matches a SampleType by its display).
+
+    Constraining the UID lookup to the mapped portal type is what makes this
+    reliable for resources whose FHIR UID is cross-referenced elsewhere: a
+    Specimen's UID is stored on the AnalysisRequest that owns it, so an
+    unconstrained lookup (see ``get_object``) would resolve a Specimen to that
+    AnalysisRequest instead of to its SampleType counterpart. Callers can rely
+    on the result being of the mapped portal type without knowing any of these
+    FHIR-to-SENAITE mapping details.
 
     This is used by the bundle POST endpoint to resolve existing content
     (so it gets updated instead of duplicated) before falling back to create.
 
     :param resource: the FHIR resource to find a counterpart for
+    :param default: value to return when ``resource`` is not a FHIR resource;
+        when omitted, a ``FHIRAPIError`` is raised instead
     :returns: the matching content object, or ``None`` when none is found
-    :raises FHIRAPIError: if ``resource`` is not a FHIR resource
+    :raises FHIRAPIError: if ``resource`` is not a FHIR resource and no
+        ``default`` was provided
     """
     if not is_fhir_resource(resource):
-        fail("Type is not supported: %r" % resource)
+        if default is _marker:
+            fail("Type is not supported: %r" % resource)
+        return default
 
-    # search by fhir UID exact match first
+    # exact match by FHIR UID, scoped to the resource's mapped portal type
     match = get_object(resource, default=None)
     if match:
         return match
@@ -509,17 +545,26 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
             fail(msg="Not Found", status=404)
         return default
 
-    # get the ContentToFHIR adapter: prefer one named after resource_type
-    # (e.g. an object that can be represented as more than one resource
-    # type, like an Analysis as either Observation or ServiceRequest),
-    # falling back to the default, unnamed adapter
-    adapter = None
-    if resource_type:
-        adapter = queryAdapter(obj, IContentToFHIR, name=resource_type)
+    # When the caller requested a specific resource type that differs from the
+    # object's primary type, try the annotation store first before falling
+    # through to the ContentToFHIR adapter
+    if resource_type and resource_type != get_resource_type(obj):
+        stored = get_stored_fhir_resource(obj, resource_type)
+        if stored:
+            return stored
+        # Try a named IContentToFHIR adapter for this specific resource type
+        # (e.g. "Specimen" on an AnalysisRequest)
+        named = queryAdapter(obj, IContentToFHIR, name=resource_type)
+        if named:
+            result = named.to_fhir_resource()
+            if result:
+                return result
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
 
-    if not adapter:
-        adapter = queryAdapter(obj, IContentToFHIR)
-
+    # get the ContentToFHIR adapter
+    adapter = queryAdapter(obj, IContentToFHIR)
     if not adapter:
         if default is _marker:
             fail(msg="Type is not supported: %r" % obj)
@@ -747,6 +792,51 @@ def get_system_code(resource_type, default=_marker):
     if default is _marker:
         raise ValueError("No system code defined for %s" % resource_type)
     return default
+
+
+def store_fhir_resource(obj, resource):
+    """Persists a secondary FHIR resource against a SENAITE object.
+
+    Use this when a FHIR resource type has no direct SENAITE content
+    counterpart but must survive round-trips through the API (e.g. a Specimen
+    stored on an AnalysisRequest). The resource dict is written into a
+    type-keyed slot under ``fhir_storage["resources"]`` and its UID is linked
+    via ``set_fhir_uids`` so the FHIR catalog can resolve it back.
+
+    :param obj: content object, catalog brain or UID
+    :param resource: the FHIR resource to store
+    """
+    if not is_fhir_resource(resource):
+        raise ValueError("Type not supported: {}".format(repr(type(resource))))
+
+    resource_type = resource.resourceType
+    uid = get_uid(resource)
+
+    storage = get_fhir_storage(obj)
+    storage.setdefault("resources", {})[resource_type] = resource.to_dict()
+
+    set_fhir_uids(obj, **{resource_type: uid})
+
+
+def get_stored_fhir_resource(obj, resource_type):
+    """Returns a previously stored secondary FHIR resource from the object's
+    annotation storage, or ``None`` when none is found.
+
+    Reads from the type-keyed slot written by ``store_fhir_resource`` without
+    waking up the object unnecessarily.
+
+    :param obj: content object, catalog brain or UID
+    :param resource_type: FHIR resource type to retrieve, e.g. ``"Specimen"``
+    :returns: the FHIR resource, or ``None``
+    """
+    obj = api.get_object(obj)
+    annotation = IAnnotations(obj)
+    storage = annotation.get(FHIR_STORAGE_KEY) or {}
+    resources = storage.get("resources") or {}
+    data = resources.get(resource_type)
+    if not data:
+        return None
+    return to_fhir_resource(data, default=None)
 
 
 def generate_UUID():
