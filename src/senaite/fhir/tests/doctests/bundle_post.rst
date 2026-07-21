@@ -109,12 +109,12 @@ The response is a ``transaction-response`` Bundle:
     >>> response["type"]
     u'transaction-response'
 
-It carries one entry per processed resource. The ``Specimen`` is not a
-supported content type, so it is skipped; the remaining four are reported:
+It carries one entry per processed resource, including the ``Specimen``
+(stored as annotation on the AnalysisRequest):
 
     >>> entries = response["entry"]
     >>> sorted([e["fullUrl"].split("/")[0] for e in entries])
-    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest']
+    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest', u'Specimen']
 
 The pre-existing Client (Organization) is updated, the rest are created:
 
@@ -128,7 +128,8 @@ The pre-existing Client (Organization) is updated, the rest are created:
     u'201 Created'
     >>> status["ServiceRequest"]
     u'201 Created'
-
+    >>> status["Specimen"]
+    u'201 Created'
 
 Created content
 ~~~~~~~~~~~~~~~
@@ -230,11 +231,11 @@ Bump the priority on the same ServiceRequest and re-post the Bundle::
     ...              content_type="application/json")
     >>> response = json.loads(browser.contents)
 
-The same four resources are reported, now consistently as updated::
+The same five resources are reported, now consistently as updated::
 
     >>> entries = response["entry"]
     >>> sorted([e["fullUrl"].split("/")[0] for e in entries])
-    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest']
+    [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest', u'Specimen']
 
     >>> sorted(set(e["response"]["status"] for e in entries))
     [u'201 Updated']
