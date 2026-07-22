@@ -95,6 +95,12 @@ class IDeviceResource(IFHIRResource):
     """
 
 
+class IInstrumentServiceRequestResource(IFHIRResource):
+    """Marker interface for a FHIR's InstrumentServiceRequest resource
+    https://fhir.senaite.org/StructureDefinition-SenaiteInstrumentServiceRequest.html
+    """
+
+
 class IResultsBundleResource(IFHIRResource):
     """Marker interface for a FHIR searchset Bundle returned by the
     DiagnosticReport polling endpoint.
