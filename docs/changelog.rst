@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #20 Fix FHIR Device search filtering and empty bundle serialization
 - #14 Expose SENAITE instruments as FHIR Device resources
 - #11 Build Specimen resources from SENAITE Analysis Request data
 - #13 Fix dropped marital status on FHIR patient import
