@@ -64,4 +64,10 @@
            provides="senaite.fhir.interfaces.IFHIRResource"
            factory=".device.DeviceResource"/>
 
+  <!-- InstrumentServiceRequest -->
+  <adapter name="InstrumentServiceRequest"
+           for="dict"
+           provides="senaite.fhir.interfaces.IFHIRResource"
+           factory=".instrumentservicerequest.InstrumentServiceRequestResource"/>
+
 </configure>
