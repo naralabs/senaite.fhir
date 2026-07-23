@@ -509,7 +509,7 @@ def get_service_request_bundle(_context, request):
             "severity": "error",
             "code": "invalid",
             "details": {
-                "text": "Only _sort=lastUpdated is supported for this endpoint",
+                "text": "Only _sort=lastUpdated is supported",
             },
             "diagnostics": "This endpoint always returns results in a stable lastUpdated-descending order. When _sort is provided it must be set to lastUpdated.",  # noqa: E501
             "expression": ["_sort"],
