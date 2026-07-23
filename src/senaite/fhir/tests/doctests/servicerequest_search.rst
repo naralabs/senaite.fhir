@@ -72,9 +72,12 @@ Instruments to their Analyses:
     ...                        InstrumentType=instr_type)
     >>> transaction.commit()
 
-A helper that registers a fresh sample with one Hb Analysis, assigns it to
-the Instrument and links it as a ``ServiceRequest`` FHIR identity, backdating
-``authoredOn`` by the given number of days so ordering can be verified:
+A helper that registers a fresh sample with one Hb Analysis and assigns it
+to the Instrument. Assigning the Instrument goes through the
+``setInstrument`` monkey patch, which links a ``SenaiteInstrumentServiceRequest``
+identity and stamps ``authoredOn`` to "now"; the helper then backdates
+``authoredOn`` in place by the given number of days so ordering can be
+verified:
 
     >>> def new_linked_analysis(days_ago=0):
     ...     values = {
@@ -86,11 +89,10 @@ the Instrument and links it as a ``ServiceRequest`` FHIR identity, backdating
     ...     sample = create_analysisrequest(client, request, values, [Hb.UID()])
     ...     analysis = sample.getAnalyses(full_objects=True)[0]
     ...     analysis.setInstrument(instrument)
-    ...     analysis_uid = api.get_uid(analysis)
-    ...     fapi.set_fhir_uids(analysis, ServiceRequest=analysis_uid)
-    ...     authored = DateTime() - days_ago
     ...     storage = fapi.get_fhir_storage(analysis)
-    ...     storage["data"] = {"authoredOn": to_fhir_datetime(authored)}
+    ...     data = storage.get("data")
+    ...     data["authoredOn"] = to_fhir_datetime(DateTime() - days_ago)
+    ...     storage["data"] = data
     ...     transaction.commit()
     ...     return analysis
 
@@ -212,9 +214,8 @@ GET /ServiceRequest returns the linked ServiceRequests, newest first
 Entries are ordered by ``authoredOn`` descending (most recently authored
 first):
 
-    >>> import uuid
     >>> expected_order = [
-    ...     "ServiceRequest/{}".format(uuid.UUID(api.get_uid(a)))
+    ...     "ServiceRequest/{}".format(fapi.get_fhir_id(a, "ServiceRequest"))
     ...     for a in (newest, middle, oldest)
     ... ]
     >>> [e["fullUrl"] for e in entries] == expected_order

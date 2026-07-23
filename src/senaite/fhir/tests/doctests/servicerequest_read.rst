@@ -8,9 +8,13 @@ on-the-fly from a SENAITE Analysis, via the
 registered for ``bika.lims.interfaces.IAnalysis``).
 
 The resource is only produced once the Analysis has been linked to an
-instrument-scoped ServiceRequest identity (tracked, in production, by the
-``setInstrument`` monkey patch calling ``fapi.set_fhir_uids``). Until that
-link exists, ``GET /ServiceRequest/<analysis_uid>`` returns ``404``.
+instrument-scoped ServiceRequest identity. That link is created (or
+refreshed) automatically by the ``setInstrument`` monkey patch
+(``senaite.fhir.monkeys.content.analysis``) the moment an Instrument is
+assigned to the Analysis -- it mints its own FHIR uid (distinct from the
+Analysis' own SENAITE uid) and stamps ``authoredOn``. Until an Instrument
+has ever been assigned, ``GET /ServiceRequest/<analysis_uid>`` returns
+``404``.
 
 Running this test from the buildout directory:
 
@@ -30,7 +34,6 @@ Needed imports:
     >>> from bika.lims import api
     >>> from bika.lims.utils.analysisrequest import create_analysisrequest
     >>> from senaite.fhir import api as fapi
-    >>> from senaite.fhir.converter import to_fhir_datetime
 
 Variables:
 
@@ -73,8 +76,8 @@ Instrument to one of its Analyses:
     >>> transaction.commit()
 
 
-Create a native AnalysisRequest and assign the Instrument
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Create a native AnalysisRequest
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     >>> values = {
     ...     "Client": client.UID(),
@@ -84,52 +87,57 @@ Create a native AnalysisRequest and assign the Instrument
     ... }
     >>> sample = create_analysisrequest(client, request, values, [Hb.UID()])
     >>> analysis = sample.getAnalyses(full_objects=True)[0]
-    >>> analysis.setInstrument(instrument)
     >>> analysis.setRemarks(u"Sample slightly haemolysed")
     >>> analysis_uid = api.get_uid(analysis)
     >>> transaction.commit()
 
 
-GET /ServiceRequest/<uid> – 404 before the Instrument link is recorded
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+GET /ServiceRequest/<uid> - 404 before an Instrument is ever assigned
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Assigning the Instrument alone does not create the FHIR identity link
-(that is the responsibility of the ``setInstrument`` monkey patch, which
-records it via ``fapi.set_fhir_uids``). Without that link the Analysis was
-"never linked" and the endpoint reports ``404``:
+No ``ServiceRequest`` FHIR identity has been linked yet, so the endpoint
+reports ``404`` for the Analysis' own SENAITE uid:
 
     >>> browser.open("{}/ServiceRequest/{}".format(fhir_url, analysis_uid))
     >>> browser.headers["Status"]
     '404 Not Found'
+    >>> fapi.get_fhir_uid(analysis, "ServiceRequest") is None
+    True
 
 
-Record the Instrument link
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Assign the Instrument
+~~~~~~~~~~~~~~~~~~~~~~
 
-Simulate what the ``setInstrument`` monkey patch does: link the Analysis to
-its own UID as the ``ServiceRequest`` FHIR identity, and record the moment it
-was authored:
+Assigning an Instrument goes through the ``setInstrument`` monkey patch,
+which links a ``SenaiteInstrumentServiceRequest`` identity (its own FHIR
+uid, distinct from the Analysis' SENAITE uid) and stamps ``authoredOn``:
 
-    >>> fapi.set_fhir_uids(analysis, ServiceRequest=analysis_uid)
-    >>> storage = fapi.get_fhir_storage(analysis)
-    >>> authored_on = to_fhir_datetime(DateTime())
-    >>> storage["data"] = {"authoredOn": authored_on}
+    >>> analysis.setInstrument(instrument)
     >>> transaction.commit()
 
+    >>> fhir_uid = fapi.get_fhir_uid(analysis, "ServiceRequest")
+    >>> fhir_uid is not None
+    True
+    >>> fhir_uid != analysis_uid
+    True
+    >>> fhir_id = fapi.get_fhir_id(analysis, "ServiceRequest")
 
-GET /ServiceRequest/<uid> – synthesised SenaiteInstrumentServiceRequest
+
+GET /ServiceRequest/<uid> - synthesised SenaiteInstrumentServiceRequest
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The linked ServiceRequest is reachable both by the Analysis' own SENAITE
+uid and by its own FHIR id:
 
     >>> browser.open("{}/ServiceRequest/{}".format(fhir_url, analysis_uid))
     >>> resource = json.loads(browser.contents)
     >>> resource["resourceType"]
     u'ServiceRequest'
+    >>> resource["id"] == fhir_id
+    True
 
-The ``id`` is the dashed-UUID form of the linked FHIR UID (here, the
-Analysis' own UID):
-
-    >>> import uuid
-    >>> resource["id"] == str(uuid.UUID(analysis_uid))
+    >>> browser.open("{}/ServiceRequest/{}".format(fhir_url, fhir_id))
+    >>> json.loads(browser.contents)["id"] == fhir_id
     True
 
 ``intent`` is always ``filler-order`` for this instrument-scoped flavour:
@@ -162,13 +170,14 @@ as text:
     >>> resource["code"]["concept"]["text"] == api.get_title(analysis)
     True
 
-``authoredOn`` reflects the moment the Instrument link was recorded:
+``authoredOn`` was stamped when the Instrument was assigned:
 
-    >>> resource["authoredOn"] == authored_on
+    >>> bool(resource["authoredOn"])
     True
 
 ``performer`` references the assigned Instrument as a FHIR Device:
 
+    >>> import uuid
     >>> resource["performer"][0]["reference"] == "Device/{}".format(
     ...     str(uuid.UUID(api.get_uid(instrument))))
     True
@@ -201,7 +210,19 @@ and has no assigned Patient, ``basedOn`` and ``subject`` are both omitted:
     False
 
 
-GET /ServiceRequest/<uid> – 404 for an unknown uid
+Re-assigning the Instrument refreshes authoredOn, keeping the same identity
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Assigning an Instrument again does not mint a new ServiceRequest identity;
+it refreshes the existing one in place:
+
+    >>> analysis.setInstrument(instrument)
+    >>> transaction.commit()
+    >>> fapi.get_fhir_id(analysis, "ServiceRequest") == fhir_id
+    True
+
+
+GET /ServiceRequest/<uid> - 404 for an unknown uid
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     >>> browser.open("{}/ServiceRequest/{}".format(
