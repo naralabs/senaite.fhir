@@ -66,6 +66,10 @@ def get(context, request, resource_type=None, uid=None):
     if resource_type == "DiagnosticReport" and not uid:
         return get_diagnostic_report_bundle(context, request)
 
+    # Device list (Instrument objects converted to FHIR Device)
+    if resource_type == "Device" and not uid:
+        return get_device_bundle(context, request)
+
     # Specimen listing: annotation-backed, no native SENAITE content type
     if resource_type == "Specimen" and not uid:
         return get_specimen_bundle(context, request)
@@ -490,6 +494,52 @@ def strip_presented_form_data(dr_dict):
     """
     for attachment in dr_dict.get("presentedForm") or []:
         attachment.pop("data", None)
+
+
+def get_device_bundle(_context, request):
+    """Handle GET /Device with optional ?_lastUpdated=gt<datetime> filter.
+
+    Returns a FHIR searchset Bundle containing SENAITE Instruments
+    converted to Device resources. When _lastUpdated is provided only
+    instruments modified after that instant are included.
+    """
+    params = request.form
+
+    since = parse_last_updated(params.get("_lastUpdated", ""))
+    if isinstance(since, OperationOutcome):
+        return since
+
+    brains = api.search({"portal_type": "Instrument"})
+
+    entries = []
+    for brain in brains:
+        instrument = api.get_object(brain, default=None)
+        if not instrument:
+            continue
+        if since:
+            modified = dtime.to_DT(api.get_modification_date(instrument))
+            if not modified or modified <= since:
+                continue
+        device = fapi.to_fhir_resource(instrument, default=None)
+        if not device:
+            continue
+        entries.append({
+            "fullUrl": "Device/{}".format(device.id),
+            "resource": dict(device),
+            "search": {"mode": "match"},
+        })
+
+    now = dtime.to_localized_time(dtime.now(), long_format=True)
+    bundle_data = {
+        "resourceType": "Bundle",
+        "id": str(fapi.generate_UUID()),
+        "type": "searchset",
+        "timestamp": now,
+        "total": len(entries),
+    }
+    if entries:
+        bundle_data["entry"] = entries
+    return ResultsBundleResource(bundle_data)
 
 
 def get_fhir_resources():

@@ -5,6 +5,9 @@ Changelog
 ------------------
 
 - #18 Fix bundle POST response status, error handling and None guard
+- #20 Fix FHIR Device search filtering and empty bundle serialization
+- #15 Create FHIR instrument ServiceRequests when an instrument is assigned to an analysis
+- #14 Expose SENAITE instruments as FHIR Device resources
 - #11 Build Specimen resources from SENAITE Analysis Request data
 - #13 Fix dropped marital status on FHIR patient import
 - #12 Use additional_phone_numbers for patient phone mapping
