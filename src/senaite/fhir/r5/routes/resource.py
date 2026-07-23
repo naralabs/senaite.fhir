@@ -505,17 +505,17 @@ def get_device_bundle(_context, request):
     if isinstance(since, OperationOutcome):
         return since
 
-    query = {"portal_type": "Instrument"}
-    if since:
-        query["modified"] = {"query": since, "range": "min"}
-
-    brains = api.search(query)
+    brains = api.search({"portal_type": "Instrument"})
 
     entries = []
     for brain in brains:
         instrument = api.get_object(brain, default=None)
         if not instrument:
             continue
+        if since:
+            modified = dtime.to_DT(api.get_modification_date(instrument))
+            if not modified or modified <= since:
+                continue
         device = fapi.to_fhir_resource(instrument, default=None)
         if not device:
             continue
@@ -529,14 +529,12 @@ def get_device_bundle(_context, request):
     bundle_data = {
         "resourceType": "Bundle",
         "id": str(fapi.generate_UUID()),
-        "meta": {
-            "profile": [to_fhir_profile_url("SenaiteResultsBundle")],
-        },
         "type": "searchset",
         "timestamp": now,
         "total": len(entries),
-        "entry": entries,
     }
+    if entries:
+        bundle_data["entry"] = entries
     return ResultsBundleResource(bundle_data)
 
 

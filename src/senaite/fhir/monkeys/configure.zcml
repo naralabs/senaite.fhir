@@ -1,0 +1,21 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:monkey="http://namespaces.plone.org/monkey">
+
+  <!-- Analysis.setInstrument
+  Links (or refreshes) a FHIR SenaiteInstrumentServiceRequest to the
+  Analysis whenever an Instrument is assigned to it, regardless of which
+  code path performs the assignment (worksheet bulk action, AJAX endpoint,
+  edit form) -->
+  <!-- Patched on the leaf Analysis class: setInstrument is auto-generated
+  by Archetypes' ClassGen directly on each content type class that includes
+  the Instrument field, not inherited from AbstractBaseAnalysis, so patching
+  the abstract base would be shadowed. -->
+  <monkey:patch
+      description="Link a FHIR SenaiteInstrumentServiceRequest to the Analysis when an Instrument is assigned"
+      class="bika.lims.content.analysis.Analysis"
+      original="setInstrument"
+      ignoreOriginal="True"
+      replacement=".content.analysis.setInstrument" />
+
+</configure>

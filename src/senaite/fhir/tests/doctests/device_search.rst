@@ -99,6 +99,8 @@ The response is a searchset Bundle:
     u'Bundle'
     >>> bundle["type"]
     u'searchset'
+    >>> "meta" in bundle and "profile" in bundle["meta"]
+    False
 
 Both instruments appear in the bundle:
 
@@ -139,6 +141,22 @@ A threshold far in the past returns at least the instruments created above:
     True
     >>> fhir_id_b in filtered_ids
     True
+
+_lastUpdated - far-future threshold returns an empty bundle
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A threshold far in the future produces an empty bundle without an empty
+``entry`` array:
+
+    >>> url = "{}/Device?_lastUpdated=gt2099-12-31T00:00:00Z".format(fhir_url)
+    >>> browser.open(url)
+    >>> filtered = json.loads(browser.contents)
+    >>> filtered["resourceType"]
+    u'Bundle'
+    >>> filtered["total"]
+    0
+    >>> "entry" in filtered
+    False
 
 Malformed _lastUpdated returns an OperationOutcome error
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
