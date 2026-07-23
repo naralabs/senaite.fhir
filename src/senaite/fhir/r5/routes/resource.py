@@ -460,8 +460,8 @@ def get_diagnostic_report_bundle(_context, request):
 
 
 def get_service_request_bundle(_context, request):
-    """Handle GET /ServiceRequest with _lastUpdated, intent, status, _sort,
-    _count and _offset (polling endpoint).
+    """Handle GET /ServiceRequest with _lastUpdated, intent, status,
+    optional _sort, _count and _offset (polling endpoint).
 
     Builds a SenaiteResultsBundle (searchset) containing the
     instrument-scoped SenaiteInstrumentServiceRequest entries (intent
@@ -503,15 +503,15 @@ def get_service_request_bundle(_context, request):
         return OperationOutcome({"issue": [issue]})
 
     sort = params.get("_sort", "")
-    if sort != "lastUpdated":
+    if sort and sort != "lastUpdated":
         request.response.setStatus(400)
         issue = {
             "severity": "error",
-            "code": "required",
+            "code": "invalid",
             "details": {
-                "text": "_sort=lastUpdated is required for this endpoint",
+                "text": "Only _sort=lastUpdated is supported for this endpoint",
             },
-            "diagnostics": "This endpoint requires a stable sort order so that _count/_offset pagination does not miss or duplicate results. Include _sort=lastUpdated as a query parameter.",  # noqa: E501
+            "diagnostics": "This endpoint always returns results in a stable lastUpdated-descending order. When _sort is provided it must be set to lastUpdated.",  # noqa: E501
             "expression": ["_sort"],
         }
         return OperationOutcome({"issue": [issue]})
@@ -568,9 +568,6 @@ def get_service_request_bundle(_context, request):
     bundle_data = {
         "resourceType": "Bundle",
         "id": str(fapi.generate_UUID()),
-        "meta": {
-            "profile": [to_fhir_profile_url("SenaiteResultsBundle")],
-        },
         "type": "searchset",
         "timestamp": now,
         "total": total_match,
