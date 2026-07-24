@@ -49,11 +49,19 @@ class AnalysisToObservation(object):
         if performer:
             data["performer"] = performer
 
+        note = self.get_note()
+        if note:
+            data["note"] = note
+
         data.update(self.get_value())
 
         ref_range = self.get_reference_range()
         if ref_range:
             data["referenceRange"] = ref_range
+
+        device = self.get_device()
+        if device:
+            data["device"] = device
 
         return ObservationResource(data)
 
@@ -163,6 +171,20 @@ class AnalysisToObservation(object):
             "code": self.analysis.getUnit(),
         }
         return {"valueQuantity": value_quantity}
+
+    def get_note(self):
+        remarks = api.safe_unicode(self.analysis.getRemarks())
+        if not remarks:
+            return []
+        return [{"text": remarks}]
+
+    def get_device(self):
+        instrument = self.analysis.getInstrument()
+        if not instrument:
+            return None
+        return {
+            "reference": "Device/{}".format(fapi.get_fhir_id(instrument)),
+        }
 
     def get_reference_range(self):
         rng = self.analysis.getResultsRange()
