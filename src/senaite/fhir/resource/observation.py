@@ -20,6 +20,13 @@ class ObservationResource(FHIRResource):
     )
 
     @property
+    def text(self):
+        """Human-readable narrative, if provided by the sender.
+        https://www.hl7.org/fhir/R5/narrative.html
+        """
+        return self.get("text")
+
+    @property
     def basedOn(self):
         """Reference to the originating ServiceRequest.
         https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.basedOn
