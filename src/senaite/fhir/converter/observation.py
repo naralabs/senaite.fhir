@@ -281,9 +281,10 @@ class ResourceToAnalysisResult(object):
         """
         analysis.setResult(value)
         if not wapi.is_transition_allowed(analysis, "submit"):
+            state = api.get_review_status(analysis)
             raise ObservationValidationError(
-                "The Analysis result has already been submitted and can no "
-                "longer be updated",
+                "Observation or DiagnosticReport is locked because it is "
+                "state: {} and the value cannot be updated".format(state),
                 expression=["Observation.value[x]"],
                 code="conflict",
             )

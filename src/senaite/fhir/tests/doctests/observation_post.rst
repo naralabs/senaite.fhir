@@ -259,7 +259,7 @@ A submitted Analysis can no longer be updated through this endpoint
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Once an Analysis has already gone through ``submit``, re-posting a result
-for it is a conflict (403), not a plain validation error (400):
+for it is a conflict (409), not a plain validation error (400):
 
     >>> analysis = new_analysis()
     >>> _ = post_observation(observation_for(analysis))
@@ -271,11 +271,13 @@ for it is a conflict (403), not a plain validation error (400):
 
     >>> resource = post_observation(observation_for(analysis, value=150))
     >>> status_code()
-    403
+    409
     >>> resource["issue"][0]["code"]
     u'conflict'
     >>> resource["issue"][0]["expression"]
     [u'Observation.value[x]']
+    >>> resource["issue"][0]["details"]["text"]
+    u'Observation or DiagnosticReport is locked because it is state: to_be_verified and the value cannot be updated'
 
 The previously submitted result is left untouched:
 

@@ -112,7 +112,11 @@ def post(context, request, resource_type=None):
         except (ServiceRequestValidationError, ObservationValidationError) as e:  # noqa: E501
             transaction.abort()
             code = getattr(e, "code", "business-rule")
-            request.response.setStatus(403 if code == "conflict" else 400)
+            status_code = 400
+            if code == "conflict":
+                status_code = 409
+
+            request.response.setStatus(status_code)
             issue = {
                 "severity": "error",
                 "code": code,
