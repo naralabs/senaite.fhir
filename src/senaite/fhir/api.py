@@ -382,6 +382,12 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     if secondary:
         return api.get_object(secondary[0])
 
+        # fall back to any other resource type the object carries alongside
+        # its own portal_type/default resource type (e.g. an Analysis' own
+        # "ServiceRequest" uid, distinct from its "Observation" identity)
+        if fhir_uid in uids.values():
+            return api.get_object(brain)
+
     if default is _marker:
         fail("No object found for FHIR UID {}".format(fhir_uid))
     return default
@@ -500,16 +506,22 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
     - a ``dict``: dispatched to the ``IFHIRResource`` adapter named after its
       ``resourceType``;
     - a content object, catalog brain or UID: resolved (see ``get_object``)
-      and converted through its ``IContentToFHIR`` adapter.
+      and converted through its ``IContentToFHIR`` adapter, named after
+      ``resource_type`` when given (falling back to the default, unnamed
+      adapter) — this lets a single object be represented as more than one
+      resource type, e.g. an Analysis as either an Observation (default) or
+      a ServiceRequest (named).
 
     Empty/falsy input returns ``None``. On any other failure (missing/
-    unsupported resource type, object not found, no adapter) a
-    ``FHIRAPIError`` is raised unless ``default`` is provided.
+    unsupported resource type, object not found, no adapter, or the adapter
+    itself returning ``None``) a ``FHIRAPIError`` is raised unless
+    ``default`` is provided.
 
     :param thing: FHIR resource, dict, content object, catalog brain or UID
     :param default: value to return instead of raising on failure
-    :param resource_type: optional resource type hint used when resolving a
-        bare UID that is a FHIR id rather than a SENAITE UID
+    :param resource_type: optional resource type used to select a named
+        ``IContentToFHIR`` adapter for a content object, or as a hint when
+        resolving a bare UID that is a FHIR id rather than a SENAITE UID
     :returns: the FHIR resource, ``None`` for empty input, or ``default``
     """
     if not thing:
@@ -566,7 +578,13 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
             fail(msg="Type is not supported: %r" % obj)
         return default
 
-    return adapter.to_fhir_resource()
+    resource = adapter.to_fhir_resource()
+    if not resource:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
+
+    return resource
 
 
 def to_fhir_action_resource(thing, fhir_action, default=_marker):

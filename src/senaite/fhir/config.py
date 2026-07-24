@@ -42,6 +42,26 @@ SERVICE_REQUEST_STATUSES = (
     (None, "active")
 )
 
+INSTRUMENT_SERVICE_REQUEST_STATUSES = (
+    # mapping between Analysis status and its instrument-scoped
+    # ServiceRequest's (SenaiteInstrumentServiceRequest, intent=filler-order)
+    # FHIR statuses
+    # FHIR ValueSet: draft | active | on-hold | revoked | completed |
+    #                entered-in-error | unknown
+    # https://hl7.org/fhir/R5/codesystem-request-status.html
+    ("registered", "active"),
+    ("unassigned", "active"),
+    ("assigned", "active"),
+    ("to_be_verified", "active"),
+    ("verified", "completed"),
+    ("published", "completed"),
+    ("retracted", "entered-in-error"),
+    ("rejected", "revoked"),
+    ("cancelled", "revoked"),
+    # Default status if no match
+    (None, "active"),
+)
+
 DIAGNOSTIC_REPORT_STATUSES = (
     # mapping between Sample status and DiagnosticReport's FHIR statuses
     # IMPORTANT: Note that SENAITE relies on Sample's status instead of the
@@ -103,3 +123,15 @@ DEFAULT_REPORT_PROFILE_CODE = {
         "display": "Relevant diagnostic tests/laboratory data note"
       }]
 }
+
+
+DEFAULT_INSTRUMENT_SERVICE_REQUEST_CATEGORY = {
+    "coding": [{
+        "system": "http://snomed.info/sct",
+        "code": "108252007",
+        "display": "Laboratory procedure",
+    }],
+    "text": "Laboratory procedure",
+}
+
+DEFAULT_BUNDLE_PAGE_COUNT = 10
