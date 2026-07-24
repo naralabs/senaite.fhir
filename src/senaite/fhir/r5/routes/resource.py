@@ -157,6 +157,8 @@ def post(context, request, resource_type=None):
         # applied (see ResourceToAnalysisResult), submit it
         if resource.resourceType == "Observation" and obj:
             do_action_for(obj, "submit")
+            obs = fapi.to_fhir_resource(obj, default=None)
+            return obs
 
     # create the BundleResponse
     resp = {
