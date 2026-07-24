@@ -76,7 +76,7 @@ OBSERVATION_STATUSES = (
     ("unassigned", "registered"),
     ("assigned", "registered"),
     ("cancelled", "cancelled"),
-    ("to_be_verified", "registered"),
+    ("to_be_verified", "preliminary"),
     ("retracted", "entered-in-error"),
     ("rejected", "cancelled"),
     ("verified", "preliminary"),
