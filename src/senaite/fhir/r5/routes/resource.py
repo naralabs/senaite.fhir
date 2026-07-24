@@ -111,10 +111,11 @@ def post(context, request, resource_type=None):
                 status = "201 Updated"
         except (ServiceRequestValidationError, ObservationValidationError) as e:  # noqa: E501
             transaction.abort()
-            request.response.setStatus(400)
+            code = getattr(e, "code", "business-rule")
+            request.response.setStatus(403 if code == "conflict" else 400)
             issue = {
                 "severity": "error",
-                "code": getattr(e, "code", "business-rule"),
+                "code": code,
                 "details": {"text": str(e)},
                 "expression": e.expression,
             }
