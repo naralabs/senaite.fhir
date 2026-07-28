@@ -93,7 +93,8 @@ A helper that builds a valid ``Observation`` payload reporting a result for
 the given Analysis:
 
     >>> def observation_for(analysis, value=140, unit="mmol/L",
-    ...                     code="2951-2", status="final", device=instrument):
+    ...                     code="2951-2", status="final", device=instrument,
+    ...                     note=None):
     ...     based_on_id = fapi.get_fhir_id(analysis, "ServiceRequest")
     ...     payload = {
     ...         "resourceType": "Observation",
@@ -116,6 +117,8 @@ the given Analysis:
     ...         payload["device"] = {
     ...             "reference": "Device/{}".format(fapi.get_fhir_id(device)),
     ...         }
+    ...     if note:
+    ...         payload["note"] = [{"text": note}]
     ...     return payload
 
     >>> def post_observation(payload):
@@ -134,7 +137,8 @@ Successful result submission
     >>> api.get_workflow_status_of(analysis)
     'unassigned'
 
-    >>> resource = post_observation(observation_for(analysis))
+    >>> resource = post_observation(observation_for(
+    ...     analysis, note="Result within reference range."))
     >>> status_code()
     200
 
@@ -155,6 +159,8 @@ The Analysis now carries the submitted result and has been transitioned:
     >>> portal._p_jar.sync()
     >>> analysis.getResult()
     '140'
+    >>> analysis.getRemarks()
+    'Result within reference range.'
     >>> api.get_workflow_status_of(analysis)
     'to_be_verified'
 

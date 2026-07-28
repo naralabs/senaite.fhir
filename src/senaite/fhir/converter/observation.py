@@ -242,10 +242,24 @@ class ResourceToAnalysisResult(object):
         value = self.get_value(analysis)
         self.validate_submittable(analysis, value)
 
-        return {
+        content = {
             "Result": value,
             "ResultCaptureDate": DateTime(),
         }
+
+        remarks = self.get_remarks()
+        if remarks:
+            content["Remarks"] = remarks
+
+        return content
+
+    def get_remarks(self):
+        """Returns the incoming Observation notes as Analysis remarks
+        """
+        notes = self.resource.note
+        if not notes:
+            return None
+        return u"\n".join(note.text for note in notes if note.text)
 
     def get_analysis(self):
         """Resolves the Analysis referenced by Observation.basedOn[0]
