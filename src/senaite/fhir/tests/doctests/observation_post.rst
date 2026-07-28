@@ -290,3 +290,31 @@ The previously submitted result is left untouched:
     >>> portal._p_jar.sync()
     >>> analysis.getResult()
     '140'
+
+
+Validation: Observation.id cannot be reused for another Analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An Observation identity remains linked to the Analysis it first updated. It
+cannot subsequently be used with another Analysis' ServiceRequest:
+
+    >>> first_analysis = new_analysis()
+    >>> first_resource = post_observation(observation_for(first_analysis))
+    >>> status_code()
+    200
+    >>> second_analysis = new_analysis()
+    >>> payload = observation_for(second_analysis, value=150)
+    >>> payload["id"] = first_resource["id"]
+    >>> resource = post_observation(payload)
+    >>> status_code()
+    409
+    >>> resource["issue"][0]["code"]
+    u'conflict'
+    >>> resource["issue"][0]["expression"]
+    [u'Observation.id']
+
+The second Analysis remains unchanged:
+
+    >>> portal._p_jar.sync()
+    >>> second_analysis.getResult()
+    ''

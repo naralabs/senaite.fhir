@@ -284,6 +284,23 @@ class ResourceToAnalysisResult(object):
                 expression=["Observation.basedOn"],
                 code="not-found",
             )
+
+        existing_analysis = fapi.get_object(self.resource, default=None)
+        if existing_analysis:
+            if not IAnalysis.providedBy(existing_analysis):
+                raise ObservationValidationError(
+                    "Observation.id is already linked to non-Analysis object",
+                    expression=["Observation.id"],
+                    code="conflict",
+                )
+
+            if existing_analysis.UID() != analysis.UID():
+                raise ObservationValidationError(
+                    "Observation.id is already linked to different Analysis",
+                    expression=["Observation.id"],
+                    code="conflict",
+                )
+
         return analysis
 
     def validate_submittable(self, analysis, value):
