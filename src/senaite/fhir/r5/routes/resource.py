@@ -11,6 +11,7 @@ from senaite.fhir import api as fapi
 from senaite.fhir.api import find_object_for
 from senaite.fhir.config import DEFAULT_BUNDLE_PAGE_COUNT
 from senaite.fhir.config import INSTRUMENT_SERVICE_REQUEST_STATUSES
+from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.finder.sampletype import SampleTypeFinder
 from senaite.fhir.interfaces import IBundleResource
@@ -579,7 +580,7 @@ def get_service_request_bundle(_context, request):
         "search": {"mode": "match"},
     } for _, service_request in page]
 
-    now = dtime.to_localized_time(dtime.now(), long_format=True)
+    now = to_fhir_datetime(dtime.now())
     bundle_data = {
         "resourceType": "Bundle",
         "id": str(fapi.generate_UUID()),
