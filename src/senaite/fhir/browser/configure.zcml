@@ -10,4 +10,11 @@
       permission="zope2.View"
       allowed_interface=".interfaces.IFHIR" />
 
+  <!-- FHIR worksheet worklist states -->
+  <subscriber
+      for="senaite.core.browser.worksheets.view.WorksheetsView
+           senaite.core.interfaces.IWorksheets"
+      provides="senaite.app.listing.interfaces.IListingViewAdapter"
+      factory=".worksheets.WorksheetsListingAdapter" />
+
 </configure>
