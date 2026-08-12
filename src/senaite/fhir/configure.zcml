@@ -13,6 +13,8 @@
   <include package=".monkeys"/>
   <include package=".r5"/>
   <include package=".resource"/>
+  <include package=".upgrade"/>
+  <include package=".workflow"/>
 
   <!-- Default profile -->
   <genericsetup:registerProfile

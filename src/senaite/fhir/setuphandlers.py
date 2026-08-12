@@ -4,6 +4,9 @@ from senaite.core.setuphandlers import setup_other_catalogs
 from senaite.fhir import logger
 from senaite.fhir import PRODUCT_NAME
 from senaite.fhir.catalog import FHIRCatalog
+from senaite.core import permissions
+from senaite.core.api import workflow as wapi
+from senaite.core.workflow import WORKSHEET_WORKFLOW
 
 
 CATALOGS = (
@@ -18,6 +21,59 @@ INDEXES = [
 COLUMNS = [
 ]
 
+WORKFLOWS_TO_UPDATE = {
+    WORKSHEET_WORKFLOW: {
+        "states": {
+            "open": {
+                "transitions": ("ready", "remove"),
+            },
+            "ready": {
+                "title": "Ready",
+                "transitions": ("in_progress",),
+                "permissions_copy_from": "open",
+                "permissions": {
+                    permissions.TransitionAssignAnalysis: (),
+                    permissions.TransitionUnassignAnalysis: (),
+                },
+            },
+            "in_progress": {
+                "title": "In progress",
+                "transitions": ("submit",),
+                "permissions_copy_from": "ready",
+            },
+            # A worksheet remains locked after the instrument has finished
+            "to_be_verified": {
+                "permissions": {
+                    permissions.TransitionAssignAnalysis: (),
+                    permissions.TransitionUnassignAnalysis: (),
+                },
+            },
+        },
+        "transitions": {
+            "ready": {
+                "title": "Ready",
+                "new_state": "ready",
+                "action": "Ready",
+                "guard": {
+                    "guard_permissions": "",
+                    "guard_roles": "",
+                    "guard_expr": "python:here.guard_handler('ready')",
+                },
+            },
+            "in_progress": {
+                "title": "In progress",
+                "new_state": "in_progress",
+                "action": "",
+                "guard": {
+                    "guard_permissions": "",
+                    "guard_roles": "",
+                    "guard_expr": "python:here.guard_handler('in_progress')",
+                },
+            },
+        },
+    },
+}
+
 
 def setup_handler(context):
     """Generic setup handler
@@ -30,6 +86,9 @@ def setup_handler(context):
 
     # Setup catalogs
     setup_catalogs(portal)
+
+    # Extend the worksheet lifecycle used by the FHIR middleware.
+    setup_workflows(portal)
 
     logger.info("{} setup handler [DONE]".format(PRODUCT_NAME.upper()))
 
@@ -80,3 +139,12 @@ def setup_catalogs(portal):
     """
     setup_core_catalogs(portal, catalog_classes=CATALOGS)
     setup_other_catalogs(portal, indexes=INDEXES, columns=COLUMNS)
+
+
+def setup_workflows(portal):
+    """Setup workflow changes (status, transitions, permissions, etc.)
+    """
+    logger.info("Setup workflows ...")
+    for wf_id, settings in WORKFLOWS_TO_UPDATE.items():
+        wapi.update_workflow(wf_id, **settings)
+    logger.info("Setup workflows [DONE]")

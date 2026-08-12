@@ -1,0 +1,15 @@
+<configure xmlns="http://namespaces.zope.org/zope">
+
+  <adapter
+      for="bika.lims.interfaces.IAnalysis"
+      provides="bika.lims.interfaces.IGuardAdapter"
+      factory=".guards.AnalysisGuardAdapter"
+      name="senaite.fhir.adapter.guard.analysis" />
+
+  <adapter
+      for="senaite.core.interfaces.IWorksheet"
+      provides="bika.lims.interfaces.IGuardAdapter"
+      factory=".guards.WorksheetGuardAdapter"
+      name="senaite.fhir.adapter.guard.worksheet" />
+
+</configure>
