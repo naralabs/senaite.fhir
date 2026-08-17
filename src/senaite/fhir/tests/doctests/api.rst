@@ -851,3 +851,34 @@ generate_UUID
     True
     >>> fapi.generate_UUID() != generated
     True
+
+
+Invalid bearer tokens are rejected before the search runs
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Every FHIR search endpoint must reject an invalid bearer token before route
+handling. An otherwise successful empty Bundle could cause a polling client to
+advance its ``_lastUpdated`` cursor and miss subsequent data. This covers the
+specialised polling searches and the generic resource search route::
+
+    >>> import json
+    >>> fhir_url = "{}/@@FHIR/r5".format(portal.absolute_url())
+    >>> search_paths = [
+    ...     "Device?_lastUpdated=gt2026-07-20T03:49:22-05:00",
+    ...     "DiagnosticReport?_lastUpdated=gt2026-07-20T03:49:22-05:00",
+    ...     "ServiceRequest?_lastUpdated=gt2026-07-20T03:49:22-05:00",
+    ...     "Specimen?_lastUpdated=gt2026-07-20T03:49:22-05:00",
+    ...     "Patient?_lastUpdated=gt2026-07-20T03:49:22-05:00",
+    ... ]
+    >>> for path in search_paths:
+    ...     anonymous_browser = self.getBrowser(loggedIn=False)
+    ...     anonymous_browser.raiseHttpErrors = False
+    ...     anonymous_browser.addHeader("Authorization", "Bearer z")
+    ...     anonymous_browser.open("{}/{}".format(fhir_url, path))
+    ...     assert anonymous_browser.headers["Status"] == "401 Unauthorized"
+    ...     error = json.loads(anonymous_browser.contents)
+    ...     assert error["resourceType"] == "OperationOutcome"
+    ...     issue = error["issue"][0]
+    ...     assert issue["severity"] == "error"
+    ...     assert issue["code"] == "security"
+    ...     assert issue["diagnostics"] == "Invalid or expired authentication token"

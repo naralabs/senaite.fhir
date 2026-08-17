@@ -2,6 +2,30 @@
 
 import time
 
+from senaite.jsonapi import api as jsonapi
+
+
+def require_authentication(func):
+    """Reject unauthenticated FHIR requests with a FHIR error response
+    """
+    def decorator(*args, **kwargs):
+        instance = args[0]
+        request = getattr(instance, "request", None)
+        if jsonapi.is_anonymous():
+            request.response.setStatus(401)
+            request.response.setHeader("WWW-Authenticate", "Bearer")
+            return {
+                "resourceType": "OperationOutcome",
+                "issue": [{
+                    "severity": "error",
+                    "code": "security",
+                    "diagnostics": "Invalid or expired authentication token",
+                }],
+            }
+        return func(*args, **kwargs)
+
+    return decorator
+
 
 def runtime(func):
     """Measures the runtime of the wrapped route handler.
