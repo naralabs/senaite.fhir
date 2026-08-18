@@ -95,6 +95,12 @@ class IDeviceResource(IFHIRResource):
     """
 
 
+class ITaskResource(IFHIRResource):
+    """Marker interface for a FHIR SenaiteWorksheetTask resource.
+    https://fhir.senaite.org/StructureDefinition-SenaiteWorksheetTask.html
+    """
+
+
 class IResultsBundleResource(IFHIRResource):
     """Marker interface for a FHIR searchset Bundle returned by the
     DiagnosticReport polling endpoint.
