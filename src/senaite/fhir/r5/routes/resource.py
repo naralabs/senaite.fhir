@@ -75,6 +75,10 @@ def get(context, request, resource_type=None, uid=None):
     if resource_type == "ServiceRequest" and not uid:
         return get_service_request_bundle(context, request)
 
+    # Task search (instrument worksheet worklists)
+    if resource_type == "Task" and not uid:
+        return get_task_bundle(context, request)
+
     # Device list (Instrument objects converted to FHIR Device)
     if resource_type == "Device" and not uid:
         return get_device_bundle(context, request)
@@ -606,6 +610,95 @@ def get_service_request_bundle(_context, request):
     return ResultsBundleResource(bundle_data)
 
 
+def get_task_bundle(_context, request):
+    """Handle GET /Task for instrument worksheet worklists.
+
+    Tasks are derived from eligible Worksheets.  The worksheet modification
+    date is the Task's ``meta.lastUpdated`` value, so it is also used for
+    polling and ordering.  ``status`` accepts a comma-separated list; a Task
+    matches when it has any of the requested statuses.
+    """
+    params = request.form
+
+    since = parse_last_updated(params.get("_lastUpdated", ""))
+    if isinstance(since, OperationOutcome):
+        return since
+
+    sort = params.get("_sort", "")
+    if sort and sort != "_lastUpdated":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "invalid",
+            "details": {
+                "text": "Only _sort=_lastUpdated is supported",
+            },
+            "diagnostics": "This endpoint only supports sorting by _lastUpdated.",  # noqa: E501
+            "expression": ["_sort"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    pagination = parse_pagination_params(params)
+    if isinstance(pagination, OperationOutcome):
+        return pagination
+    count, offset = pagination
+
+    statuses = set(filter(None, params.get("status", "").split(",")))
+    performer = params.get("requestedperformer-reference", "")
+
+    matches = []
+    brains = api.search({"portal_type": "Worksheet"})
+    for brain in brains:
+        worksheet = api.get_object(brain, default=None)
+        if not worksheet:
+            continue
+
+        modified = dtime.to_DT(api.get_modification_date(worksheet))
+        if since and (not modified or modified <= since):
+            continue
+
+        task = fapi.to_fhir_resource(
+            worksheet, resource_type="Task", default=None)
+        if not task:
+            continue
+
+        if statuses and task.get("status") not in statuses:
+            continue
+
+        performers = task.get("requestedPerformer") or []
+        references = set(item.get("reference") for item in performers)
+        if performer and performer not in references:
+            continue
+
+        matches.append((modified, task))
+
+    # FHIR sorting without a leading '-' is ascending.  This ordering is
+    # especially useful for polling clients, which can retain the last item
+    # timestamp as their next _lastUpdated boundary.
+    matches.sort(key=lambda match: (match[0], match[1].id))
+
+    total_match = len(matches)
+    page = matches[offset:offset + count] if count > 0 else []
+    entries = [{
+        "fullUrl": "Task/{}".format(task.id),
+        "resource": dict(task),
+        "search": {"mode": "match"},
+    } for _, task in page]
+
+    bundle_data = {
+        "resourceType": "Bundle",
+        "id": str(fapi.generate_UUID()),
+        "type": "searchset",
+        "timestamp": dtime.to_localized_time(dtime.now(), long_format=True),
+        "total": total_match,
+        "link": build_page_links(request, offset, count, total_match),
+    }
+    if entries:
+        bundle_data["entry"] = entries
+
+    return ResultsBundleResource(bundle_data)
+
+
 def build_page_links(request, offset, count, total):
     """Build the Bundle.link "self"/"next"/"previous" entries for a paged
     searchset, preserving the request's own query parameters.
@@ -668,8 +761,11 @@ def parse_pagination_params(params):
     raw_count = params.get("_count", "")
     raw_offset = params.get("_offset", "")
 
-    count = int(raw_count) if raw_count else DEFAULT_BUNDLE_PAGE_COUNT
-    offset = int(raw_offset) if raw_offset else 0
+    try:
+        count = int(raw_count) if raw_count else DEFAULT_BUNDLE_PAGE_COUNT
+        offset = int(raw_offset) if raw_offset else 0
+    except (TypeError, ValueError):
+        count = offset = -1
 
     if count < 0 or offset < 0:
         request = req.get_request()
