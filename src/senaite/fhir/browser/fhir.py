@@ -40,21 +40,19 @@ class FHIR(BrowserView):
 
     @returns_json
     @runtime
-    @require_authentication
     @handle_errors
     def to_json(self):
         return self.dispatch()
 
     @returns_binary_stream
-    @require_authentication
     def to_binary_stream(self):
         return self.dispatch()
 
     @returns_xml
-    @require_authentication
     def to_xml(self):
         return self.dispatch()
 
+    @require_authentication
     def __call__(self):
         accept = self.request.getHeader("Accept")
         if self.request.form.get("asbinary", False) or \

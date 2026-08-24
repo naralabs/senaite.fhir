@@ -1,28 +1,44 @@
 # -*- coding: utf-8 -*-
 
+import json
 import time
 
 from senaite.jsonapi import api as jsonapi
 
 
 def require_authentication(func):
-    """Reject unauthenticated FHIR requests with a FHIR error response
+    """Rejects unauthenticated FHIR requests with a FHIR error response
+
+    Meant to wrap the view's `__call__`, which is its single entry point:
+    `publishTraverse` appends every path segment to the traversal subpath and
+    returns the view itself, so the representation methods (`to_json`,
+    `to_xml`, `to_binary_stream`) are never reached through traversal.
+
+    Gating there rather than on each of them keeps one check for every
+    representation, and lets the rejection be rendered as the FHIR JSON
+    `OperationOutcome` the spec asks for. The `returns_binary_stream` and
+    `returns_xml` wrappers cannot render one: the former feeds whatever it
+    gets to `os.path.getsize`, the latter runs it through `dicttoxml`, which
+    does not produce FHIR XML.
     """
     def decorator(*args, **kwargs):
         instance = args[0]
-        request = getattr(instance, "request", None)
-        if jsonapi.is_anonymous():
-            request.response.setStatus(401)
-            request.response.setHeader("WWW-Authenticate", "Bearer")
-            return {
-                "resourceType": "OperationOutcome",
-                "issue": [{
-                    "severity": "error",
-                    "code": "security",
-                    "diagnostics": "Invalid or expired authentication token",
-                }],
-            }
-        return func(*args, **kwargs)
+        request = instance.request
+
+        if not jsonapi.is_anonymous():
+            return func(*args, **kwargs)
+
+        request.response.setStatus(401)
+        request.response.setHeader("WWW-Authenticate", "Bearer")
+        request.response.setHeader("Content-Type", "application/json")
+        return json.dumps({
+            "resourceType": "OperationOutcome",
+            "issue": [{
+                "severity": "error",
+                "code": "security",
+                "diagnostics": "Invalid or expired authentication token",
+            }],
+        })
 
     return decorator
 
