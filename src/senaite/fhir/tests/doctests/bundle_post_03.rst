@@ -113,7 +113,7 @@ Practitioner and the ServiceRequest are created::
     >>> status = dict((e["fullUrl"].split("/")[0], e["response"]["status"])
     ...               for e in entries)
     >>> status["Organization"]
-    u'201 Updated'
+    u'200 OK'
     >>> status["Patient"]
     u'201 Created'
     >>> status["Practitioner"]

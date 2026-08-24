@@ -7,6 +7,17 @@ class FHIRAPIError(APIError):
     """Exception Class for FHIR's API Errors
     """
 
+    def __init__(self, status, message):
+        """Preserve the FHIR API's ``status, message`` argument order.
+
+        The base ``APIError`` changed its constructor order, while FHIR's
+        public ``fail`` helper continues to pass status first.
+        """
+        self.status = status
+        self.message = message
+        self.setStatus(status)
+        Exception.__init__(self, message)
+
 
 class ServiceRequestValidationError(Exception):
     """Raised when a ServiceRequest violates validation rules

@@ -5,6 +5,8 @@ Changelog
 ------------------
 
 - #22 Improve Observation result submission validation and remarks handling
+- #21 Serialize ServiceRequest Bundle timestamp as FHIR datetime
+- #18 Fix bundle POST response status, error handling and None guard
 - #19 Add POST /Observation support to submit Analysis results
 - #17 Add ServiceRequest endpoints for SenaiteInstrumentServiceRequest resource
 - #20 Fix FHIR Device search filtering and empty bundle serialization
