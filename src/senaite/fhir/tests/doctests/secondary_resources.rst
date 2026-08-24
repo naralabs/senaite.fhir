@@ -255,4 +255,49 @@ added -- the resource type is the key, so the same Specimen gets overwritten:
     >>> sorted(fapi.get_fhir_storage(sample).get("resources").keys())
     [u'Specimen']
 
+
+The Specimen reference is required
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``ServiceRequest.specimen`` is 1..1 in the SenaiteServiceRequest profile, so a
+``ServiceRequest`` that carries no Specimen reference has nothing to hand over.
+That is a violation of the profile, not an internal error, and it comes back as
+a ``400 OperationOutcome`` pointing at the offending element:
+
+    >>> del posted_sr["specimen"]
+    >>> browser.post("{}/Bundle".format(fhir_url), json.dumps(bundle),
+    ...              content_type="application/json")
+    >>> browser.headers["Status"]
+    '400 Bad Request'
+
+    >>> outcome = json.loads(browser.contents)
+    >>> outcome["resourceType"]
+    u'OperationOutcome'
+    >>> issue = outcome["issue"][0]
+    >>> issue["severity"]
+    u'error'
+    >>> issue["code"]
+    u'required'
+    >>> issue["expression"]
+    [u'ServiceRequest.specimen']
+    >>> issue["details"]["text"]
+    u'ServiceRequest.specimen is required'
+
+A repeated reference is rejected the same way, as exceeding the upper bound of
+the cardinality:
+
+    >>> posted_sr["specimen"] = [
+    ...     {"reference": "Specimen/%s" % posted_specimen["id"]},
+    ...     {"reference": "Specimen/%s" % posted_specimen["id"]},
+    ... ]
+    >>> browser.post("{}/Bundle".format(fhir_url), json.dumps(bundle),
+    ...              content_type="application/json")
+    >>> browser.headers["Status"]
+    '400 Bad Request'
+    >>> issue = json.loads(browser.contents)["issue"][0]
+    >>> issue["code"]
+    u'structure'
+    >>> issue["expression"]
+    [u'ServiceRequest.specimen']
+
     >>> browser.raiseHttpErrors = True

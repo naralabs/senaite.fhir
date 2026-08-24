@@ -172,13 +172,36 @@ class ResourceToAnalysisRequest(object):
         return data
 
     def get_reference(self, key):
+        """Returns the single Reference the resource holds under the given key
+
+        The references resolved through this helper are all 1..1 in the SENAITE
+        profiles, so a missing reference and a repeated one are both violations
+        of the profile rather than internal errors, and are reported back as an
+        OperationOutcome.
+
+        :param key: name of the reference element, e.g. ``"specimen"``
+        :returns: the Reference data type
+        :raises ServiceRequestValidationError: if missing or repeated
+        """
+        expression = "%s.%s" % (self.resource.resourceType, key)
+
         ref = getattr(self.resource, key, None)
         if not ref:
-            raise ValueError("%r: %s is missing" % (self.resource, key))
+            raise ServiceRequestValidationError(
+                "%s is required" % expression,
+                expression=[expression],
+                code="required",
+            )
+
         if api.is_list(ref):
             if len(ref) > 1:
-                raise ValueError("%r: More than one %s" % (self.resource, key))
+                raise ServiceRequestValidationError(
+                    "%s accepts a single reference only" % expression,
+                    expression=[expression],
+                    code="structure",
+                )
             return ref[0]
+
         return ref
 
     def get_reference_obj(self, key, **kwargs):
@@ -194,12 +217,15 @@ class ResourceToAnalysisRequest(object):
 
     @memoize
     def get_specimen(self):
-        """Returns the Specimen resource of this ServiceRequest, if any
+        """Returns the Specimen resource of this ServiceRequest
+
+        ``ServiceRequest.specimen`` is 1..1 in the SenaiteServiceRequest
+        profile, so ``get_reference`` rejects both a missing and a repeated
+        reference:
+        https://fhir.senaite.org/StructureDefinition-SenaiteServiceRequest.html
         """
-        refs = self.resource.specimen or []
-        if not refs:
-            return None
-        return self.get_bundle_sibling(refs[0])
+        ref = self.get_reference("specimen")
+        return self.get_bundle_sibling(ref)
 
     @memoize
     def get_sample_type(self):
@@ -306,16 +332,14 @@ class ResourceToAnalysisRequest(object):
     def get_date_sampled(self):
         """Returns the date when the specimen was collected
         """
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
         return specimen.collectedDateTime
 
     @memoize
     def get_sample_point(self):
         """Returns the sample point from where this specimen was collected
         """
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
         if not specimen:
             return None
 
