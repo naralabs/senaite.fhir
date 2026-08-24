@@ -1,6 +1,22 @@
 <configure
     xmlns="http://namespaces.zope.org/zope"
-    xmlns:browser="http://namespaces.zope.org/browser">
+    xmlns:browser="http://namespaces.zope.org/browser"
+    xmlns:plone="http://namespaces.plone.org/plone">
+
+  <include package="plone.resource"/>
+
+  <plone:static
+      directory="static"
+      type="plone"
+      name="senaite.fhir.static"/>
+
+  <browser:viewlet
+      name="senaite.fhir.status-colors"
+      manager="plone.app.layout.viewlets.interfaces.IHtmlHead"
+      class="senaite.core.browser.viewlets.resources.ResourcesViewlet"
+      permission="zope2.View"
+      template="./static/resources.pt"
+      layer="senaite.fhir.interfaces.ISenaiteFHIRLayer" />
 
   <!-- @@FHIR dispatcher view -->
   <browser:page

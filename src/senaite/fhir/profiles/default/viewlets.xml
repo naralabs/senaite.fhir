@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<object>
+  <order manager="plone.htmlhead" skinname="*">
+    <viewlet name="senaite.fhir.status-colors" />
+  </order>
+</object>
