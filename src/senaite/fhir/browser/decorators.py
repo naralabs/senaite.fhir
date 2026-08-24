@@ -3,6 +3,7 @@
 import json
 import time
 
+from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.jsonapi import api as jsonapi
 
 
@@ -31,14 +32,17 @@ def require_authentication(func):
         request.response.setStatus(401)
         request.response.setHeader("WWW-Authenticate", "Bearer")
         request.response.setHeader("Content-Type", "application/json")
-        return json.dumps({
-            "resourceType": "OperationOutcome",
+
+        # Serialized here, rather than returned for `returns_json` to render,
+        # because this wraps `__call__`: there is no wrapper left outside
+        outcome = OperationOutcome({
             "issue": [{
                 "severity": "error",
                 "code": "security",
                 "diagnostics": "Invalid or expired authentication token",
             }],
         })
+        return json.dumps(outcome)
 
     return decorator
 
