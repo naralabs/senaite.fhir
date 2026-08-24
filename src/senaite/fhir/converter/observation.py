@@ -241,6 +241,7 @@ class ResourceToAnalysisResult(object):
         self.validate_device(analysis)
         value = self.get_value(analysis)
         self.validate_submittable(analysis, value)
+        self.validate_identity(analysis)
 
         content = {
             "Result": value,
@@ -285,17 +286,26 @@ class ResourceToAnalysisResult(object):
                 code="not-found",
             )
 
+        return analysis
+
+    def validate_identity(self, analysis):
+        """The Observation id must not be bound to a different Analysis
+
+        `link_fhir_resource` binds an Observation id to the Analysis it first
+        updated, and `get_object` resolves it back through the FHIR catalog.
+        Two Analyses sharing one id would make that lookup ambiguous, and the
+        notes the Observation carries would claim two different `Remarks`
+        values under a single identity.
+        """
         # `get_object` resolves a FHIR resource scoped to its mapped portal
         # type, so whatever is found here is an Analysis
-        existing_analysis = fapi.get_object(self.resource, default=None)
-        if existing_analysis and existing_analysis.UID() != analysis.UID():
+        existing = fapi.get_object(self.resource, default=None)
+        if existing and existing.UID() != analysis.UID():
             raise ObservationValidationError(
                 "Observation.id is already linked to different Analysis",
                 expression=["Observation.id"],
                 code="conflict",
             )
-
-        return analysis
 
     def validate_submittable(self, analysis, value):
         """The Analysis must still accept a submitted result
