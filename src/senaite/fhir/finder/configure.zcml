@@ -12,4 +12,8 @@
   <adapter for="senaite.fhir.interfaces.ISpecimenResource"
            factory=".sampletype.SampleTypeFinder"/>
 
+  <!-- Find an Analysis object given a FHIR Observation resource -->
+  <adapter for="senaite.fhir.interfaces.IObservationResource"
+           factory=".observation.AnalysisFinder"/>
+
 </configure>

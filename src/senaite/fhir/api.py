@@ -285,8 +285,16 @@ def set_fhir_uids(obj, **kwargs):
     """
     obj = api.get_object(obj)
     storage = get_fhir_storage(obj)
-    for resource_type, uid in kwargs.items():
-        storage.setdefault("uids", {})[resource_type] = uid
+    # Reassign "uids" as a whole (rather than mutating the dict returned by
+    # storage.setdefault("uids", {}) in place) so the PersistentDict's
+    # __setitem__ fires and the change is actually persisted. An in-place
+    # mutation of the nested dict doesn't mark ``storage`` as changed, so a
+    # second resource type linked in a later transaction (e.g. an Analysis'
+    # instrument-scoped ServiceRequest followed by an incoming Observation)
+    # would silently fail to persist.
+    uids = dict(storage.get("uids") or {})
+    uids.update(kwargs)
+    storage["uids"] = uids
 
     # index/reindex object in fhir_catalog. Use the low-level _indexObject so
     # the object is forced into the FHIR catalog: the high-level indexObject
@@ -373,6 +381,12 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
 
     if secondary:
         return api.get_object(secondary[0])
+
+        # fall back to any other resource type the object carries alongside
+        # its own portal_type/default resource type (e.g. an Analysis' own
+        # "ServiceRequest" uid, distinct from its "Observation" identity)
+        if fhir_uid in uids.values():
+            return api.get_object(brain)
 
     if default is _marker:
         fail("No object found for FHIR UID {}".format(fhir_uid))
@@ -492,16 +506,22 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
     - a ``dict``: dispatched to the ``IFHIRResource`` adapter named after its
       ``resourceType``;
     - a content object, catalog brain or UID: resolved (see ``get_object``)
-      and converted through its ``IContentToFHIR`` adapter.
+      and converted through its ``IContentToFHIR`` adapter, named after
+      ``resource_type`` when given (falling back to the default, unnamed
+      adapter) — this lets a single object be represented as more than one
+      resource type, e.g. an Analysis as either an Observation (default) or
+      a ServiceRequest (named).
 
     Empty/falsy input returns ``None``. On any other failure (missing/
-    unsupported resource type, object not found, no adapter) a
-    ``FHIRAPIError`` is raised unless ``default`` is provided.
+    unsupported resource type, object not found, no adapter, or the adapter
+    itself returning ``None``) a ``FHIRAPIError`` is raised unless
+    ``default`` is provided.
 
     :param thing: FHIR resource, dict, content object, catalog brain or UID
     :param default: value to return instead of raising on failure
-    :param resource_type: optional resource type hint used when resolving a
-        bare UID that is a FHIR id rather than a SENAITE UID
+    :param resource_type: optional resource type used to select a named
+        ``IContentToFHIR`` adapter for a content object, or as a hint when
+        resolving a bare UID that is a FHIR id rather than a SENAITE UID
     :returns: the FHIR resource, ``None`` for empty input, or ``default``
     """
     if not thing:
@@ -558,7 +578,13 @@ def to_fhir_resource(thing, default=_marker, resource_type=None):
             fail(msg="Type is not supported: %r" % obj)
         return default
 
-    return adapter.to_fhir_resource()
+    resource = adapter.to_fhir_resource()
+    if not resource:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
+
+    return resource
 
 
 def to_fhir_action_resource(thing, fhir_action, default=_marker):
@@ -610,7 +636,8 @@ def can_create_or_update(resource):
 
     # TODO Make this configurable with a senaite.fhir-specific control panel
     supported_types = [
-        "ServiceRequest", "Patient", "Practitioner", "Organization"
+        "ServiceRequest", "Patient", "Practitioner", "Organization",
+        "Observation",
     ]
     if resource.resourceType not in supported_types:
         return False
@@ -714,7 +741,9 @@ def link_fhir_resource(obj, resource):
     Marks the object with ``IFHIRContent`` and records the resource's UID in
     the object's ``uids`` mapping (keyed by resource type, via
     ``set_fhir_uids``, which also indexes it in the FHIR catalog). The
-    serialized resource is also stored under ``data`` for offline use.
+    serialized resource is also stored under ``data`` for offline use --
+    unless that slot already holds a snapshot of a *different* resource type,
+    in which case it is left untouched (see below).
 
     :param obj: the content object to link the resource to
     :param resource: the FHIR resource to link
@@ -738,9 +767,16 @@ def link_fhir_resource(obj, resource):
 
     # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the
-    # original information, even when connection with source is lost
+    # original information, even when connection with source is lost.
+    # ``data`` is a single slot, but an object can carry more than one linked
+    # FHIR identity (e.g. an Analysis carries both its instrument-scoped
+    # ServiceRequest, linked when an Instrument is assigned, and an incoming
+    # Observation result), so whichever resource type got there first keeps
+    # it; only overwrite when the slot is empty or already of this same type.
     annotation = get_fhir_storage(obj)
-    annotation["data"] = resource.to_dict()
+    existing_type = (annotation.get("data") or {}).get("resourceType")
+    if not existing_type or existing_type == resource_type:
+        annotation["data"] = resource.to_dict()
 
 
 def slugify(value, repl="-"):
