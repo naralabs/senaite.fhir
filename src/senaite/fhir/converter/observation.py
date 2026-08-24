@@ -285,21 +285,15 @@ class ResourceToAnalysisResult(object):
                 code="not-found",
             )
 
+        # `get_object` resolves a FHIR resource scoped to its mapped portal
+        # type, so whatever is found here is an Analysis
         existing_analysis = fapi.get_object(self.resource, default=None)
-        if existing_analysis:
-            if not IAnalysis.providedBy(existing_analysis):
-                raise ObservationValidationError(
-                    "Observation.id is already linked to non-Analysis object",
-                    expression=["Observation.id"],
-                    code="conflict",
-                )
-
-            if existing_analysis.UID() != analysis.UID():
-                raise ObservationValidationError(
-                    "Observation.id is already linked to different Analysis",
-                    expression=["Observation.id"],
-                    code="conflict",
-                )
+        if existing_analysis and existing_analysis.UID() != analysis.UID():
+            raise ObservationValidationError(
+                "Observation.id is already linked to different Analysis",
+                expression=["Observation.id"],
+                code="conflict",
+            )
 
         return analysis
 
