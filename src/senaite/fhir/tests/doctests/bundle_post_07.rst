@@ -202,7 +202,7 @@ Re-post the modified bundle:
     >>> sr_entry = [e for e in entries2
     ...             if e["fullUrl"].startswith("ServiceRequest/")][0]
     >>> sr_entry["response"]["status"]
-    u'201 Updated'
+    u'200 OK'
 
 No duplicate AnalysisRequest is created:
 

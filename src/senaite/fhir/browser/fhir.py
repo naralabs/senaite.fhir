@@ -5,6 +5,7 @@ from plone.jsonapi.core.browser.decorators import returns_binary_stream
 from plone.jsonapi.core.browser.decorators import returns_json
 from plone.jsonapi.core.browser.decorators import returns_xml
 from Products.Five import BrowserView
+from senaite.fhir.browser.decorators import require_authentication
 from senaite.fhir.browser.decorators import runtime
 from senaite.fhir.browser.interfaces import IFHIR
 from senaite.fhir.browser.router import DefaultFHIRRouter
@@ -51,6 +52,7 @@ class FHIR(BrowserView):
     def to_xml(self):
         return self.dispatch()
 
+    @require_authentication
     def __call__(self):
         accept = self.request.getHeader("Accept")
         if self.request.form.get("asbinary", False) or \
