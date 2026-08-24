@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #28 Link FHIR resources without a SENAITE counterpart as secondary resources
 - #19 Add POST /Observation support to submit Analysis results
 - #17 Add ServiceRequest endpoints for SenaiteInstrumentServiceRequest resource
 - #20 Fix FHIR Device search filtering and empty bundle serialization
