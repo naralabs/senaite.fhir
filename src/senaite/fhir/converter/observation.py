@@ -240,8 +240,8 @@ class ResourceToAnalysisResult(object):
         self.validate_code(analysis)
         self.validate_device(analysis)
         value = self.get_value(analysis)
-        self.validate_submittable(analysis, value)
         self.validate_identity(analysis)
+        self.validate_submittable(analysis, value)
 
         content = {
             "Result": value,
