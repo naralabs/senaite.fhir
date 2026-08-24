@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #23 Add Ready and In Progress states for worksheets
 - #22 Improve Observation result submission validation and remarks handling
 - #21 Serialize ServiceRequest Bundle timestamp as FHIR datetime
 - #18 Fix bundle POST response status, error handling and None guard

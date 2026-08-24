@@ -1,0 +1,2 @@
+<link href="#" rel="stylesheet"
+      tal:attributes="href string:${view/site_url}//++plone++senaite.fhir.static/status-colors.css"/>

@@ -1,0 +1,7 @@
+#senaite-toolbar .tb-state.state-ready {
+    color: #ffc107;
+}
+
+#senaite-toolbar .tb-state.state-in_progress {
+    color: #28a745;
+}

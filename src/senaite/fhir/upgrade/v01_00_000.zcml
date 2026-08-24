@@ -1,0 +1,13 @@
+<configure
+    xmlns="http://namespaces.zope.org/zope"
+    xmlns:genericsetup="http://namespaces.zope.org/genericsetup">
+
+  <genericsetup:upgradeStep
+      title="Add ready and in-progress worksheet states"
+      description="Adds the FHIR worksheet worklist states and membership lock."
+      source="1000"
+      destination="1001"
+      handler=".v01_00_000.upgrade_worksheet_workflow"
+      profile="senaite.fhir:default"/>
+
+</configure>
