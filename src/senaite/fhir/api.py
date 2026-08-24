@@ -18,6 +18,7 @@ from senaite.fhir.catalog import FHIR_CATALOG
 from senaite.fhir.config import ANALYSIS_REPORTABLE_STATUSES
 from senaite.fhir.config import FHIR_RESOURCE_TO_PORTAL_TYPE
 from senaite.fhir.config import FHIR_STORAGE_KEY
+from senaite.fhir.config import SECONDARY_RESOURCES_KEY
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.exceptions import FHIRAPIError
 from senaite.fhir.interfaces import IContentActionToFHIR
@@ -657,6 +658,9 @@ def update(obj, resource):
     # convert the resource to a dict suitable for updating AT/DX contents
     data = to_content_dict(resource)
 
+    # get the secondary FHIR resources to be linked to the object, if any
+    resources = get_secondary_resources(data)
+
     # loop through data and set field values
     fields = api.get_fields(obj)
     for name, value in data.items():
@@ -682,9 +686,40 @@ def update(obj, resource):
 
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)
+
+    # link the secondary FHIR resources to the object
+    for secondary in resources:
+        link_fhir_resource(obj, secondary, secondary=True)
+
     # re-catalog the object
     obj.reindexObject()
     return obj
+
+
+def get_secondary_resources(data):
+    """Returns the secondary FHIR resources declared in the given content dict.
+
+    Converters use the ``_fhir_secondary_resources`` key of the content dict
+    (``SECONDARY_RESOURCES_KEY``) to hand over the resources that have to be
+    linked to the object alongside the primary one, e.g. the ``Specimen`` of a
+    ``ServiceRequest``, which has no counterpart content type in SENAITE.
+
+    A single resource is accepted as well as a list of them. This is not just
+    for convenience: FHIR resources are ``dict`` subclasses, so iterating a
+    bare resource would silently yield its keys instead of the resource itself.
+
+    The content dict is left untouched. The key is not a content field name --
+    field names are public, and always come with an accessor and a mutator --
+    so it is simply ignored when the rest of the dict is applied.
+
+    :param data: the content dict to read the secondary resources from
+    :returns: the list of secondary FHIR resources, empty when there are none
+    :rtype: list
+    """
+    resources = data.get(SECONDARY_RESOURCES_KEY) or []
+    if is_fhir_resource(resources):
+        return [resources]
+    return list(filter(is_fhir_resource, resources))
 
 
 def create(resource):
@@ -707,8 +742,8 @@ def create(resource):
     # get the content dict
     data = to_content_dict(resource)
 
-    # get secondary FHIR resources
-    resources = data.pop("_resources", [])
+    # get the secondary FHIR resources to be linked to the object, if any
+    resources = get_secondary_resources(data)
 
     # create the object
     portal_type = data.pop("portal_type")
@@ -726,14 +761,14 @@ def create(resource):
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)
 
-    # link secondary FHIR resources to the object
+    # link the secondary FHIR resources to the object
     for secondary in resources:
-        link_fhir_resource(obj, secondary)
+        link_fhir_resource(obj, secondary, secondary=True)
 
     return obj
 
 
-def link_fhir_resource(obj, resource):
+def link_fhir_resource(obj, resource, secondary=False):
     """Links a FHIR resource to the given SENAITE object.
 
     Marks the object with ``IFHIRContent`` and records the resource's UID in
@@ -743,9 +778,18 @@ def link_fhir_resource(obj, resource):
     unless that slot already holds a snapshot of a *different* resource type,
     in which case it is left untouched (see below).
 
+    Pass `secondary=True` for a resource that has no counterpart content type
+    in SENAITE, e.g. the `Specimen` of an AnalysisRequest. There is no live
+    content to rebuild such a resource from, so it is snapshotted in the
+    type-keyed `resources` slot instead of `data`, and `get_fhir_resource`
+    serves it back from there. Resources that *do* have a counterpart must not
+    be stored there: they are always re-synthesized by their `IContentToFHIR`
+    adapter, and a stale snapshot would shadow the live one.
+
     :param obj: the content object to link the resource to
     :param resource: the FHIR resource to link
-    :raises ValueError: if ``resource`` is not a FHIR resource
+    :param secondary: whether the resource has no counterpart content type
+    :raises ValueError: if `resource` is not a FHIR resource
     """
     if not is_fhir_resource(resource):
         raise ValueError("Type not supported: {}".format(repr(type(resource))))
@@ -763,9 +807,19 @@ def link_fhir_resource(obj, resource):
     kwargs = {resource_type: resource_uid}
     set_fhir_uids(obj, **kwargs)
 
-    # store the resource in annotations
     annotation = get_fhir_storage(obj)
-    annotation.setdefault("resources", {})[resource_type] = resource.to_dict()
+
+    if secondary:
+        # Snapshot the resource in the type-keyed ``resources`` slot. It is the
+        # only source of truth for this resource, so ``get_fhir_resource``
+        # serves it back from here rather than from an IContentToFHIR adapter.
+        # Reassign "resources" as a whole, for the same reason as in
+        # ``set_fhir_uids``: mutating the nested dict in place does not mark
+        # the PersistentDict as changed, so the write can get lost.
+        resources = dict(annotation.get("resources") or {})
+        resources[resource_type] = resource.to_dict()
+        annotation["resources"] = resources
+        return
 
     # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the
@@ -775,7 +829,6 @@ def link_fhir_resource(obj, resource):
     # ServiceRequest, linked when an Instrument is assigned, and an incoming
     # Observation result), so whichever resource type got there first keeps
     # it; only overwrite when the slot is empty or already of this same type.
-    annotation = get_fhir_storage(obj)
     existing_type = (annotation.get("data") or {}).get("resourceType")
     if not existing_type or existing_type == resource_type:
         annotation["data"] = resource.to_dict()
@@ -814,31 +867,17 @@ def get_system_code(resource_type, default=_marker):
     return default
 
 
-@deprecate("Use link_fhir_resource instead")
+@deprecate("Use link_fhir_resource(obj, resource, secondary=True) instead")
 def store_fhir_resource(obj, resource):
     """Persists a secondary FHIR resource against a SENAITE object.
-
-    Use this when a FHIR resource type has no direct SENAITE content
-    counterpart but must survive round-trips through the API (e.g. a Specimen
-    stored on an AnalysisRequest). The resource dict is written into a
-    type-keyed slot under ``fhir_storage["resources"]`` and its UID is linked
-    via ``set_fhir_uids`` so the FHIR catalog can resolve it back.
 
     :param obj: content object, catalog brain or UID
     :param resource: the FHIR resource to store
     """
-    if not is_fhir_resource(resource):
-        raise ValueError("Type not supported: {}".format(repr(type(resource))))
-
-    resource_type = resource.resourceType
-    uid = get_uid(resource)
-
-    storage = get_fhir_storage(obj)
-    storage.setdefault("resources", {})[resource_type] = resource.to_dict()
-
-    set_fhir_uids(obj, **{resource_type: uid})
+    return link_fhir_resource(api.get_object(obj), resource, secondary=True)
 
 
+@deprecate("Use get_fhir_resource instead")
 def get_stored_fhir_resource(obj, resource_type):
     """Returns a previously stored secondary FHIR resource from the object's
     annotation storage, or ``None`` when none is found.
@@ -860,37 +899,49 @@ def get_stored_fhir_resource(obj, resource_type):
     return to_fhir_resource(data, default=None)
 
 
+def get_fhir_resource(obj, resource_type=None, default=_marker):
+    """Returns the FHIR resource of the given type linked to the given object.
+
+    Secondary resources -- those without a counterpart content type in SENAITE,
+    e.g. the ``Specimen`` of an AnalysisRequest -- are served from the snapshot
+    that ``link_fhir_resource`` keeps in the object's annotation storage, as
+    there is no live content to rebuild them from.
+
+    Any other resource type is synthesized from live content through its
+    ``IContentToFHIR`` adapter (see ``to_fhir_resource``), so it always
+    reflects the current state of the object rather than the payload that
+    happened to create it.
+
+    :param obj: content object, catalog brain, SENAITE UID or FHIR UID/id
+    :param resource_type: FHIR resource type to return; defaults to the
+        resource type associated to the object (see ``get_resource_type``)
+    :param default: value to return instead of raising on failure
+    :returns: the FHIR resource, or ``default``
+    """
+    # resolve the object, also when a bare FHIR id/UID was passed in
+    obj = get_object(obj, default=None)
+    if not obj:
+        if default is _marker:
+            fail(msg="Not Found", status=404)
+        return default
+
+    # default to the resource type associated to the object
+    if not resource_type:
+        resource_type = get_resource_type(obj)
+
+    # look for a stored secondary resource first, reading the annotation
+    # directly so the storage is not created on read
+    storage = IAnnotations(obj).get(FHIR_STORAGE_KEY) or {}
+    stored = (storage.get("resources") or {}).get(resource_type)
+    if stored:
+        return to_fhir_resource(stored, default=default)
+
+    # rely on the IContentToFHIR adapter for the requested resource type
+    return to_fhir_resource(obj, default=default, resource_type=resource_type)
+
+
 def generate_UUID():
     """Generates a new UUID object
     """
     generator = getUtility(IUUIDGenerator)
     return get_uuid(generator())
-
-
-def get_fhir_resource(obj, resource_type=None, default=_marker):
-    """"Returns the fhir resource linked to the given object
-    """
-    # get the FHIR Storage annotation without write-on-read
-    obj = api.get_object(obj)
-    annotation = IAnnotations(obj)
-    storage = annotation.get(FHIR_STORAGE_KEY) or {}
-
-    # get the FHIR resource type associated to the object
-    if not resource_type:
-        resource_type = get_resource_type(obj)
-
-    # rely on the primary FHIR resource
-    data = storage.get("data")
-    res = to_fhir_resource(data, default=None, resource_type=resource_type)
-    if res:
-        return res
-
-    # look for secondary FHIR resources
-    resources = storage.get("resources") or {}
-    res = resources.get(resource_type)
-    if not res:
-        if default is _marker:
-            fail(msg="Not Found", status=404)
-        return default
-
-    return to_fhir_resource(res, default=default, resource_type=resource_type)

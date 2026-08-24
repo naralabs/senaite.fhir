@@ -54,10 +54,11 @@ def get(context, request, resource_type=None, uid=None):
     uuids = list(filter(lambda val: fapi.is_uuid(val), [uid, resource_type]))
     if uuids:
         uid = fapi.get_uuid(uuids[0]).hex
-        # pass the resource type so to_fhir_resource can fall back to a
-        # fhir_<resource_type>_id search when the SENAITE UID lookup misses
+        # pass the resource type so the annotation-stored snapshot of that
+        # type is preferred (e.g. a Specimen, which has no counterpart content
+        # type) before falling back to the IContentToFHIR adapter
         fhir_type = resource_type if not fapi.is_uuid(resource_type) else None
-        resource = fapi.to_fhir_resource(
+        resource = fapi.get_fhir_resource(
             uid, resource_type=fhir_type, default=None
         )
         if resource:
@@ -214,7 +215,7 @@ def process_bundle_specimen(sr_resource, ar_obj, ar_status, ar_modified):
 
         # Persist the Specimen dict in the AR's annotation storage and index
         # its UID in the FHIR catalog so search_by_fhir_uid can find the AR.
-        fapi.store_fhir_resource(ar_obj, specimen)
+        fapi.link_fhir_resource(ar_obj, specimen, secondary=True)
 
         sample_type = SampleTypeFinder(specimen).find()
         if sample_type and ar_obj.getSampleType() != sample_type:
@@ -350,7 +351,7 @@ def get_specimen_bundle(context, request):
         ar = api.get_object(brain, default=None)
         if not ar:
             continue
-        specimen = fapi.to_fhir_resource(
+        specimen = fapi.get_fhir_resource(
             ar, resource_type="Specimen", default=None
         )
         if not specimen:
