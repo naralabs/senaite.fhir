@@ -39,7 +39,9 @@ def require_authentication(func):
             "issue": [{
                 "severity": "error",
                 "code": "security",
-                "diagnostics": "Invalid or expired authentication token",
+                "details": {
+                    "text": "Invalid or expired authentication token",
+                },
             }],
         })
         return json.dumps(outcome)

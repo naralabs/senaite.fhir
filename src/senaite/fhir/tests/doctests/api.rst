@@ -881,4 +881,5 @@ specialised polling searches and the generic resource search route::
     ...     issue = error["issue"][0]
     ...     assert issue["severity"] == "error"
     ...     assert issue["code"] == "security"
-    ...     assert issue["diagnostics"] == "Invalid or expired authentication token"
+    ...     details = issue["details"]
+    ...     assert details["text"] == "Invalid or expired authentication token"
