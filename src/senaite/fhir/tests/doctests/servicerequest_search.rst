@@ -169,6 +169,8 @@ Empty bundle when nothing is linked yet
     u'searchset'
     >>> bundle["total"]
     0
+    >>> "T" in bundle["timestamp"] and bundle["timestamp"][-6] in "+-"
+    True
     >>> "entry" in bundle
     False
 

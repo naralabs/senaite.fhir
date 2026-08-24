@@ -121,7 +121,7 @@ The pre-existing Client (Organization) is updated, the rest are created:
     >>> status = dict((e["fullUrl"].split("/")[0], e["response"]["status"])
     ...               for e in entries)
     >>> status["Organization"]
-    u'201 Updated'
+    u'200 OK'
     >>> status["Patient"]
     u'201 Created'
     >>> status["Practitioner"]
@@ -238,7 +238,7 @@ The same five resources are reported, now consistently as updated::
     [u'Organization', u'Patient', u'Practitioner', u'ServiceRequest', u'Specimen']
 
     >>> sorted(set(e["response"]["status"] for e in entries))
-    [u'201 Updated']
+    [u'200 OK']
 
 No duplicates are created -- it is still the same Sample, now ``stat``::
 
@@ -291,7 +291,7 @@ The existing Patient is matched and updated, not duplicated::
     >>> entries[0]["fullUrl"].split("/")[0]
     u'Patient'
     >>> entries[0]["response"]["status"]
-    u'201 Updated'
+    u'200 OK'
 
     >>> portal._p_jar.sync()
     >>> after = len([obj for obj in portal.patients.objectValues()

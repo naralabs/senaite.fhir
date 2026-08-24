@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from senaite.fhir.datatype.annotation import Annotation
 from senaite.fhir.datatype.codeableconcept import CodeableConcept
 from senaite.fhir.datatype.reference import Reference
 from senaite.fhir.interfaces import IObservationResource
@@ -55,6 +56,14 @@ class ObservationResource(FHIRResource):
         https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.performer
         """
         return self.get("performer") or []
+
+    @property
+    def note(self):
+        """Comments accompanying the reported result.
+        https://hl7.org/fhir/R5/observation-definitions.html#Observation.note
+        """
+        data = self.get("note") or []
+        return [Annotation(item) for item in data]
 
     @property
     def device(self):
