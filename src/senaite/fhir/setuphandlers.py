@@ -25,7 +25,7 @@ WORKFLOWS_TO_UPDATE = {
     WORKSHEET_WORKFLOW: {
         "states": {
             "open": {
-                "transitions": ("ready", "remove"),
+                "transitions": ("ready", "in_progress", "remove"),
             },
             "ready": {
                 "title": "Ready",

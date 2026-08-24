@@ -56,6 +56,6 @@ class WorksheetGuardAdapter(object):
         self.context = context
 
     def guard(self, transition):
-        if transition != "ready":
+        if transition not in ("ready", "in_progress"):
             return True
         return bool(self.context.getAnalyses())
