@@ -26,6 +26,13 @@
            for="bika.lims.interfaces.IAnalysisRequest"
            provides="senaite.fhir.interfaces.IContentActionToFHIR"/>
 
+  <!-- Analysis to FHIR ServiceRequest (device-scoped, intent=filler-order,
+       generated only when the Analysis has an Instrument assigned) -->
+  <adapter name="ServiceRequest"
+           factory=".analysis.AnalysisToInstrumentServiceRequest"
+           for="bika.lims.interfaces.IAnalysis"
+           provides="senaite.fhir.interfaces.IContentToFHIR"/>
+
   <!-- FHIR To Patient -->
   <adapter for="senaite.fhir.interfaces.IPatientResource"
            factory=".patient.ResourceToPatient"/>
@@ -47,6 +54,10 @@
   <!-- FHIR To AnalysisRequest -->
   <adapter for="senaite.fhir.interfaces.IServiceRequestResource"
            factory=".analysisrequest.ResourceToAnalysisRequest"/>
+
+  <!-- FHIR Observation To Analysis result -->
+  <adapter for="senaite.fhir.interfaces.IObservationResource"
+           factory=".observation.ResourceToAnalysisResult"/>
 
   <!-- Instrument To FHIR Device -->
   <adapter for="bika.lims.interfaces.IInstrument"

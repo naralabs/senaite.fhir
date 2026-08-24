@@ -1,18 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from senaite.core.api import dtime
-from zope.interface import implementer
-
 from senaite.fhir.datatype.annotation import Annotation
 from senaite.fhir.datatype.codeableconcept import CodeableConcept
 from senaite.fhir.datatype.codeablereference import CodeableReference
 from senaite.fhir.datatype.identifier import Identifier
 from senaite.fhir.datatype.reference import Reference
-from senaite.fhir.interfaces import IInstrumentServiceRequestResource
+from senaite.fhir.interfaces import IServiceRequestResource
 from senaite.fhir.resource import FHIRResource
+from zope.interface import implementer
 
 
-@implementer(IInstrumentServiceRequestResource)
+@implementer(IServiceRequestResource)
 class InstrumentServiceRequestResource(FHIRResource):
     """The filler-order ServiceRequest FHIR resource that links the
     Instrument assigned to an Analysis. Its uid is distinct from the

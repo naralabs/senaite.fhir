@@ -20,6 +20,13 @@ class ObservationResource(FHIRResource):
     )
 
     @property
+    def text(self):
+        """Human-readable narrative, if provided by the sender.
+        https://www.hl7.org/fhir/R5/narrative.html
+        """
+        return self.get("text")
+
+    @property
     def basedOn(self):
         """Reference to the originating ServiceRequest.
         https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.basedOn
@@ -48,6 +55,14 @@ class ObservationResource(FHIRResource):
         https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.performer
         """
         return self.get("performer") or []
+
+    @property
+    def device(self):
+        """Reference to the Device (Instrument) that produced the result.
+        https://www.hl7.org/fhir/R5/observation-definitions.html#Observation.device
+        """
+        element = self.get("device")
+        return Reference(element) if element else None
 
     @property
     def valueQuantity(self):

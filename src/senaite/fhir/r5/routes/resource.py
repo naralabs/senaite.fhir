@@ -9,6 +9,8 @@ from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
 from senaite.fhir.api import find_object_for
+from senaite.fhir.config import DEFAULT_BUNDLE_PAGE_COUNT
+from senaite.fhir.config import INSTRUMENT_SERVICE_REQUEST_STATUSES
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.finder.sampletype import SampleTypeFinder
 from senaite.fhir.interfaces import IBundleResource
@@ -16,11 +18,13 @@ from senaite.fhir.r5 import add_route
 from senaite.fhir.resource.bundleresponse import BundleResponseResource
 from senaite.fhir.resource.operationoutcome import OperationOutcome
 from senaite.fhir.resource.resultsbundle import ResultsBundleResource
+from senaite.fhir.exceptions import ObservationValidationError
 from senaite.fhir.exceptions import ServiceRequestValidationError
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationError  # noqa: E501
 from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevocationResource  # noqa: E501
 from senaite.jsonapi import api as japi
 from senaite.jsonapi import request as req
+from six.moves.urllib_parse import urlencode
 
 ENDPOINT = "senaite.fhir.r5"
 ENDPOINT_GET = "%s.get" % ENDPOINT
@@ -65,6 +69,10 @@ def get(context, request, resource_type=None, uid=None):
     if resource_type == "DiagnosticReport" and not uid:
         return get_diagnostic_report_bundle(context, request)
 
+    # ServiceRequest search (polling endpoint)
+    if resource_type == "ServiceRequest" and not uid:
+        return get_service_request_bundle(context, request)
+
     # Device list (Instrument objects converted to FHIR Device)
     if resource_type == "Device" and not uid:
         return get_device_bundle(context, request)
@@ -100,20 +108,25 @@ def post(context, request, resource_type=None):
             continue
 
         # create or update the counterpart object
-        obj = find_object_for(resource)
         try:
+            obj = find_object_for(resource)
             if not obj:
                 obj = fapi.create(resource)
                 status = "201 Created"
             else:
                 obj = fapi.update(obj, resource)
                 status = "201 Updated"
-        except ServiceRequestValidationError as e:
+        except (ServiceRequestValidationError, ObservationValidationError) as e:  # noqa: E501
             transaction.abort()
-            request.response.setStatus(400)
+            code = getattr(e, "code", "business-rule")
+            status_code = 400
+            if code == "conflict":
+                status_code = 409
+
+            request.response.setStatus(status_code)
             issue = {
                 "severity": "error",
-                "code": getattr(e, "code", "business-rule"),
+                "code": code,
                 "details": {"text": str(e)},
                 "expression": e.expression,
             }
@@ -151,6 +164,15 @@ def post(context, request, resource_type=None):
                 resource, obj, status, modified
             )
             entries.extend(specimen_entries)
+
+        # An Observation carries a result for an existing Analysis; once
+        # applied (see ResourceToAnalysisResult), submit it
+        if resource.resourceType == "Observation" and obj:
+            do_action_for(obj, "submit")
+            obs = fapi.to_fhir_resource(obj, default=None)
+            if resource.text:
+                obs["text"] = resource.text
+            return obs
 
     # create the BundleResponse
     resp = {
@@ -452,6 +474,156 @@ def get_diagnostic_report_bundle(_context, request):
     return ResultsBundleResource(bundle_data)
 
 
+def get_service_request_bundle(_context, request):
+    """Handle GET /ServiceRequest with _lastUpdated, intent, status,
+    optional _sort, _count and _offset (polling endpoint).
+
+    Builds a SenaiteResultsBundle (searchset) containing the
+    instrument-scoped SenaiteInstrumentServiceRequest entries (intent
+    "filler-order") derived from Analyses, i.e. the ones created by
+    ``AnalysisToInstrumentServiceRequest``.
+    """
+    params = request.form
+
+    since = parse_last_updated(params.get("_lastUpdated", ""))
+    if isinstance(since, OperationOutcome):
+        return since
+
+    intent = params.get("intent", "")
+    if intent != "filler-order":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "required",
+            "details": {
+                "text": "intent=filler-order is required for this endpoint",
+            },
+            "diagnostics": "This endpoint only supports requests with intent=filler-order. Include intent=filler-order as a query parameter.",  # noqa: E501
+            "expression": ["intent"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    status = params.get("status", "")
+    if status != "active":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "required",
+            "details": {
+                "text": "status=active is required for this endpoint",
+            },
+            "diagnostics": "This endpoint only supports requests with status=active. Include status=active as a query parameter.",  # noqa: E501
+            "expression": ["status"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    sort = params.get("_sort", "")
+    if sort and sort != "lastUpdated":
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "invalid",
+            "details": {
+                "text": "Only _sort=lastUpdated is supported",
+            },
+            "diagnostics": "This endpoint always returns results in a stable lastUpdated-descending order. When _sort is provided it must be set to lastUpdated.",  # noqa: E501
+            "expression": ["_sort"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    pagination = parse_pagination_params(params)
+    if isinstance(pagination, OperationOutcome):
+        return pagination
+    count, offset = pagination
+
+    # review_states of Analysis objects that map to the "active" FHIR status
+    active_statuses = [
+        review_state
+        for review_state, fhir_status in INSTRUMENT_SERVICE_REQUEST_STATUSES
+        if review_state and fhir_status == "active"
+    ]
+
+    query = {
+        "portal_type": "Analysis",
+        "review_state": active_statuses,
+    }
+    brains = api.search(query)
+
+    matches = []
+
+    for brain in brains:
+        analysis = api.get_object(brain, default=None)
+        if not analysis:
+            continue
+
+        if since and api.get_modification_date(analysis) < since:
+            continue
+
+        sr = fapi.to_fhir_resource(
+            analysis, resource_type="ServiceRequest", default=None)
+        if not sr:
+            # never linked (no Instrument was ever assigned)
+            continue
+
+        matches.append((dtime.to_dt(sr["authoredOn"]), sr))
+
+    # sort descending by authoredOn
+    matches.sort(key=lambda match: match[0], reverse=True)
+
+    total_match = len(matches)
+    page = matches[offset:offset + count] if count > 0 else []
+
+    entries = [{
+        "fullUrl": "ServiceRequest/{}".format(service_request.id),
+        "resource": dict(service_request),
+        "search": {"mode": "match"},
+    } for _, service_request in page]
+
+    now = dtime.to_localized_time(dtime.now(), long_format=True)
+    bundle_data = {
+        "resourceType": "Bundle",
+        "id": str(fapi.generate_UUID()),
+        "type": "searchset",
+        "timestamp": now,
+        "total": total_match,
+        "link": build_page_links(request, offset, count, total_match),
+    }
+
+    if entries:
+        bundle_data["entry"] = entries
+
+    return ResultsBundleResource(bundle_data)
+
+
+def build_page_links(request, offset, count, total):
+    """Build the Bundle.link "self"/"next"/"previous" entries for a paged
+    searchset, preserving the request's own query parameters.
+    """
+    links = [build_page_link(request, "self", offset, count)]
+
+    if count > 0 and offset + count < total:
+        links.append(build_page_link(request, "next", offset + count, count))
+
+    if offset > 0:
+        previous_offset = max(offset - count, 0) if count > 0 else 0
+        links.append(
+            build_page_link(request, "previous", previous_offset, count))
+
+    return links
+
+
+def build_page_link(request, relation, offset, count):
+    """Build a single Bundle.link entry for the given _offset/_count page
+    """
+    params = dict(request.form)
+    params["_count"] = count
+    params["_offset"] = offset
+    return {
+        "relation": relation,
+        "url": "%s?%s" % (request.URL, urlencode(params, doseq=True)),
+    }
+
+
 def parse_last_updated(value):
     """Parse a FHIR _lastUpdated value into a catalog min-range boundary
     """
@@ -479,6 +651,32 @@ def parse_last_updated(value):
     return since
 
 
+def parse_pagination_params(params):
+    """Parse and validate the ``_count``/``_offset`` paging parameters
+    """
+    raw_count = params.get("_count", "")
+    raw_offset = params.get("_offset", "")
+
+    count = int(raw_count) if raw_count else DEFAULT_BUNDLE_PAGE_COUNT
+    offset = int(raw_offset) if raw_offset else 0
+
+    if count < 0 or offset < 0:
+        request = req.get_request()
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "invalid",
+            "details": {
+                "text": "Malformed _count/_offset value",
+            },
+            "diagnostics": "_count and _offset must be non-negative integers.",  # noqa: E501
+            "expression": ["_count", "_offset"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    return count, offset
+
+
 def strip_presented_form_data(dr_dict):
     """Remove the base64 PDF payload from presentedForm
     """
@@ -499,17 +697,17 @@ def get_device_bundle(_context, request):
     if isinstance(since, OperationOutcome):
         return since
 
-    query = {"portal_type": "Instrument"}
-    if since:
-        query["modified"] = {"query": since, "range": "min"}
-
-    brains = api.search(query)
+    brains = api.search({"portal_type": "Instrument"})
 
     entries = []
     for brain in brains:
         instrument = api.get_object(brain, default=None)
         if not instrument:
             continue
+        if since:
+            modified = dtime.to_DT(api.get_modification_date(instrument))
+            if not modified or modified <= since:
+                continue
         device = fapi.to_fhir_resource(instrument, default=None)
         if not device:
             continue
@@ -523,14 +721,12 @@ def get_device_bundle(_context, request):
     bundle_data = {
         "resourceType": "Bundle",
         "id": str(fapi.generate_UUID()),
-        "meta": {
-            "profile": [to_fhir_profile_url("SenaiteResultsBundle")],
-        },
         "type": "searchset",
         "timestamp": now,
         "total": len(entries),
-        "entry": entries,
     }
+    if entries:
+        bundle_data["entry"] = entries
     return ResultsBundleResource(bundle_data)
 
 

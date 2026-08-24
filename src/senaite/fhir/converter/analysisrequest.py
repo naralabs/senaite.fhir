@@ -163,6 +163,11 @@ class ResourceToAnalysisRequest(object):
         # update with patient information
         patient_info = self.get_patient_info()
         data.update(patient_info)
+
+        # include Specimen to get linked to the sample as a secondary resource
+        # as there is no counterpart object in senaite for "Specimen"
+        data["_resources"] = self.get_specimen()
+
         return data
 
     def get_reference(self, key):
@@ -186,12 +191,15 @@ class ResourceToAnalysisRequest(object):
             return None
         return bundle.first_entry("id", str(ref.UUID()))
 
+    def get_specimen(self):
+        ref = self.resource.specimen[0]
+        return self.get_bundle_sibling(ref)
+
     @memoize
     def get_sample_type(self):
         """Returns the SampleType object associated to this ServiceRequest
         """
-        ref = self.resource.specimen[0]
-        sibling = self.get_bundle_sibling(ref)
+        sibling = self.get_specimen()
         obj = fapi.find_object_for(sibling, default=None)
         if obj:
             return obj

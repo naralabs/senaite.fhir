@@ -16,3 +16,13 @@ class ServiceRequestValidationError(Exception):
         super(ServiceRequestValidationError, self).__init__(message)
         self.expression = expression or []
         self.code = code
+
+
+class ObservationValidationError(Exception):
+    """Raised when an Observation violates validation rules
+    """
+
+    def __init__(self, message, expression=None, code="business-rule"):
+        super(ObservationValidationError, self).__init__(message)
+        self.expression = expression or []
+        self.code = code
