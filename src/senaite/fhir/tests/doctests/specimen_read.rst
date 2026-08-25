@@ -85,6 +85,7 @@ FHIR layer synthesises a Specimen from it on-the-fly via the
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
     ...     "SamplePoint": samplepoint.UID(),
+    ...     "ClientSampleID": "EXT-WB-0042",
     ... }
     >>> sample = create_analysisrequest(client, request, values, [Hb.UID()])
     >>> sample
@@ -119,6 +120,18 @@ The ``type`` coding carries the SNOMED system code and the SampleType title:
     u'http://snomed.info/sct'
     >>> spec["type"]["coding"][0]["display"]
     u'Whole Blood'
+
+The `identifier` list carries the sample's ClientSampleID under the
+`client-sample-id` naming system, as the `secondary` identifier:
+
+    >>> client_identifier = spec["identifier"][0]
+    >>> client_identifier["value"]
+    u'EXT-WB-0042'
+    >>> client_identifier["use"]
+    u'secondary'
+    >>> client_identifier["system"] == (
+    ...     "https://fhir.senaite.org/NamingSystem/client-sample-id")
+    True
 
 The ``collection.collectedDateTime`` is present and non-empty:
 

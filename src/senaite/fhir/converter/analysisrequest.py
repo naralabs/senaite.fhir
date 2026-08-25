@@ -5,12 +5,15 @@ from senaite.fhir.config import SECONDARY_RESOURCES_KEY
 from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
+from senaite.fhir.converter import to_naming_system_url
 from senaite.fhir.exceptions import ServiceRequestValidationError
 from senaite.fhir.interfaces import IContentActionToFHIR
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
 from senaite.fhir.interfaces import IServiceRequestResource
-from senaite.fhir.resource.servicerequestrevoked import ServiceRequestRevokedResource  # noqa: E501
+from senaite.fhir.resource.servicerequestrevoked import (
+    ServiceRequestRevokedResource)
 from senaite.fhir.resource.specimen import SpecimenResource
 from zope.component import adapter
 from zope.interface import implementer
@@ -118,6 +121,16 @@ class AnalysisRequestToSpecimen(object):
         if collection:
             data["collection"] = collection
 
+        client_sample_id = ar.getClientSampleID()
+        if client_sample_id:
+            data["identifier"] = [
+                to_fhir_id(
+                    "client-sample-id",
+                    client_sample_id,
+                    use="secondary",
+                )
+            ]
+
         return SpecimenResource(data)
 
 
@@ -128,11 +141,72 @@ class ResourceToAnalysisRequest(object):
     def __init__(self, resource):
         self.resource = resource
 
+    def validate(self):
+        """Runs all the validators here. Can be extended
+        """
+        self.validate_identifiers()
+
+    def _reject_object_identifier(self, obj, obj_name):
+        """Reject resource that mandates internal identifier"""
+        object_id = obj.get_object_id()
+        if object_id:
+            msg = (
+                "Cannot specify usual identifier externally in incoming "
+                "{}:{}"
+            ).format(obj_name, object_id.value)
+            raise ServiceRequestValidationError(
+                msg,
+                expression=["{}.identifier".format(obj_name)],
+                code="invalid",
+            )
+
+    def _validate_external_identifier(self, obj, obj_name,
+                                      valid_system=None):
+        """Reject resource with invalid external identifier"""
+        external_id = obj.get_external_id()
+        if external_id:
+            if valid_system is None:
+                msg = (
+                    "Cannot specify external identifier in "
+                    "{}:{}"
+                ).format(obj_name, external_id.value)
+                raise ServiceRequestValidationError(
+                    msg,
+                    expression=["{}.identifier".format(obj_name)],
+                    code="invalid",
+                )
+            if external_id.system != valid_system:
+                msg = (
+                    "Unsupported identifier system in {}: {}"
+                ).format(obj_name, external_id.system)
+                raise ServiceRequestValidationError(
+                    msg,
+                    expression=["{}.identifier".format(obj_name)],
+                    code="invalid",
+                )
+
+    def validate_identifiers(self):
+        """Validates identifiers"""
+        self._reject_object_identifier(self.resource, "ServiceRequest")
+        self._validate_external_identifier(self.resource, "ServiceRequest")
+
+        ref = self.get_reference("specimen")
+        specimen = self.get_bundle_sibling(ref)
+        if specimen:
+            self._reject_object_identifier(specimen, "Specimen")
+            self._validate_external_identifier(
+                specimen,
+                "Specimen",
+                to_naming_system_url("client-sample-id"),
+            )
+
     def to_content_dict(self):
         # TODO We don't validate category + SNOMED code (is necessary?)
+        self.validate()
 
         sample_type = self.get_sample_type()
         client = self.get_client()
+        client_sample_id = self.get_client_sample_id()
         contact = self.get_requester()
         specs = self.get_specifications()
         sample_point = self.get_sample_point()
@@ -140,9 +214,6 @@ class ResourceToAnalysisRequest(object):
         profile = self.get_profile()
         services = self.get_services()
         priority = self.get_priority()
-
-        external_id = self.resource.get_external_id()
-        client_sample_id = external_id.value if external_id else None
 
         data = {
             "portal_type": "AnalysisRequest",
@@ -310,6 +381,15 @@ class ResourceToAnalysisRequest(object):
         raise ValueError("%r: No Client for %r" % (self.resource, sibling))
 
     @memoize
+    def get_client_sample_id(self):
+        """Returns the client sample id from Specimen
+        """
+        ref = self.get_reference("specimen")
+        specimen = self.get_bundle_sibling(ref)
+        external = specimen.get_external_id()
+        return external.value if external else None
+
+    @memoize
     def get_specifications(self):
         """Returns the analysis specification for this sample
         """
@@ -413,10 +493,12 @@ class ResourceToAnalysisRequest(object):
         if self.is_default_panel():
             if not services:
                 default = DEFAULT_REPORT_PROFILE_CODE.get("coding")[0]
-                msg = ("orderDetail must be present and contain at least one "
-                       "test code when ServiceRequest.code is the default "
-                       "panel ({}). There is no panel definition to fall "
-                       "back on.").format(default.get("code"))
+                msg = (
+                    "orderDetail must be present and contain at least one "
+                    "test code when ServiceRequest.code is the default "
+                    "panel ({}). There is no panel definition to fall "
+                    "back on."
+                ).format(default.get("code"))
 
                 raise ServiceRequestValidationError(
                     message=msg,
@@ -439,10 +521,12 @@ class ResourceToAnalysisRequest(object):
                     api.safe_unicode(test.getProtocolID()),
                     api.safe_unicode(api.get_title(test))
                 ) for test in missing]
-                msg = ("orderDetail is a partial subset of panel {panel_key} "
-                       "({panel_name}). Missing tests: [{tests}]. Either omit "
-                       "orderDetail to use the full panel definition, or "
-                       "include all panel tests.").format(
+                msg = (
+                    "orderDetail is a partial subset of panel "
+                    "{panel_key} ({panel_name}). Missing tests: "
+                    "[{tests}]. Either omit orderDetail to use the "
+                    "full panel definition, or include all panel tests."
+                ).format(
                     panel_key=api.safe_unicode(profile.getProfileKey()),
                     panel_name=api.safe_unicode(api.get_title(profile)),
                     tests=", ".join(tests))

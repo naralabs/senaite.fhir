@@ -188,13 +188,18 @@ as text:
     ...     str(uuid.UUID(api.get_uid(sample))))
     True
 
-``identifier`` carries the sample's id under the ``servicerequest-id``
-naming system:
+`identifier` carries the analysis id -- the sample id and the analysis id
+joined by an underscore -- under the `analysis-id` naming system:
 
-    >>> resource["identifier"][0]["value"] == sample.getId()
+    >>> identifier = resource["identifier"][0]
+    >>> identifier["value"] == "{}_{}".format(
+    ...     sample.getId(), analysis.getId())
     True
-    >>> resource["identifier"][0]["use"]
+    >>> identifier["use"]
     u'usual'
+    >>> identifier["system"] == (
+    ...     "https://fhir.senaite.org/NamingSystem/analysis-id")
+    True
 
 ``note`` carries the Analysis' remarks:
 
@@ -219,6 +224,46 @@ it refreshes the existing one in place:
     >>> analysis.setInstrument(instrument)
     >>> transaction.commit()
     >>> fapi.get_fhir_id(analysis, "ServiceRequest") == fhir_id
+    True
+
+
+The analysis id stays separable after a retest
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A retest is a new Analysis, and its id carries a numeric suffix. Since the
+suffix is itself hyphen-separated, joining with `_` is what keeps the sample
+id and the analysis id recoverable -- a `-` would leave `WB-0001-Hb-1` with
+no unambiguous split point.
+
+    >>> from bika.lims.workflow import doActionFor as do_action_for
+    >>> transitioned = do_action_for(sample, "receive")
+    >>> analysis.setResult(12)
+    >>> transitioned = do_action_for(analysis, "submit")
+    >>> transitioned = do_action_for(analysis, "retract")
+    >>> transaction.commit()
+
+    >>> retest = analysis.getRetest()
+    >>> retest.getId()
+    'Hb-1'
+
+Assigning the Instrument links a ServiceRequest identity to the retest:
+
+    >>> retest.setInstrument(instrument)
+    >>> transaction.commit()
+    >>> retest_uid = fapi.get_fhir_uid(retest, "ServiceRequest")
+    >>> retest_uid is not None
+    True
+
+    >>> browser.open("{}/ServiceRequest/{}".format(fhir_url, retest_uid))
+    >>> value = json.loads(browser.contents)["identifier"][0]["value"]
+    >>> value == "{}_{}".format(sample.getId(), retest.getId())
+    True
+
+Splitting on the separator recovers both parts, hyphens and all:
+
+    >>> value.partition("_")[0] == sample.getId()
+    True
+    >>> value.partition("_")[2] == retest.getId()
     True
 
 

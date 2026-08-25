@@ -5,6 +5,7 @@ from senaite.fhir import api as fapi
 from senaite.fhir.converter import get_by_key
 from senaite.fhir.datatype.codeableconcept import CodeableConcept
 from senaite.fhir.datatype.codeablereference import CodeableReference
+from senaite.fhir.datatype.identifier import Identifier
 from senaite.fhir.interfaces import ISpecimenResource
 from senaite.fhir.resource import FHIRResource
 from zope.interface import implementer
@@ -21,6 +22,14 @@ class SpecimenResource(FHIRResource):
     @property
     def collection(self):
         return self.get("collection")
+
+    @property
+    def identifier(self):
+        """Returns the Identifier(s) that identify this specimen across
+        multiple systems
+        """
+        data = self.get("identifier") or []
+        return [Identifier(item) for item in data]
 
     @property
     def collectedDateTime(self):

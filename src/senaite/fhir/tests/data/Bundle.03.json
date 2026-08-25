@@ -203,6 +203,13 @@
           ],
           "text": "Serum"
         },
+        "identifier": [
+          {
+            "use": "secondary",
+            "system": "https://fhir.senaite.org/NamingSystem/client-sample-id",
+            "value": "EXT-ELEC-2026-00317"
+          }
+        ],
         "collection": {
           "collectedDateTime": "2026-06-17T07:45:00+01:00",
           "collector": {
@@ -248,12 +255,6 @@
             "valueReference": {
               "reference": "Organization/915dbafe-1f2f-496d-9042-1de936f234e1"
             }
-          }
-        ],
-        "identifier": [
-          {
-            "use": "secondary",
-            "value": "EXT-ELEC-2026-00317"
           }
         ],
         "status": "active",

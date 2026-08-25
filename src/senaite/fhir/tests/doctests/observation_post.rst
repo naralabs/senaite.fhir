@@ -93,7 +93,8 @@ A helper that builds a valid ``Observation`` payload reporting a result for
 the given Analysis:
 
     >>> def observation_for(analysis, value=140, unit="mmol/L",
-    ...                     code="2951-2", status="final", device=instrument):
+    ...                     code="2951-2", status="final", device=instrument,
+    ...                     note=None):
     ...     based_on_id = fapi.get_fhir_id(analysis, "ServiceRequest")
     ...     payload = {
     ...         "resourceType": "Observation",
@@ -116,6 +117,8 @@ the given Analysis:
     ...         payload["device"] = {
     ...             "reference": "Device/{}".format(fapi.get_fhir_id(device)),
     ...         }
+    ...     if note:
+    ...         payload["note"] = [{"text": note}]
     ...     return payload
 
     >>> def post_observation(payload):
@@ -134,7 +137,8 @@ Successful result submission
     >>> api.get_workflow_status_of(analysis)
     'unassigned'
 
-    >>> resource = post_observation(observation_for(analysis))
+    >>> resource = post_observation(observation_for(
+    ...     analysis, note="Result within reference range."))
     >>> status_code()
     200
 
@@ -155,6 +159,8 @@ The Analysis now carries the submitted result and has been transitioned:
     >>> portal._p_jar.sync()
     >>> analysis.getResult()
     '140'
+    >>> analysis.getRemarks()
+    'Result within reference range.'
     >>> api.get_workflow_status_of(analysis)
     'to_be_verified'
 
@@ -284,3 +290,53 @@ The previously submitted result is left untouched:
     >>> portal._p_jar.sync()
     >>> analysis.getResult()
     '140'
+
+
+Validation: Observation.id cannot be reused for another Analysis
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An Observation identity remains linked to the Analysis it first updated. It
+cannot subsequently be used with another Analysis' ServiceRequest.
+
+This matters beyond the result: `note` is applied to the Analysis-level
+`Remarks` field, so an Observation reused across two Analyses would claim two
+different remark values under a single identity.
+
+    >>> first_analysis = new_analysis()
+    >>> first_resource = post_observation(observation_for(
+    ...     first_analysis, note="First run, sample lipemic."))
+    >>> status_code()
+    200
+    >>> portal._p_jar.sync()
+    >>> first_analysis.getRemarks()
+    'First run, sample lipemic.'
+
+Reusing that Observation id for another Analysis is rejected, notes and all:
+
+    >>> second_analysis = new_analysis()
+    >>> payload = observation_for(second_analysis, value=150,
+    ...                           note="Second run, different remark.")
+    >>> payload["id"] = first_resource["id"]
+    >>> resource = post_observation(payload)
+    >>> status_code()
+    409
+    >>> resource["issue"][0]["code"]
+    u'conflict'
+    >>> resource["issue"][0]["expression"]
+    [u'Observation.id']
+    >>> resource["issue"][0]["details"]["text"]
+    u'Observation.id is already linked to different Analysis'
+
+The second Analysis is left untouched -- it took neither the result nor the
+remark:
+
+    >>> portal._p_jar.sync()
+    >>> second_analysis.getResult()
+    ''
+    >>> second_analysis.getRemarks()
+    ''
+
+...and the remark of the Analysis that owns the Observation is not overwritten:
+
+    >>> first_analysis.getRemarks()
+    'First run, sample lipemic.'
