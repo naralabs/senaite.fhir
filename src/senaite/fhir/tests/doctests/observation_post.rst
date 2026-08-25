@@ -79,6 +79,7 @@ its (only) Analysis, assigning it to ``instrument`` so the FHIR
     ...     values = {
     ...         "Client": client.UID(),
     ...         "Contact": contact.UID(),
+    ...         "ClientSampleID": "OBS-001",
     ...         "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...         "SampleType": sampletype.UID(),
     ...     }

@@ -74,6 +74,7 @@ Create the Sample
     >>> values = {
     ...     "Client": client.UID(),
     ...     "Contact": contact.UID(),
+    ...     "ClientSampleID": "DRR-001",
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
     ...     "Profiles": [profile.UID()],

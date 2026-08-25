@@ -70,6 +70,7 @@ Create and publish the sample
     >>> values = {
     ...     "Client": client.UID(),
     ...     "Contact": contact.UID(),
+    ...     "ClientSampleID": "   ",
     ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...     "SampleType": sampletype.UID(),
     ...     "Profiles": [profile.UID()],
@@ -81,7 +82,18 @@ Create and publish the sample
     >>> sample_id = api.get_id(sample)
 
     >>> do_action_for(sample, "receive")[0]
+    False
+    >>> sample.setClientSampleID("DRS-001")
+    >>> do_action_for(sample, "receive")[0]
     True
+    >>> from senaite.core import permissions
+    >>> from senaite.core.api.workflow import get_state
+    >>> from senaite.core.workflow import SAMPLE_WORKFLOW
+    >>> permission = get_state(SAMPLE_WORKFLOW, "sample_received").getPermissionInfo(permissions.FieldEditClientSampleID)
+    >>> permission["acquired"]
+    0
+    >>> permission["roles"]
+    []
     >>> analyses = sample.getAnalyses(full_objects=True)
     >>> for analysis in analyses:
     ...     analysis.setResult(14.5)

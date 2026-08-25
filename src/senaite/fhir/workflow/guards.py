@@ -16,4 +16,4 @@ class SampleGuardAdapter(object):
     def guard(self, transition):
         if transition != "receive":
             return True
-        return bool((self.context.getClientSampleID()))
+        return bool((self.context.getClientSampleID() or "").strip())
