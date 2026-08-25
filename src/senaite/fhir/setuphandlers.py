@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 from senaite.core.setuphandlers import setup_core_catalogs
 from senaite.core.setuphandlers import setup_other_catalogs
+from senaite.core import permissions
+from senaite.core.api import workflow as wapi
+from senaite.core.workflow import SAMPLE_WORKFLOW
 from senaite.fhir import logger
 from senaite.fhir import PRODUCT_NAME
 from senaite.fhir.catalog import FHIRCatalog
@@ -18,6 +21,29 @@ INDEXES = [
 COLUMNS = [
 ]
 
+# Workflow updates
+WORKFLOWS_TO_UPDATE = {
+    SAMPLE_WORKFLOW: {
+        "states": {
+            "sample_received": {
+                "permissions": {
+                    permissions.FieldEditClientSampleID: (),
+                },
+            },
+            "to_be_verified": {
+                "permissions": {
+                    permissions.FieldEditClientSampleID: (),
+                },
+            },
+            "to_be_preserved": {
+                "permissions": {
+                    permissions.FieldEditClientSampleID: (),
+                },
+            },
+        },
+    },
+}
+
 
 def setup_handler(context):
     """Generic setup handler
@@ -30,6 +56,9 @@ def setup_handler(context):
 
     # Setup catalogs
     setup_catalogs(portal)
+
+    # Lock the Client Sample ID once a sample is received.
+    setup_workflows(portal)
 
     logger.info("{} setup handler [DONE]".format(PRODUCT_NAME.upper()))
 
@@ -80,3 +109,12 @@ def setup_catalogs(portal):
     """
     setup_core_catalogs(portal, catalog_classes=CATALOGS)
     setup_other_catalogs(portal, indexes=INDEXES, columns=COLUMNS)
+
+
+def setup_workflows(portal):
+    """Apply FHIR-specific workflow restrictions
+    """
+    logger.info("Setup workflows ...")
+    for workflow_id, settings in WORKFLOWS_TO_UPDATE.items():
+        wapi.update_workflow(workflow_id, **settings)
+    logger.info("Setup workflows [DONE]")
