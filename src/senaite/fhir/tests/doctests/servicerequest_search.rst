@@ -79,13 +79,17 @@ identity and stamps ``authoredOn`` to "now"; the helper then backdates
 ``authoredOn`` in place by the given number of days so ordering can be
 verified:
 
-    >>> def new_linked_analysis(days_ago=0):
+    >>> def new_linked_analysis(days_ago=0, mrn=None):
     ...     values = {
     ...         "Client": client.UID(),
     ...         "Contact": contact.UID(),
     ...         "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...         "SampleType": sampletype.UID(),
     ...     }
+    ...     if mrn:
+    ...         values["MedicalRecordNumber"] = {
+    ...             "temporary": False, "value": mrn
+    ...         }
     ...     sample = create_analysisrequest(client, request, values, [Hb.UID()])
     ...     analysis = sample.getAnalyses(full_objects=True)[0]
     ...     analysis.setInstrument(instrument)
