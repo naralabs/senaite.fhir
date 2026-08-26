@@ -172,6 +172,11 @@
         "status" : "generated",
         "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><a name=\"Specimen_9b8a478f-fd26-4765-8f09-3b3ea0ec6637\"> </a><p class=\"res-header-id\"><b>Generated Narrative: Specimen 9b8a478f-fd26-4765-8f09-3b3ea0ec6637</b></p><a name=\"9b8a478f-fd26-4765-8f09-3b3ea0ec6637\"> </a><a name=\"hc9b8a478f-fd26-4765-8f09-3b3ea0ec6637\"> </a><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\"/><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-SenaiteSpecimen.html\">SenaiteSpecimen</a></p></div><p><b>type</b>: <span title=\"Codes:{http://snomed.info/sct 119364003}\">Serum specimen</span></p><blockquote><p><b>collection</b></p><p><b>collector</b>: <a href=\"Bundle-cafa2ba8-7aad-5d5e-b2c4-752f61f6ec8f.html#Practitioner_ab1ecb26-1942-4855-a32d-ee82c62e5327\">Practitioner Catherine Sullivan (official)</a></p><p><b>collected</b>: 2026-04-08 08:30:00+1000</p><h3>BodySites</h3><table class=\"grid\"><tr><td style=\"display: none\">-</td><td><b>Concept</b></td></tr><tr><td style=\"display: none\">*</td><td><span title=\"Codes:{http://snomed.info/sct 49220004}\">Antecubital fossa</span></td></tr></table></blockquote><p><b>note</b>: </p><blockquote><div><p>Fasting specimen. No visible haemolysis.</p>\n</div></blockquote></div>"
       },
+      "identifier" : [{
+        "use" : "secondary",
+        "system": "https://fhir.senaite.org/NamingSystem/client-sample-id",
+        "value" : "EXT-LIVER-001"
+      }],
       "type" : {
         "coding" : [{
           "system" : "http://snomed.info/sct",
@@ -222,10 +227,6 @@
         "valueReference" : {
           "reference" : "urn:uuid:6c248ba7-a4c4-4606-b4a0-efbff71fb902"
         }
-      }],
-      "identifier" : [{
-        "use" : "secondary",
-        "value" : "EXT-LIVER-001"
       }],
       "status" : "active",
       "intent" : "order",

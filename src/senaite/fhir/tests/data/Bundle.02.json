@@ -193,6 +193,13 @@
             "https://fhir.senaite.org/StructureDefinition/SenaiteSpecimen"
           ]
         },
+        "identifier": [
+          {
+            "use": "secondary",
+            "system": "https://fhir.senaite.org/NamingSystem/client-sample-id",
+            "value": "EXT-ELEC-2026-00317"
+          }
+        ],
         "type": {
           "coding": [
             {
@@ -250,12 +257,6 @@
             }
           }
         ],
-        "identifier": [
-          {
-            "use": "secondary",
-            "value": "EXT-ELEC-2026-00317"
-          }
-        ],
         "status": "active",
         "intent": "order",
         "priority": "asap",
@@ -275,9 +276,9 @@
           "concept": {
             "coding": [
               {
-                  "system": "http://loinc.org",
-                  "code": "30954-2",
-                  "display": "Relevant diagnostic tests/laboratory data note"
+                "system": "http://loinc.org",
+                "code": "30954-2",
+                "display": "Relevant diagnostic tests/laboratory data note"
               }
             ]
           }

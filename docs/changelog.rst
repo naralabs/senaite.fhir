@@ -5,6 +5,7 @@ Changelog
 ------------------
 
 - #26 Implement GET /Task/{id} endpoint for FHIR SenaiteWorksheetTask resources
+- #30 Refactor Object Ids and External Ids across FHIR resources
 - #22 Improve Observation result submission validation and remarks handling
 - #21 Serialize ServiceRequest Bundle timestamp as FHIR datetime
 - #18 Fix bundle POST response status, error handling and None guard

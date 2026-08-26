@@ -145,7 +145,6 @@ enumerated by the caller.
     >>> bundle = copy.deepcopy(base_bundle)
     >>> sr = get_sr_entry(bundle)["resource"]
     >>> set_sr_id(bundle, "a1111111-1111-1111-1111-111111111101")
-    >>> sr["identifier"] = [{"use": "secondary", "value": "EXT-SC1-DEFER-PANEL"}]
     >>> sr["code"] = loinc_code("55231-5", "Electrolyte Panel")
     >>> _ = sr.pop("orderDetail", None)
 
@@ -184,7 +183,6 @@ also assigned.
     >>> bundle = copy.deepcopy(base_bundle)
     >>> sr = get_sr_entry(bundle)["resource"]
     >>> set_sr_id(bundle, "a1111111-1111-1111-1111-111111111102")
-    >>> sr["identifier"] = [{"use": "secondary", "value": "EXT-SC2-FULL-ELAB"}]
     >>> sr["code"] = loinc_code("55231-5", "Electrolyte Panel")
     >>> sr["orderDetail"] = [
     ...     loinc_param("2075-0", "Chloride"),
@@ -228,7 +226,6 @@ Only Chloride is listed; Potassium and Sodium are missing:
     >>> bundle = copy.deepcopy(base_bundle)
     >>> sr = get_sr_entry(bundle)["resource"]
     >>> set_sr_id(bundle, "a1111111-1111-1111-1111-111111111103")
-    >>> sr["identifier"] = [{"use": "secondary", "value": "EXT-SC3-PARTIAL"}]
     >>> sr["code"] = loinc_code("55231-5", "Electrolyte Panel")
     >>> sr["orderDetail"] = [loinc_param("2075-0", "Chloride")]
 
@@ -261,7 +258,6 @@ listed in ``orderDetail``.
     >>> bundle = copy.deepcopy(base_bundle)
     >>> sr = get_sr_entry(bundle)["resource"]
     >>> set_sr_id(bundle, "a1111111-1111-1111-1111-111111111104")
-    >>> sr["identifier"] = [{"use": "secondary", "value": "EXT-SC4-DEFAULT-CODE"}]
     >>> sr["code"] = loinc_code("30954-2",
     ...                         "Relevant diagnostic tests/laboratory data note")
     >>> sr["orderDetail"] = [loinc_param("19123-9", "Magnesium")]
@@ -299,7 +295,6 @@ panel to expand nor explicit tests. The request must be rejected.
     >>> bundle = copy.deepcopy(base_bundle)
     >>> sr = get_sr_entry(bundle)["resource"]
     >>> set_sr_id(bundle, "a1111111-1111-1111-1111-111111111105")
-    >>> sr["identifier"] = [{"use": "secondary", "value": "EXT-SC5-NO-TESTS"}]
     >>> sr["code"] = loinc_code("30954-2",
     ...                         "Relevant diagnostic tests/laboratory data note")
     >>> _ = sr.pop("orderDetail", None)
