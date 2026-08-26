@@ -64,7 +64,8 @@ class WorksheetToTask(object):
         return TaskResource(data)
 
     def get_task_assignment(self):
-        """Return the analyses and their one shared instrument, if any."""
+        """Return the analyses and their one shared instrument, if any
+        """
         analyses = list(self.worksheet.getAnalyses() or [])
         if not analyses:
             return [], None
@@ -76,13 +77,14 @@ class WorksheetToTask(object):
                 return [], None
             instruments.append(instrument)
 
-        uids = set([api.get_uid(instrument) for instrument in instruments])
+        uids = set([api.get_uid(i) for i in instruments])
         if len(uids) != 1:
             return [], None
         return analyses, instruments[0]
 
     def get_or_create_task_uid(self):
-        """Give an eligible worksheet one stable Task identity."""
+        """Give an eligible worksheet one stable Task identity
+        """
         uid = fapi.get_fhir_uid(self.worksheet, "Task")
         if uid:
             return uid
