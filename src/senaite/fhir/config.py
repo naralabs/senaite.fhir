@@ -16,6 +16,16 @@ FHIR_RESOURCE_TO_PORTAL_TYPE = (
     ("Device", "Instrument"),
 )
 
+WORKSHEET_TASK_STATUSES = (
+    # A closed worksheet cannot represent an instrument worklist and is never
+    # exposed as a Task.
+    ("open", "draft"),
+    ("ready", "ready"),
+    ("in_progress", "in-progress"),
+    ("to_be_verified", "on-hold"),
+    ("verified", "completed"),
+)
+
 SYSTEM_CODES = (
     ("AnalysisProfile", "http://loinc.org"),
     ("AnalysisService", "http://loinc.org"),
@@ -135,3 +145,7 @@ DEFAULT_INSTRUMENT_SERVICE_REQUEST_CATEGORY = {
 }
 
 DEFAULT_BUNDLE_PAGE_COUNT = 10
+
+WORKSHEET_CAPACITY_EXTENSION = (
+    "https://fhir.senaite.org/StructureDefinition/WorksheetCapacity"
+)

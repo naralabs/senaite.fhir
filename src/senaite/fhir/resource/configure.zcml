@@ -64,4 +64,10 @@
            provides="senaite.fhir.interfaces.IFHIRResource"
            factory=".device.DeviceResource"/>
 
+  <!-- Task -->
+  <adapter name="Task"
+           for="dict"
+           provides="senaite.fhir.interfaces.IFHIRResource"
+           factory=".task.TaskResource"/>
+
 </configure>

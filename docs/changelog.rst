@@ -4,6 +4,8 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #27 Add GET /Task endpoint for instrument worksheet worklists
+- #26 Implement GET /Task/{id} endpoint for FHIR SenaiteWorksheetTask resources
 - #30 Refactor Object Ids and External Ids across FHIR resources
 - #22 Improve Observation result submission validation and remarks handling
 - #21 Serialize ServiceRequest Bundle timestamp as FHIR datetime
