@@ -680,10 +680,10 @@ def get_task_bundle(_context, request):
     total_match = len(matches)
     page = matches[offset:offset + count] if count > 0 else []
     entries = [{
-        "fullUrl": "Task/{}".format(task.id),
-        "resource": dict(task),
+        "fullUrl": "Task/{}".format(item.id),
+        "resource": dict(item),
         "search": {"mode": "match"},
-    } for _, task in page]
+    } for _, item in page]
 
     bundle_data = {
         "resourceType": "Bundle",
