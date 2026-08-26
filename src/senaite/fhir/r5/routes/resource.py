@@ -37,6 +37,11 @@ RESOURCE_TYPE_TO_CONTENT = (
     ("ServiceRequest", IAnalysisRequest),
 )
 
+# Maps `_include` specs to their reference fields.
+INCLUDE_REFERENCE_FIELDS = {
+    "Patient:subject": "subject",
+}
+
 
 # /<resource_type>
 @add_route("/<string:resource_type>",
@@ -487,12 +492,14 @@ def get_diagnostic_report_bundle(_context, request):
 
 def get_service_request_bundle(_context, request):
     """Handle GET /ServiceRequest with _lastUpdated, intent, status,
-    optional _sort, _count and _offset (polling endpoint).
+    optional _sort, _count, _offset and _include (polling endpoint).
 
     Builds a SenaiteResultsBundle (searchset) containing the
     instrument-scoped SenaiteInstrumentServiceRequest entries (intent
     "filler-order") derived from Analyses, i.e. the ones created by
     ``AnalysisToInstrumentServiceRequest``.
+
+    ``_include=Patient:subject`` includes each page's referenced Patients.
     """
     params = request.form
 
@@ -547,6 +554,10 @@ def get_service_request_bundle(_context, request):
         return pagination
     count, offset = pagination
 
+    include_specs = parse_include_params(params)
+    if isinstance(include_specs, OperationOutcome):
+        return include_specs
+
     # review_states of Analysis objects that map to the "active" FHIR status
     active_statuses = [
         review_state
@@ -589,6 +600,13 @@ def get_service_request_bundle(_context, request):
         "resource": dict(service_request),
         "search": {"mode": "match"},
     } for _, service_request in page]
+
+    if include_specs:
+        # Resolve references only from the resources already on this page
+        page_resources = [entry["resource"] for entry in entries]
+        entries.extend(
+            resolve_included_resources(page_resources, include_specs)
+        )
 
     now = to_fhir_datetime(dtime.now())
     bundle_data = {
@@ -686,6 +704,94 @@ def parse_pagination_params(params):
         return OperationOutcome({"issue": [issue]})
 
     return count, offset
+
+
+def parse_include_params(params):
+    """Parse and validate the ``_include`` query parameter.
+
+    Accepts a single value, a comma-separated list of values, or multiple
+    ``_include`` query parameters. Each value must be a key in
+    ``INCLUDE_REFERENCE_FIELDS``; any other value results in a 400
+    OperationOutcome.
+
+    :param params: request.form-like mapping
+    :returns: list of requested include specs (str), or an OperationOutcome
+    """
+    raw = params.get("_include", [])
+    values = raw if isinstance(raw, (list, tuple)) else [raw]
+    specs = [spec for value in values for spec in value.split(",") if spec]
+
+    unsupported = [
+        spec for spec in specs if spec not in INCLUDE_REFERENCE_FIELDS
+    ]
+    if unsupported:
+        request = req.get_request()
+        request.response.setStatus(400)
+        issue = {
+            "severity": "error",
+            "code": "not-supported",
+            "details": {
+                "text": "Unsupported _include value(s): %s" % ", ".join(unsupported),  # noqa: E501
+            },
+            "diagnostics": "Supported _include values for this endpoint: %s" % ", ".join(INCLUDE_REFERENCE_FIELDS),  # noqa: E501
+            "expression": ["_include"],
+        }
+        return OperationOutcome({"issue": [issue]})
+
+    return specs
+
+
+def resolve_included_resources(resources, include_specs):
+    """Return include-mode Bundle entries referenced by ``resources``.
+
+    :param resources: FHIR resources to scan
+    :param include_specs: `_include` specs to resolve
+    :returns: Bundle entries with ``search.mode = "include"``
+    """
+    entries = []
+    included_ref_uids = set()
+
+    for spec in include_specs:
+        field = INCLUDE_REFERENCE_FIELDS.get(spec)
+        if not field:
+            continue
+        target_type = spec.split(":", 1)[0]
+
+        for resource in resources:
+            value = resource.get(field)
+            candidates = value if isinstance(value, list) else [value]
+
+            for candidate in candidates:
+                reference = (candidate or {}).get("reference")
+                if not reference or "/" not in reference:
+                    continue
+
+                ref_type, ref_uid = reference.split("/", 1)
+                if ref_type != target_type or not fapi.is_uuid(ref_uid):
+                    continue
+
+                # normalize to hex so the SENAITE-UID fast path in
+                # to_fhir_resource/get_object is used, rather than relying
+                # on the referenced object being indexed in the FHIR catalog
+                ref_uid = fapi.get_uuid(ref_uid).hex
+                if ref_uid in included_ref_uids:
+                    continue
+                included_ref_uids.add(ref_uid)
+
+                included = fapi.to_fhir_resource(
+                    ref_uid, resource_type=target_type, default=None
+                )
+
+                if not included:
+                    continue
+
+                entries.append({
+                    "fullUrl": "{}/{}".format(target_type, included.id),
+                    "resource": dict(included),
+                    "search": {"mode": "include"},
+                })
+
+    return entries
 
 
 def strip_presented_form_data(dr_dict):
