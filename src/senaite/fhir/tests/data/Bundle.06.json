@@ -172,6 +172,11 @@
         "status" : "generated",
         "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Generated Narrative: Specimen d4e5f6a7-b8c9-0123-defa-234567890123</b></p><p>type: Serum specimen</p><p>collector: Practitioner Giulia Ricci (official)</p><p>collected: 2026-05-14 06:15:00+0100</p><p>note: Urgent admission specimen. Collected on arrival to ED. No lipemia observed.</p></div>"
       },
+      "identifier" : [{
+        "use" : "secondary",
+        "system" : "https://fhir.senaite.org/NamingSystem/client-sample-id",
+        "value" : "EXT-CARDIAC-002"
+      }],
       "type" : {
         "coding" : [{
           "system" : "http://snomed.info/sct",
@@ -222,10 +227,6 @@
         "valueReference" : {
           "reference" : "urn:uuid:b2c3d4e5-f6a7-8901-bcde-f12345678901"
         }
-      }],
-      "identifier" : [{
-        "use" : "secondary",
-        "value" : "EXT-CARDIAC-002"
       }],
       "status" : "active",
       "intent" : "order",
