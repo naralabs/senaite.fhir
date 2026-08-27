@@ -99,7 +99,12 @@ Create and publish the sample
     ...             "coding": [{
     ...                 "system": "http://loinc.org",
     ...                 "code": "718-7",
-    ...                 "display": "Haemoglobin",
+    ...                 "display": "Haemoglobin"
+    ...             }, {
+    ...                 "system": ("https://fhir.senaite.org"
+    ...                            "/CodeSystem/analysis-keyword"),
+    ...                 "code": "Hb",
+    ...                 "display": "Haemoglobin"
     ...             }],
     ...             "text": "CBC",
     ...         },

@@ -6,6 +6,7 @@ Changelog
 
 - #32 Add support for _include=Specimen:specimen in ServiceRequest bundle
 - #31 Add support for _include query parameter in ServiceRequest bundle
+- #33 Add keyword support for InstrumentServiceRequest and Observation
 - #30 Refactor Object Ids and External Ids across FHIR resources
 - #22 Improve Observation result submission validation and remarks handling
 - #21 Serialize ServiceRequest Bundle timestamp as FHIR datetime
