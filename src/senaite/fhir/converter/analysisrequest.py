@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from bika.lims.interfaces import IAnalysisRequest
 from senaite.fhir.config import DEFAULT_REPORT_PROFILE_CODE
+from senaite.fhir.config import SECONDARY_RESOURCES_KEY
 from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
@@ -189,8 +190,7 @@ class ResourceToAnalysisRequest(object):
         self._reject_object_identifier(self.resource, "ServiceRequest")
         self._validate_external_identifier(self.resource, "ServiceRequest")
 
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
         if specimen:
             self._reject_object_identifier(specimen, "Specimen")
             self._validate_external_identifier(
@@ -234,16 +234,44 @@ class ResourceToAnalysisRequest(object):
         # update with patient information
         patient_info = self.get_patient_info()
         data.update(patient_info)
+
+        # link the Specimen to the sample as a secondary resource, as there
+        # is no counterpart content type in senaite for "Specimen"
+        data[SECONDARY_RESOURCES_KEY] = [self.get_specimen()]
+
         return data
 
     def get_reference(self, key):
+        """Returns the single Reference the resource holds under the given key
+
+        The references resolved through this helper are all 1..1 in the SENAITE
+        profiles, so a missing reference and a repeated one are both violations
+        of the profile rather than internal errors, and are reported back as an
+        OperationOutcome.
+
+        :param key: name of the reference element, e.g. ``"specimen"``
+        :returns: the Reference data type
+        :raises ServiceRequestValidationError: if missing or repeated
+        """
+        expression = "%s.%s" % (self.resource.resourceType, key)
+
         ref = getattr(self.resource, key, None)
         if not ref:
-            raise ValueError("%r: %s is missing" % (self.resource, key))
+            raise ServiceRequestValidationError(
+                "%s is required" % expression,
+                expression=[expression],
+                code="required",
+            )
+
         if api.is_list(ref):
             if len(ref) > 1:
-                raise ValueError("%r: More than one %s" % (self.resource, key))
+                raise ServiceRequestValidationError(
+                    "%s accepts a single reference only" % expression,
+                    expression=[expression],
+                    code="structure",
+                )
             return ref[0]
+
         return ref
 
     def get_reference_obj(self, key, **kwargs):
@@ -258,11 +286,22 @@ class ResourceToAnalysisRequest(object):
         return bundle.first_entry("id", str(ref.UUID()))
 
     @memoize
+    def get_specimen(self):
+        """Returns the Specimen resource of this ServiceRequest
+
+        ``ServiceRequest.specimen`` is 1..1 in the SenaiteServiceRequest
+        profile, so ``get_reference`` rejects both a missing and a repeated
+        reference:
+        https://fhir.senaite.org/StructureDefinition-SenaiteServiceRequest.html
+        """
+        ref = self.get_reference("specimen")
+        return self.get_bundle_sibling(ref)
+
+    @memoize
     def get_sample_type(self):
         """Returns the SampleType object associated to this ServiceRequest
         """
-        ref = self.resource.specimen[0]
-        sibling = self.get_bundle_sibling(ref)
+        sibling = self.get_specimen()
         obj = fapi.find_object_for(sibling, default=None)
         if obj:
             return obj
@@ -344,8 +383,9 @@ class ResourceToAnalysisRequest(object):
     def get_client_sample_id(self):
         """Returns the client sample id from Specimen
         """
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
+        if not specimen:
+            return None
         external = specimen.get_external_id()
         return external.value if external else None
 
@@ -372,16 +412,14 @@ class ResourceToAnalysisRequest(object):
     def get_date_sampled(self):
         """Returns the date when the specimen was collected
         """
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
         return specimen.collectedDateTime
 
     @memoize
     def get_sample_point(self):
         """Returns the sample point from where this specimen was collected
         """
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
         if not specimen:
             return None
 
