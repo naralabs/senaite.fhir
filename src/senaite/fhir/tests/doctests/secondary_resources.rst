@@ -2,28 +2,28 @@ FHIR secondary resources
 ------------------------
 
 Most FHIR resources have a counterpart content type in SENAITE: a
-``ServiceRequest`` is an AnalysisRequest, an ``Observation`` is an Analysis, a
-``Patient`` is a Patient. They are always rebuilt from that live content by
-their ``IContentToFHIR`` adapter, so what the API returns keeps reflecting the
+`ServiceRequest` is an AnalysisRequest, an `Observation` is an Analysis, a
+`Patient` is a Patient. They are always rebuilt from that live content by
+their `IContentToFHIR` adapter, so what the API returns keeps reflecting the
 current state of the object rather than the payload that created it.
 
-A ``Specimen`` has no such counterpart -- ``SampleType`` only carries its type
+A `Specimen` has no such counterpart -- `SampleType` only carries its type
 -- so there is nothing to rebuild it from. Resources like this one are linked
-as **secondary**: ``link_fhir_resource(obj, resource, secondary=True)``
-snapshots them in the type-keyed ``resources`` slot of the object's FHIR
-annotation storage, and ``get_fhir_resource`` serves them back from there.
+as **secondary**: `link_fhir_resource(obj, resource, secondary=True)`
+snapshots them in the type-keyed `resources` slot of the object's FHIR
+annotation storage, and `get_fhir_resource` serves them back from there.
 
 Because the two kinds are read back differently, a resource that *does* have a
-counterpart must never end up in the ``resources`` slot: a stale snapshot
+counterpart must never end up in the `resources` slot: a stale snapshot
 would shadow the live one.
 
 This test covers:
 
-- ``get_secondary_resources``, the hand-over that converters use to declare
+- `get_secondary_resources`, the hand-over that converters use to declare
   secondary resources for the object being created or updated;
-- the ``Specimen`` of a posted ``ServiceRequest`` being linked as secondary to
+- the `Specimen` of a posted `ServiceRequest` being linked as secondary to
   the created sample and served back verbatim;
-- the sample's own ``ServiceRequest`` *not* being snapshotted as secondary;
+- the sample's own `ServiceRequest` *not* being snapshotted as secondary;
 - secondary resources being re-linked when the resource is updated.
 
 Running this test from the buildout directory:
@@ -55,8 +55,8 @@ Variables:
     >>> setRoles(portal, TEST_USER_ID, ["LabManager", "Manager"])
 
 Create the setup objects the bundle resolves against. The Client matches the
-``Organization`` by ``ClientID``, the SampleType matches the ``Specimen`` by
-its SNOMED display, and each AnalysisService matches one ``orderDetail`` entry
+`Organization` by `ClientID`, the SampleType matches the `Specimen` by
+its SNOMED display, and each AnalysisService matches one `orderDetail` entry
 by its LOINC code:
 
     >>> client = api.create(portal.clients, "Client",
@@ -79,7 +79,7 @@ by its LOINC code:
     ...         Category=category.UID(), ProtocolID=code)
     >>> transaction.commit()
 
-Load the bundle and keep its ``Specimen`` and ``ServiceRequest`` at hand:
+Load the bundle and keep its `Specimen` and `ServiceRequest` at hand:
 
     >>> raw = resource_string("senaite.fhir.tests", "data/Bundle.06.json")
     >>> bundle = json.loads(raw)
@@ -98,8 +98,8 @@ get_secondary_resources
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Converters declare their secondary resources under the
-``SECONDARY_RESOURCES_KEY`` key of the content dict, and
-``get_secondary_resources`` reads them back:
+`SECONDARY_RESOURCES_KEY` key of the content dict, and
+`get_secondary_resources` reads them back:
 
     >>> from senaite.fhir.config import SECONDARY_RESOURCES_KEY
     >>> SECONDARY_RESOURCES_KEY
@@ -119,7 +119,7 @@ ignored when the rest of the dict is applied to the object:
     ['ClientSampleID', '_fhir_secondary_resources']
 
 A single resource is accepted as well as a list of them. FHIR resources are
-``dict`` subclasses, so a bare resource has to be wrapped rather than
+`dict` subclasses, so a bare resource has to be wrapped rather than
 iterated: iterating it would yield its *keys* instead of the resource itself:
 
     >>> bare = {SECONDARY_RESOURCES_KEY: specimen}
@@ -158,15 +158,15 @@ Post the bundle:
     True
 
 The Specimen's FHIR id is linked to the sample, alongside the sample's own
-``ServiceRequest`` id:
+`ServiceRequest` id:
 
     >>> fapi.get_fhir_id(sample, "Specimen") == posted_specimen["id"]
     True
     >>> fapi.get_fhir_id(sample, "ServiceRequest") == posted_sr["id"]
     True
 
-Only the ``Specimen`` is snapshotted in the ``resources`` slot. The sample's
-own ``ServiceRequest`` is not: it has a counterpart content type, so a
+Only the `Specimen` is snapshotted in the `resources` slot. The sample's
+own `ServiceRequest` is not: it has a counterpart content type, so a
 snapshot of it would shadow the live one:
 
     >>> storage = fapi.get_fhir_storage(sample)
@@ -177,7 +177,7 @@ snapshot of it would shadow the live one:
 Reading back a secondary resource
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``get_fhir_resource`` returns the Specimen exactly as it came in, with the id,
+`get_fhir_resource` returns the Specimen exactly as it came in, with the id,
 the SNOMED type coding, the collection body site and the notes carried by the
 bundle:
 
@@ -193,7 +193,7 @@ bundle:
     >>> "No lipemia observed." in stored["note"][0]["text"]
     True
 
-This is *not* what the ``AnalysisRequestToSpecimen`` adapter would synthesize
+This is *not* what the `AnalysisRequestToSpecimen` adapter would synthesize
 from the sample. That one gets its identity from the sample and knows nothing
 about the collection details of the incoming Specimen:
 
@@ -206,7 +206,7 @@ about the collection details of the incoming Specimen:
     False
 
 The HTTP endpoint serves the stored resource as well, both by the Specimen's
-own FHIR id and through the ``Specimen`` listing:
+own FHIR id and through the `Specimen` listing:
 
     >>> browser.open("{}/Specimen/{}".format(fhir_url, stored.id))
     >>> served = json.loads(browser.contents)
@@ -226,15 +226,15 @@ own FHIR id and through the ``Specimen`` listing:
 Secondary resources are re-linked on update
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``fapi.update`` links the secondary resources of the incoming resource the
-same way ``fapi.create`` does, so the snapshot is refreshed instead of going
+`fapi.update` links the secondary resources of the incoming resource the
+same way `fapi.create` does, so the snapshot is refreshed instead of going
 stale. Change the collection body site of the posted Specimen:
 
     >>> body_site = posted_specimen["collection"]["bodySite"]
     >>> body_site["concept"]["coding"][0]["display"] = "Dorsal hand vein"
 
-Rebuild the ``ServiceRequest`` out of the modified bundle. The bundle is
-attached to it under ``_bundle``, which is how the endpoint lets a resource
+Rebuild the `ServiceRequest` out of the modified bundle. The bundle is
+attached to it under `_bundle`, which is how the endpoint lets a resource
 resolve its siblings:
 
     >>> bundle_resource = fapi.to_fhir_resource(bundle)
@@ -259,10 +259,10 @@ added -- the resource type is the key, so the same Specimen gets overwritten:
 The Specimen reference is required
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-``ServiceRequest.specimen`` is 1..1 in the SenaiteServiceRequest profile, so a
-``ServiceRequest`` that carries no Specimen reference has nothing to hand over.
+`ServiceRequest.specimen` is 1..1 in the SenaiteServiceRequest profile, so a
+`ServiceRequest` that carries no Specimen reference has nothing to hand over.
 That is a violation of the profile, not an internal error, and it comes back as
-a ``400 OperationOutcome`` pointing at the offending element:
+a `400 OperationOutcome` pointing at the offending element:
 
     >>> del posted_sr["specimen"]
     >>> browser.post("{}/Bundle".format(fhir_url), json.dumps(bundle),
