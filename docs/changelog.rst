@@ -5,6 +5,7 @@ Changelog
 ------------------
 
 - #31 Add support for _include query parameter in ServiceRequest bundle
+- #28 Link FHIR resources without a SENAITE counterpart as secondary resources
 - #33 Add keyword support for InstrumentServiceRequest and Observation
 - #30 Refactor Object Ids and External Ids across FHIR resources
 - #22 Improve Observation result submission validation and remarks handling

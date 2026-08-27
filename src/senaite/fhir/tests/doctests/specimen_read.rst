@@ -4,7 +4,7 @@ FHIR Specimen Read
 Verify that ``GET /senaite/@@FHIR/r5/Specimen/<id>`` returns the correct
 FHIR ``Specimen`` resource for both a **native** SENAITE AnalysisRequest
 (synthesised on-the-fly by the ``AnalysisRequestToSpecimen`` named adapter)
-and an **annotation-stored** Specimen (written by ``store_fhir_resource`` as
+and an **annotation-stored** Specimen (written by ``link_fhir_resource`` as
 a bundle POST would do).
 
 Also verifies:
@@ -203,9 +203,9 @@ An AR created without a ``SamplePoint`` produces a Specimen whose
 Annotation-stored Specimen
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When a Specimen is stored against an AR via ``store_fhir_resource`` (the
-path taken after a FHIR bundle POST), fetching it by its own FHIR id returns
-the stored data rather than the on-the-fly synthesis:
+When a Specimen is stored against an AR via ``link_fhir_resource`` with
+``secondary=True`` (the path taken after a FHIR bundle POST), fetching it by
+its own FHIR id returns the stored data rather than the on-the-fly synthesis:
 
     >>> stored_id = "b1234567-89ab-cdef-0123-456789abcdef"
     >>> stored_specimen = fapi.to_fhir_resource({
@@ -218,7 +218,7 @@ the stored data rather than the on-the-fly synthesis:
     ...         }]
     ...     },
     ... })
-    >>> fapi.store_fhir_resource(sample, stored_specimen)
+    >>> fapi.link_fhir_resource(sample, stored_specimen, secondary=True)
     >>> transaction.commit()
 
 Fetching by the stored Specimen's own FHIR id returns the annotation-backed
