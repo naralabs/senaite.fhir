@@ -7,10 +7,10 @@ from senaite.core.api import dtime
 from senaite.core.api import workflow as wapi
 from senaite.fhir import api as fapi
 from senaite.fhir.config import OBSERVATION_STATUSES
-from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.config import UCUM_SYSTEM
 from senaite.fhir.converter import first_by
 from senaite.fhir.converter import to_fhir_profile_url
+from senaite.fhir.converter import to_code_system_url
 from senaite.fhir.exceptions import ObservationValidationError
 from senaite.fhir.interfaces import IContentToFHIR
 from senaite.fhir.interfaces import IFHIRToContent
@@ -90,45 +90,37 @@ class AnalysisToObservation(object):
         return storage.get("data") or {}
 
     def get_code(self):
-        ordered_test = self.get_order_detail()
-        if ordered_test:
-            return ordered_test
+        """ Here we build the code which will include the keyword
+         and its corresponding LOINC code.
+        """
+        title = api.safe_unicode(api.get_title(self.analysis))
+        keyword = api.safe_unicode(self.analysis.getKeyword())
+        description = api.safe_unicode(api.get_description(self.analysis))
 
-        service = self.analysis.getAnalysisService()
-        keyword = self.analysis.getKeyword()
-        title = api.get_title(self.analysis)
-        service_title = api.get_title(service) if service else title
-        system = dict(SYSTEM_CODES).get("AnalysisService")
+        # LOINC goes first: the IG treats it as the interoperable coding and
+        # the keyword as a SENAITE-internal convenience, so consumers reading
+        # `coding[0]` get the interoperable one
+        # TODO we rely on ProtocolID field for the LOINC code!
+        coding = []
+        protocol_id = api.safe_unicode(self.analysis.getProtocolID())
+        if protocol_id:
+            coding.append({
+                "system": fapi.get_system_code("AnalysisService"),
+                "code": protocol_id,
+                "display": description if description else title,
+            })
+
+        # an analysis always carries a keyword
+        coding.append({
+            "system": to_code_system_url("analysis-keyword"),
+            "code": keyword,
+            "display": title,
+        })
+
         return {
-            "coding": [{
-                "system": system,
-                "code": keyword,
-                "display": service_title,
-            }],
+            "coding": coding,
             "text": title,
         }
-
-    def get_order_detail(self):
-        source_data = self.get_source_data()
-        order_details = source_data.get("orderDetail") or []
-        system = fapi.get_system_code("AnalysisService")
-        keyword = self.analysis.getKeyword()
-        title = api.get_title(self.analysis)
-        match_by_title = None
-
-        for order_detail in order_details:
-            parameters = order_detail.get("parameter") or []
-            for param in parameters:
-                concept = param.get("valueCodeableConcept") or {}
-                coding = first_by(concept.get("coding"), system=system)
-                if not coding:
-                    continue
-                if coding.get("code") == keyword:
-                    return concept
-                if coding.get("display") == title or concept.get("text") == title:  # noqa: E501
-                    match_by_title = concept
-
-        return match_by_title
 
     def get_based_on(self):
         source_data = self.get_source_data()
