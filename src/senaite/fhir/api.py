@@ -384,12 +384,6 @@ def get_object_by_fhir_uid(fhir_uid, portal_type=None, default=_marker):
     if secondary:
         return api.get_object(secondary[0])
 
-        # fall back to any other resource type the object carries alongside
-        # its own portal_type/default resource type (e.g. an Analysis' own
-        # "ServiceRequest" uid, distinct from its "Observation" identity)
-        if fhir_uid in uids.values():
-            return api.get_object(brain)
-
     if default is _marker:
         fail("No object found for FHIR UID {}".format(fhir_uid))
     return default
