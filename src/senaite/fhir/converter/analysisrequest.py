@@ -190,8 +190,7 @@ class ResourceToAnalysisRequest(object):
         self._reject_object_identifier(self.resource, "ServiceRequest")
         self._validate_external_identifier(self.resource, "ServiceRequest")
 
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
         if specimen:
             self._reject_object_identifier(specimen, "Specimen")
             self._validate_external_identifier(
@@ -384,8 +383,9 @@ class ResourceToAnalysisRequest(object):
     def get_client_sample_id(self):
         """Returns the client sample id from Specimen
         """
-        ref = self.get_reference("specimen")
-        specimen = self.get_bundle_sibling(ref)
+        specimen = self.get_specimen()
+        if not specimen:
+            return None
         external = specimen.get_external_id()
         return external.value if external else None
 
