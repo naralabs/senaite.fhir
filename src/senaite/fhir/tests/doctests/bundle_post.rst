@@ -110,7 +110,8 @@ The response is a ``transaction-response`` Bundle:
     u'transaction-response'
 
 It carries one entry per processed resource, including the ``Specimen``
-(stored as annotation on the AnalysisRequest):
+(synthesised from the created AnalysisRequest, with no counterpart content
+type of its own):
 
     >>> entries = response["entry"]
     >>> sorted([e["fullUrl"].split("/")[0] for e in entries])

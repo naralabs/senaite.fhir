@@ -1,11 +1,12 @@
 FHIR Specimen Read
 ------------------
 
-Verify that ``GET /senaite/@@FHIR/r5/Specimen/<id>`` returns the correct
-FHIR ``Specimen`` resource for both a **native** SENAITE AnalysisRequest
-(synthesised on-the-fly by the ``AnalysisRequestToSpecimen`` named adapter)
-and an **annotation-stored** Specimen (written by ``link_fhir_resource`` as
-a bundle POST would do).
+Verify that ``GET /senaite/@@FHIR/r5/Specimen/<id>`` returns the FHIR
+``Specimen`` resource synthesised on-the-fly by the
+``AnalysisRequestToSpecimen`` named adapter -- the only source for a
+``Specimen``, since it has no counterpart content type of its own and is
+never stored (see ``secondary_resources.rst`` for what a bundle-posted
+``Specimen`` does and does not carry over).
 
 Also verifies:
 
@@ -34,7 +35,6 @@ Needed imports:
     >>> from plone.app.testing import TEST_USER_ID
     >>> from bika.lims import api
     >>> from bika.lims.utils.analysisrequest import create_analysisrequest
-    >>> from senaite.fhir import api as fapi
 
 Variables:
 
@@ -199,47 +199,5 @@ An AR created without a ``SamplePoint`` produces a Specimen whose
     >>> "bodySite" in sp_no_bodysite.get("collection", {})
     False
 
-
-Annotation-stored Specimen
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-When a Specimen is stored against an AR via ``link_fhir_resource`` with
-``secondary=True`` (the path taken after a FHIR bundle POST), fetching it by
-its own FHIR id returns the stored data rather than the on-the-fly synthesis:
-
-    >>> stored_id = "b1234567-89ab-cdef-0123-456789abcdef"
-    >>> stored_specimen = fapi.to_fhir_resource({
-    ...     "resourceType": "Specimen",
-    ...     "id": stored_id,
-    ...     "type": {
-    ...         "coding": [{
-    ...             "system": "http://snomed.info/sct",
-    ...             "display": "Serum specimen",
-    ...         }]
-    ...     },
-    ... })
-    >>> fapi.link_fhir_resource(sample, stored_specimen, secondary=True)
-    >>> transaction.commit()
-
-Fetching by the stored Specimen's own FHIR id returns the annotation-backed
-resource:
-
-    >>> browser.open("{}/Specimen/{}".format(fhir_url, stored_id))
-    >>> ann = json.loads(browser.contents)
-    >>> ann["resourceType"]
-    u'Specimen'
-    >>> ann["id"]
-    u'b1234567-89ab-cdef-0123-456789abcdef'
-    >>> ann["type"]["coding"][0]["display"]
-    u'Serum specimen'
-
-Once the annotation is in place, fetching by the original AR-based Specimen
-id also returns the stored resource, because the annotation store takes
-priority over the on-the-fly adapter:
-
-    >>> browser.open("{}/Specimen/{}".format(fhir_url, specimen_id))
-    >>> shadowed = json.loads(browser.contents)
-    >>> shadowed["id"]
-    u'b1234567-89ab-cdef-0123-456789abcdef'
 
     >>> browser.raiseHttpErrors = True
