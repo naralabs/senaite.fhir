@@ -21,7 +21,11 @@ class ResourceToContact(ResourceToPerson):
         if not bundle:
             return None
         org = bundle.first_entry("resourceType", "Organization")
-        return fapi.get_object(org, default=None)
+        # Organization has no preserved incoming id (see ``fapi.create``), so
+        # an exact FHIR-uid match always misses; ``find_object_for`` falls
+        # back to ``ClientFinder``'s business-key match, same as
+        # ``get_client``/``get_patient`` below do for their own siblings.
+        return fapi.find_object_for(org, default=None)
 
     def to_content_dict(self):
         # contact should belong to a client (Organization)

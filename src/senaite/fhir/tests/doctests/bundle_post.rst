@@ -300,11 +300,16 @@ The existing Patient is matched and updated, not duplicated::
     >>> after == before
     True
 
-It is now linked to the posted resource's FHIR id, so resolving by that id
-returns the same manually-created Patient::
+Patient is matched by business key (``PatientFinder``), so the posted
+resource's own id is never linked -- resolving by it finds nothing. The
+Patient's FHIR id is its own SENAITE UID instead::
 
-    >>> match = fapi.get_object_by_fhir_uid(
-    ...     "bbbbbbbb-bbbb-5bbb-9bbb-bbbbbbbbbbbb", "Patient")
+    >>> fapi.get_object_by_fhir_uid(
+    ...     "bbbbbbbb-bbbb-5bbb-9bbb-bbbbbbbbbbbb", "Patient", default=None
+    ... ) is None
+    True
+
+    >>> match = fapi.get_object_by_fhir_uid(fapi.get_uid(manual), "Patient")
     >>> fapi.get_uid(match) == fapi.get_uid(manual)
     True
     >>> match.getPhone()

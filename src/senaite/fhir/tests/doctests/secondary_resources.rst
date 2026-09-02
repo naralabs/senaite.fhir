@@ -21,8 +21,11 @@ This test covers:
   `SampleType` but not being linked or stored under its own posted id;
 - `get_fhir_resource`/`GET /Specimen` returning the synthesized Specimen
   (derived from the AnalysisRequest's own identity), not the posted one;
-- the sample's `ServiceRequest` identity still being preserved, since it
-  *does* have a SENAITE counterpart.
+- the sample's `ServiceRequest` id also being the AnalysisRequest's own
+  SENAITE UID, not the one carried by the bundle, since every resource type's
+  posted id is ignored per https://www.hl7.org/fhir/http.html#create;
+- `InstrumentServiceRequest.basedOn` still correctly referencing that
+  ServiceRequest identity.
 
 Running this test from the buildout directory:
 
@@ -113,16 +116,20 @@ The posted Specimen resolved the sample's SampleType:
     True
 
 
-The ServiceRequest identity is preserved, the Specimen's is not
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The ServiceRequest and Specimen ids both resolve to the sample's own UID
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`ServiceRequest` has a SENAITE counterpart (the AnalysisRequest itself), so
-its posted id is kept as a stable identity:
+Per https://www.hl7.org/fhir/http.html#create the posted id is ignored for
+every resource type, so `ServiceRequest`'s FHIR id is the AnalysisRequest's
+own SENAITE UID, not the one carried by the bundle:
 
     >>> fapi.get_fhir_id(sample, "ServiceRequest") == posted_sr["id"]
+    False
+    >>> fapi.get_fhir_id(sample, "ServiceRequest") == str(fapi.get_uuid(api.get_uid(sample)))  # noqa: E501
     True
 
-`Specimen` has none, so its posted id is not linked to the sample at all:
+`Specimen` has no counterpart content type of its own and is never linked at
+all, so its posted id is not linked to the sample either:
 
     >>> fapi.get_fhir_id(sample, "Specimen") is None
     True
@@ -183,14 +190,14 @@ returns a `404`, since nothing was ever linked or stored under it:
     True
 
 
-InstrumentServiceRequest.basedOn points to the original ServiceRequest
+InstrumentServiceRequest.basedOn points to the sample's ServiceRequest
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Assigning an Instrument to one of the sample's Analyses links its own
 ``SenaiteInstrumentServiceRequest`` identity (see ``servicerequest_read.rst``).
-Since this sample came in through a FHIR bundle, that resource's ``basedOn``
-points back to the ``ServiceRequest`` that was posted for it -- the very one
-whose id is preserved above:
+That resource's ``basedOn`` points back to the sample's own ``ServiceRequest``
+identity -- its own SENAITE UID, per the section above, not the id originally
+carried by the bundle:
 
     >>> instr_type = api.create(setup.instrumenttypes, "InstrumentType",
     ...                         title=u"Chemistry Analyser")
@@ -205,8 +212,11 @@ whose id is preserved above:
     >>> browser.open("{}/ServiceRequest/{}".format(fhir_url, isr_fhir_id))
     >>> isr = json.loads(browser.contents)
     >>> isr["basedOn"][0]["reference"] == "ServiceRequest/{}".format(
-    ...     posted_sr["id"])
+    ...     str(fapi.get_uuid(api.get_uid(sample))))
     True
+    >>> isr["basedOn"][0]["reference"] == "ServiceRequest/{}".format(
+    ...     posted_sr["id"])
+    False
 
 
 The Specimen reference is required

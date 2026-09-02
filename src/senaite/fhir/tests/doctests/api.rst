@@ -530,9 +530,11 @@ create
 ~~~~~~
 
 ``fapi.create`` creates a counterpart content object for the given FHIR
-resource and links the two via ``link_fhir_resource``. The object gets its
-own generated SENAITE UID; the resource's FHIR id is preserved separately in
-the object's ``uids`` mapping, so the two identities stay distinct::
+resource and links the two via ``link_fhir_resource``. Per
+https://www.hl7.org/fhir/http.html#create the posted ``id`` is ignored for
+every resource type: it is overwritten in place, before linking, with one
+derived from the new object's own SENAITE UID -- so the resource passed in
+and the object it created always end up sharing the same FHIR identity::
 
     >>> fresh = fapi.to_fhir_resource({
     ...     "resourceType": "Patient",
@@ -550,17 +552,18 @@ the object's ``uids`` mapping, so the two identities stay distinct::
     >>> created
     <Patient at /plone/patients/...>
 
-The SENAITE UID is not overwritten; it keeps its own generated value::
+``fresh`` is mutated in place: its ``id`` no longer matches what was
+originally posted::
 
-    >>> fapi.get_uid(created) == fapi.get_uid(fresh)
+    >>> fresh["id"] == "11111111-1111-5111-9111-111111111111"
     False
 
-The incoming FHIR id is preserved in the annotation storage::
+The object's FHIR id is its own SENAITE UID (in dashed form), which is what
+``fresh["id"]`` was overwritten to::
 
-    >>> fapi.get_fhir_uid(created, "Patient") == fapi.get_uid(fresh)
+    >>> fapi.get_fhir_uid(created) == fapi.get_uid(created)
     True
-
-    >>> fapi.get_fhir_uid(created) == fapi.get_uid(fresh)
+    >>> fapi.get_uid(fresh) == fapi.get_uid(created)
     True
 
     >>> fapi.is_fhir_content(created)
@@ -602,8 +605,9 @@ SENAITE UID) is delegated to the core API::
     >>> fapi.get_uid(resolved) == fapi.get_uid(created)
     True
 
-A bare FHIR id string that is not a SENAITE UID is resolved too, by searching
-the FHIR catalog across all portal types::
+A bare FHIR id string is resolved the same way, by searching the FHIR catalog
+across all portal types (here it also happens to be the SENAITE UID, since
+that is what ``fresh``'s id was overwritten to)::
 
     >>> fhir_id = fapi.get_uid(fresh)
     >>> resolved = fapi.get_object(fhir_id)
@@ -631,7 +635,9 @@ find_object_for
 ``fapi.find_object_for`` resolves the SENAITE counterpart of a FHIR resource:
 first by an exact FHIR-UID match (via ``get_object``), then via the
 resource's ``IContentFinder`` adapter -- matching by business keys -- when
-the UID match misses::
+the UID match misses. Since the posted id is never linked (see ``create``
+above), this fallback is what actually makes re-POSTing a resource for update
+work in practice, e.g. ``PatientFinder`` matching by MRN::
 
     >>> fapi.get_uid(fapi.find_object_for(fresh)) == fapi.get_uid(created)
     True
@@ -706,21 +712,32 @@ set_fhir_uids
 
 ``fapi.set_fhir_uids`` persists FHIR UIDs against an object, keyed by resource
 type, and indexes it in the FHIR catalog so it can be found again with
-``search_by_fhir_uid``::
+``search_by_fhir_uid``. This is how a FHIR identity genuinely distinct from an
+object's own SENAITE UID still arises in practice -- e.g. the instrument-scoped
+``SenaiteInstrumentServiceRequest`` uid the ``setInstrument`` monkey patch
+mints for an Analysis (see ``servicerequest_read.rst``) -- since ``create``/
+``update`` no longer preserve a posted id as such a distinct identity::
 
     >>> linked = api.create(portal.patients, "Patient", mrn=u"PAT-UIDS")
     >>> specimen_uid = fapi.generate_UUID().hex
     >>> fapi.set_fhir_uids(linked, Specimen=specimen_uid)
 
-The UID is now part of the object's FHIR UIDs, keyed by resource type::
+The UID is now part of the object's FHIR UIDs, keyed by resource type, and is
+genuinely distinct from the object's own SENAITE UID::
 
     >>> fapi.get_fhir_uid(linked, "Specimen") == specimen_uid
     True
+    >>> specimen_uid == fapi.get_uid(linked)
+    False
 
-And the object is resolvable through the FHIR catalog::
+And the object is resolvable through the FHIR catalog by that distinct uid::
 
     >>> brains = fapi.search_by_fhir_uid(specimen_uid, "Patient")
     >>> fapi.get_uid(brains[0]) == fapi.get_uid(linked)
+    True
+
+    >>> obj = fapi.get_object_by_fhir_uid(specimen_uid, "Patient")
+    >>> fapi.get_uid(obj) == fapi.get_uid(linked)
     True
 
 Stored entries for other resource types are kept; passing a new resource type
@@ -737,7 +754,9 @@ update
 
 ``fapi.update`` re-applies the resource fields to an already-resolved
 content object (the caller resolves it first, e.g. via ``get_object`` or
-``find_object_for``)::
+``find_object_for``). Like ``create``, it overwrites the posted id with the
+object's own SENAITE UID before linking, so the FHIR identity never drifts
+away from it::
 
     >>> fresh["name"] = [
     ...     {"use": "official", "family": "Smith", "given": ["Anne"]},
@@ -753,6 +772,8 @@ content object (the caller resolves it first, e.g. via ``get_object`` or
     'Smith'
     >>> updated.getPhone()
     '+61-3-9111-2222'
+    >>> fapi.get_fhir_uid(updated) == fapi.get_uid(updated)
+    True
 
 
 create (brand-new resource)
@@ -801,12 +822,13 @@ additional phone numbers field::
     >>> mobile_numbers[0]["phone"] == "+1-345-555-0193"
     True
 
-The FHIR id is stored separately; the SENAITE UID is distinct::
+The FHIR id is the object's own SENAITE UID, same as ``brand_new["id"]`` was
+overwritten to::
 
-    >>> fapi.get_fhir_uid(minted, "Patient") == fapi.get_uid(brand_new)
+    >>> fapi.get_fhir_uid(minted) == fapi.get_uid(minted)
     True
-    >>> fapi.get_uid(minted) == fapi.get_uid(brand_new)
-    False
+    >>> fapi.get_uid(brand_new) == fapi.get_uid(minted)
+    True
 
 
 Duplicate create

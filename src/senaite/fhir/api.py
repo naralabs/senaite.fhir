@@ -640,8 +640,12 @@ def update(obj, resource):
 
     The caller is expected to resolve the counterpart object first (e.g. via
     ``get_object`` or ``find_object_for``). Each writable, permitted field
-    present in the resource's content dict is set, the resource is linked
-    (see ``link_fhir_resource``) and the object is re-cataloged.
+    present in the resource's content dict is set. As with ``create``, the
+    resource's posted ``id`` is overwritten with one derived from ``obj``'s
+    own SENAITE UID before the resource is linked (see ``link_fhir_resource``)
+    and the object is re-cataloged -- except for ``Practitioner``, whose
+    posted id is kept, since no ``IContentFinder`` exists yet to recognize a
+    re-POSTed Practitioner as an update without it.
 
     :param obj: the existing content object to update
     :param resource: the FHIR resource carrying the new field values
@@ -673,6 +677,15 @@ def update(obj, resource):
         else:
             field.set(obj, value)
 
+    # overwrite the posted id with a server-generated one before linking, so
+    # the link, and the response built from this same resource, both use it.
+    # Except for Practitioner: no IContentFinder is registered for it (no
+    # Contact field can serve as a reliable business key yet), so re-POSTing
+    # the same Practitioner can only be recognized as an update if its
+    # posted id is trusted and stays linked.
+    if resource.resourceType != "Practitioner":
+        resource["id"] = str(get_uuid(api.get_uid(obj)))
+
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)
 
@@ -687,7 +700,12 @@ def create(resource):
     The resource is converted to a content dict (see ``to_content_dict``) and
     the object is created under the ``parent_path`` it resolves to
     (AnalysisRequest samples are created through ``create_analysisrequest``).
-    The resource is then linked to the new object via ``link_fhir_resource``.
+    Per https://www.hl7.org/fhir/http.html#create, the resource's own posted
+    ``id`` is ignored: it is overwritten with one derived from the new
+    object's own SENAITE UID before being linked to it via
+    ``link_fhir_resource``. ``Practitioner`` is the one exception -- its
+    posted id is kept, since no ``IContentFinder`` exists yet to recognize a
+    re-POSTed Practitioner as an update without it (see ``update``).
 
     :param resource: the FHIR resource to create a counterpart for
     :returns: the newly created content object
@@ -713,6 +731,12 @@ def create(resource):
         obj = create_analysisrequest(data["Client"], request, data)
     else:
         obj = api.create(container, portal_type, **data)
+
+    # overwrite the posted id with a server-generated one before linking, so
+    # the link, and the response built from this same resource, both use it.
+    # Except for Practitioner: see the same carve-out in ``update``.
+    if resource.resourceType != "Practitioner":
+        resource["id"] = str(get_uuid(api.get_uid(obj)))
 
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)

@@ -81,6 +81,36 @@ def first_by(items, default=None, **kwargs):
     return matches[0] if matches else default
 
 
+def get_fullname(names):
+    """Returns the fullname built the same way SENAITE's `Person.getFullname`
+    composes it, from the given list's "official" `HumanName` (or its first
+    one, when none is marked official).
+
+    Deliberately does not fold in the salutation/prefix the way
+    `HumanName.get_fullname` does: `ResourceToPerson` stores that separately,
+    and `Person.getFullname` never includes it, so a name search against the
+    indexed value has to be built the same way to find a match.
+
+    :param names: list of `HumanName` elements (e.g. a resource's `name`)
+    :returns: the fullname, or "" when no name is found
+    :rtype: str
+    """
+    name = first_by(names, use="official") or first_by(names)
+    if not name:
+        return ""
+
+    given = name.given or []
+    firstname = given[0] if given else ""
+    middlename = given[1] if len(given) > 1 else ""
+    surname = name.family or ""
+    if not (firstname or surname):
+        return ""
+
+    parts = [firstname, middlename, surname] if middlename \
+        else [firstname, surname]
+    return " ".join(filter(None, parts))
+
+
 def group_by(items, key):
     groups = collections.OrderedDict()
     items = items if items else []

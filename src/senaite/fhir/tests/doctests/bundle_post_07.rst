@@ -143,7 +143,7 @@ status):
     u'201 Created'
 
 The FHIR id of the Specimen is the AnalysisRequest's own server-assigned id,
-not the one carried by the bundle -- per the FHIR create semantics
+not the one carried by the bundle - per the FHIR create semantics
 (https://www.hl7.org/fhir/http.html#create) the client-supplied id is
 ignored:
 
