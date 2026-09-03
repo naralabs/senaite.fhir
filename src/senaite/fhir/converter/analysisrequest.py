@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from bika.lims.interfaces import IAnalysisRequest
 from senaite.fhir.config import DEFAULT_REPORT_PROFILE_CODE
-from senaite.fhir.config import SECONDARY_RESOURCES_KEY
 from senaite.fhir.converter import first_by
+from senaite.fhir.converter import get_fullname
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
 from senaite.fhir.converter import to_fhir_identifier as to_fhir_id
@@ -239,10 +239,6 @@ class ResourceToAnalysisRequest(object):
         patient_info = self.get_patient_info()
         data.update(patient_info)
 
-        # link the Specimen to the sample as a secondary resource, as there
-        # is no counterpart content type in senaite for "Specimen"
-        data[SECONDARY_RESOURCES_KEY] = [self.get_specimen()]
-
         return data
 
     def get_reference(self, key):
@@ -344,12 +340,12 @@ class ResourceToAnalysisRequest(object):
 
         # fallback to search by fullname (from the client)
         client = self.get_client()
-        fullname = sibling.get_fullname()
+        fullname = get_fullname(sibling.name)
         if client and fullname:
-            fullname = sibling.get_fullname()
             query = {
                 "portal_type": "Contact",
                 "getFullname": fullname,
+                "review_state": "active",
                 "path": {
                     "query": "/".join(client.getPhysicalPath()),
                     "level": 0

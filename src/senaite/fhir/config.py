@@ -3,10 +3,6 @@
 FHIR_BASE_URL = "https://fhir.senaite.org"
 FHIR_STORAGE_KEY = "senaite.fhir.storage"
 
-# Key of the content dict that IFHIRToContent converters use to hand over the
-# secondary FHIR resources of the object being created or updated
-SECONDARY_RESOURCES_KEY = "_fhir_secondary_resources"
-
 # Mapping of FHIR resource type -> SENAITE portal type for objects that carry
 # a separate FHIR resource ID (e.g. Patient, Specimen, etc.)
 FHIR_RESOURCE_TO_PORTAL_TYPE = (

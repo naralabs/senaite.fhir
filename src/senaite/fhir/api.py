@@ -18,7 +18,6 @@ from senaite.fhir.catalog import FHIR_CATALOG
 from senaite.fhir.config import ANALYSIS_REPORTABLE_STATUSES
 from senaite.fhir.config import FHIR_RESOURCE_TO_PORTAL_TYPE
 from senaite.fhir.config import FHIR_STORAGE_KEY
-from senaite.fhir.config import SECONDARY_RESOURCES_KEY
 from senaite.fhir.config import SYSTEM_CODES
 from senaite.fhir.exceptions import FHIRAPIError
 from senaite.fhir.interfaces import IContentActionToFHIR
@@ -30,7 +29,6 @@ from senaite.fhir.interfaces import IFHIRToContent
 from zope.annotation.interfaces import IAnnotations
 from zope.component import getUtility
 from zope.component import queryAdapter
-from zope.deprecation import deprecate
 from zope.interface import alsoProvides
 
 
@@ -642,8 +640,12 @@ def update(obj, resource):
 
     The caller is expected to resolve the counterpart object first (e.g. via
     ``get_object`` or ``find_object_for``). Each writable, permitted field
-    present in the resource's content dict is set, the resource is linked
-    (see ``link_fhir_resource``) and the object is re-cataloged.
+    present in the resource's content dict is set. As with ``create``, the
+    resource's posted ``id`` is overwritten with one derived from ``obj``'s
+    own SENAITE UID before the resource is linked (see ``link_fhir_resource``)
+    and the object is re-cataloged -- except for ``Practitioner``, whose
+    posted id is kept, since no ``IContentFinder`` exists yet to recognize a
+    re-POSTed Practitioner as an update without it.
 
     :param obj: the existing content object to update
     :param resource: the FHIR resource carrying the new field values
@@ -651,9 +653,6 @@ def update(obj, resource):
     """
     # convert the resource to a dict suitable for updating AT/DX contents
     data = to_content_dict(resource)
-
-    # get the secondary FHIR resources to be linked to the object, if any
-    resources = get_secondary_resources(data)
 
     # loop through data and set field values
     fields = api.get_fields(obj)
@@ -678,42 +677,21 @@ def update(obj, resource):
         else:
             field.set(obj, value)
 
+    # overwrite the posted id with a server-generated one before linking, so
+    # the link, and the response built from this same resource, both use it.
+    # Except for Practitioner: no IContentFinder is registered for it (no
+    # Contact field can serve as a reliable business key yet), so re-POSTing
+    # the same Practitioner can only be recognized as an update if its
+    # posted id is trusted and stays linked.
+    if resource.resourceType != "Practitioner":
+        resource["id"] = str(get_uuid(api.get_uid(obj)))
+
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)
-
-    # link the secondary FHIR resources to the object
-    for secondary in resources:
-        link_fhir_resource(obj, secondary, secondary=True)
 
     # re-catalog the object
     obj.reindexObject()
     return obj
-
-
-def get_secondary_resources(data):
-    """Returns the secondary FHIR resources declared in the given content dict.
-
-    Converters use the ``_fhir_secondary_resources`` key of the content dict
-    (``SECONDARY_RESOURCES_KEY``) to hand over the resources that have to be
-    linked to the object alongside the primary one, e.g. the ``Specimen`` of a
-    ``ServiceRequest``, which has no counterpart content type in SENAITE.
-
-    A single resource is accepted as well as a list of them. This is not just
-    for convenience: FHIR resources are ``dict`` subclasses, so iterating a
-    bare resource would silently yield its keys instead of the resource itself.
-
-    The content dict is left untouched. The key is not a content field name --
-    field names are public, and always come with an accessor and a mutator --
-    so it is simply ignored when the rest of the dict is applied.
-
-    :param data: the content dict to read the secondary resources from
-    :returns: the list of secondary FHIR resources, empty when there are none
-    :rtype: list
-    """
-    resources = data.get(SECONDARY_RESOURCES_KEY) or []
-    if is_fhir_resource(resources):
-        return [resources]
-    return list(filter(is_fhir_resource, resources))
 
 
 def create(resource):
@@ -722,7 +700,12 @@ def create(resource):
     The resource is converted to a content dict (see ``to_content_dict``) and
     the object is created under the ``parent_path`` it resolves to
     (AnalysisRequest samples are created through ``create_analysisrequest``).
-    The resource is then linked to the new object via ``link_fhir_resource``.
+    Per https://www.hl7.org/fhir/http.html#create, the resource's own posted
+    ``id`` is ignored: it is overwritten with one derived from the new
+    object's own SENAITE UID before being linked to it via
+    ``link_fhir_resource``. ``Practitioner`` is the one exception -- its
+    posted id is kept, since no ``IContentFinder`` exists yet to recognize a
+    re-POSTed Practitioner as an update without it (see ``update``).
 
     :param resource: the FHIR resource to create a counterpart for
     :returns: the newly created content object
@@ -735,9 +718,6 @@ def create(resource):
 
     # get the content dict
     data = to_content_dict(resource)
-
-    # get the secondary FHIR resources to be linked to the object, if any
-    resources = get_secondary_resources(data)
 
     # create the object
     portal_type = data.pop("portal_type")
@@ -752,17 +732,19 @@ def create(resource):
     else:
         obj = api.create(container, portal_type, **data)
 
+    # overwrite the posted id with a server-generated one before linking, so
+    # the link, and the response built from this same resource, both use it.
+    # Except for Practitioner: see the same carve-out in ``update``.
+    if resource.resourceType != "Practitioner":
+        resource["id"] = str(get_uuid(api.get_uid(obj)))
+
     # link the FHIR resource to the obj
     link_fhir_resource(obj, resource)
-
-    # link the secondary FHIR resources to the object
-    for secondary in resources:
-        link_fhir_resource(obj, secondary, secondary=True)
 
     return obj
 
 
-def link_fhir_resource(obj, resource, secondary=False):
+def link_fhir_resource(obj, resource):
     """Links a FHIR resource to the given SENAITE object.
 
     Marks the object with ``IFHIRContent`` and records the resource's UID in
@@ -772,17 +754,14 @@ def link_fhir_resource(obj, resource, secondary=False):
     unless that slot already holds a snapshot of a *different* resource type,
     in which case it is left untouched (see below).
 
-    Pass `secondary=True` for a resource that has no counterpart content type
-    in SENAITE, e.g. the `Specimen` of an AnalysisRequest. There is no live
-    content to rebuild such a resource from, so it is snapshotted in the
-    type-keyed `resources` slot instead of `data`, and `get_fhir_resource`
-    serves it back from there. Resources that *do* have a counterpart must not
-    be stored there: they are always re-synthesized by their `IContentToFHIR`
-    adapter, and a stale snapshot would shadow the live one.
+    Every resource is always re-synthesized by its ``IContentToFHIR`` adapter
+    when fetched back (see ``get_fhir_resource``); this snapshot is never
+    served as-is, even for a resource type with no counterpart content type in
+    SENAITE (e.g. ``Specimen``). The incoming resource's own ``id`` and any
+    detail its adapter cannot rebuild are not preserved.
 
     :param obj: the content object to link the resource to
     :param resource: the FHIR resource to link
-    :param secondary: whether the resource has no counterpart content type
     :raises ValueError: if `resource` is not a FHIR resource
     """
     if not is_fhir_resource(resource):
@@ -802,18 +781,6 @@ def link_fhir_resource(obj, resource, secondary=False):
     set_fhir_uids(obj, **kwargs)
 
     annotation = get_fhir_storage(obj)
-
-    if secondary:
-        # Snapshot the resource in the type-keyed ``resources`` slot. It is the
-        # only source of truth for this resource, so ``get_fhir_resource``
-        # serves it back from here rather than from an IContentToFHIR adapter.
-        # Reassign "resources" as a whole, for the same reason as in
-        # ``set_fhir_uids``: mutating the nested dict in place does not mark
-        # the PersistentDict as changed, so the write can get lost.
-        resources = dict(annotation.get("resources") or {})
-        resources[resource_type] = resource.to_dict()
-        annotation["resources"] = resources
-        return
 
     # TODO Remove (kept for backwards compatibility)
     # assign the FHIR UID, along with current data so we can always use the
@@ -861,50 +828,14 @@ def get_system_code(resource_type, default=_marker):
     return default
 
 
-@deprecate("Use link_fhir_resource(obj, resource, secondary=True) instead")
-def store_fhir_resource(obj, resource):
-    """Persists a secondary FHIR resource against a SENAITE object.
-
-    :param obj: content object, catalog brain or UID
-    :param resource: the FHIR resource to store
-    """
-    return link_fhir_resource(api.get_object(obj), resource, secondary=True)
-
-
-@deprecate("Use get_fhir_resource instead")
-def get_stored_fhir_resource(obj, resource_type):
-    """Returns a previously stored secondary FHIR resource from the object's
-    annotation storage, or ``None`` when none is found.
-
-    Reads from the type-keyed slot written by ``store_fhir_resource`` without
-    waking up the object unnecessarily.
-
-    :param obj: content object, catalog brain or UID
-    :param resource_type: FHIR resource type to retrieve, e.g. ``"Specimen"``
-    :returns: the FHIR resource, or ``None``
-    """
-    obj = api.get_object(obj)
-    annotation = IAnnotations(obj)
-    storage = annotation.get(FHIR_STORAGE_KEY) or {}
-    resources = storage.get("resources") or {}
-    data = resources.get(resource_type)
-    if not data:
-        return None
-    return to_fhir_resource(data, default=None)
-
-
 def get_fhir_resource(obj, resource_type=None, default=_marker):
     """Returns the FHIR resource of the given type linked to the given object.
 
-    Secondary resources -- those without a counterpart content type in SENAITE,
-    e.g. the ``Specimen`` of an AnalysisRequest -- are served from the snapshot
-    that ``link_fhir_resource`` keeps in the object's annotation storage, as
-    there is no live content to rebuild them from.
-
-    Any other resource type is synthesized from live content through its
+    The resource is always synthesized from live content through its
     ``IContentToFHIR`` adapter (see ``to_fhir_resource``), so it always
     reflects the current state of the object rather than the payload that
-    happened to create it.
+    happened to create it, including resource types with no counterpart
+    content type in SENAITE, e.g. the ``Specimen`` of an AnalysisRequest.
 
     :param obj: content object, catalog brain, SENAITE UID or FHIR UID/id
     :param resource_type: FHIR resource type to return; defaults to the
@@ -922,13 +853,6 @@ def get_fhir_resource(obj, resource_type=None, default=_marker):
     # default to the resource type associated to the object
     if not resource_type:
         resource_type = get_resource_type(obj)
-
-    # look for a stored secondary resource first, reading the annotation
-    # directly so the storage is not created on read
-    storage = IAnnotations(obj).get(FHIR_STORAGE_KEY) or {}
-    stored = (storage.get("resources") or {}).get(resource_type)
-    if stored:
-        return to_fhir_resource(stored, default=default)
 
     # rely on the IContentToFHIR adapter for the requested resource type
     return to_fhir_resource(obj, default=default, resource_type=resource_type)

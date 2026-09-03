@@ -57,9 +57,9 @@ def get(context, request, resource_type=None, uid=None):
     uuids = list(filter(lambda val: fapi.is_uuid(val), [uid, resource_type]))
     if uuids:
         uid = fapi.get_uuid(uuids[0]).hex
-        # pass the resource type so the annotation-stored snapshot of that
-        # type is preferred (e.g. a Specimen, which has no counterpart content
-        # type) before falling back to the IContentToFHIR adapter
+        # pass the resource type so the right named IContentToFHIR adapter is
+        # used to synthesize the resource (e.g. a Specimen, which has no
+        # counterpart content type of its own)
         fhir_type = resource_type if not fapi.is_uuid(resource_type) else None
         resource = fapi.get_fhir_resource(
             uid, resource_type=fhir_type, default=None
@@ -199,13 +199,16 @@ def post(context, request, resource_type=None):
 
 
 def process_bundle_specimen(sr_resource, ar_obj, ar_status, ar_modified):
-    """Store each Specimen referenced by a ServiceRequest into the AR's
-    annotation storage and return bundle-response entries for them.
+    """Apply each Specimen referenced by a ServiceRequest to the AR and return
+    bundle-response entries for them.
 
-    Specimen has no independent SENAITE content type: it is persisted as
-    annotation data on the AnalysisRequest so it can be fetched later via
-    GET /Specimen/<uid> without callers needing to know SENAITE internals.
-    The Specimen status mirrors the ServiceRequest/AR status per design.
+    Specimen has no independent SENAITE content type: the incoming Specimen is
+    only used to resolve the AR's SampleType; per the FHIR create semantics
+    (https://www.hl7.org/fhir/http.html#create) the resource's own ``id`` is
+    ignored, and it is never stored - the AR's Specimen is always
+    resynthesized from live content (see ``AnalysisRequestToSpecimen``) when
+    fetched later via GET /Specimen/<uid>. The Specimen status mirrors the
+    ServiceRequest/AR status per design.
 
     :param sr_resource: the ServiceRequest FHIR resource (carries ``_bundle``)
     :param ar_obj: the AnalysisRequest content object
@@ -223,17 +226,20 @@ def process_bundle_specimen(sr_resource, ar_obj, ar_status, ar_modified):
         if not specimen:
             continue
 
-        # Persist the Specimen dict in the AR's annotation storage and index
-        # its UID in the FHIR catalog so search_by_fhir_uid can find the AR.
-        fapi.link_fhir_resource(ar_obj, specimen, secondary=True)
-
         sample_type = SampleTypeFinder(specimen).find()
         if sample_type and ar_obj.getSampleType() != sample_type:
             ar_obj.setSampleType(sample_type)
             ar_obj.reindexObject()
 
+        # the server-assigned id, never the one the client posted
+        assigned = fapi.to_fhir_resource(
+            ar_obj, resource_type="Specimen", default=None
+        )
+        if not assigned:
+            continue
+
         entries.append({
-            "fullUrl": "Specimen/{}".format(specimen.id),
+            "fullUrl": "Specimen/{}".format(assigned.id),
             "response": {
                 "status": ar_status,
                 "lastModified": ar_modified,
@@ -337,11 +343,10 @@ def revoke(context, request, resource_type, uid):
 def get_specimen_bundle(context, request):
     """Return all Specimens as a FHIR searchset bundle.
 
-    Specimens have no independent SENAITE content type. For ARs created via
-    the FHIR bundle API the Specimen is stored as annotation data and returned
-    as-is. For ARs created natively in SENAITE (no annotation) a Specimen is
-    synthesized on-the-fly from the AR's SampleType and DateSampled so that
-    FHIR clients never need to know about SENAITE internals.
+    Specimens have no independent SENAITE content type: every entry is
+    synthesized on-the-fly from the AR's SampleType, DateSampled and
+    SamplePoint so that FHIR clients never need to know about SENAITE
+    internals
 
     Supports optional ``_lastUpdated`` (e.g. ``gt2026-01-01T00:00:00Z``) to
     filter by the underlying AR's modification date.

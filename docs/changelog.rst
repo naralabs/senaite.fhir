@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #35 Regenerate resources instead of serving posted payloads
 - #38 Unify the handling of _include across search endpoints
 - #32 Add support for _include=Specimen:specimen in ServiceRequest bundle
 - #31 Add support for _include query parameter in ServiceRequest bundle

@@ -1,5 +1,5 @@
-FHIR secondary resources
-------------------------
+FHIR resources that do not have a SENAITE counterpart are never kept exactly as they are
+----------------------------------------------------------------------------------------
 
 Most FHIR resources have a counterpart content type in SENAITE: a
 `ServiceRequest` is an AnalysisRequest, an `Observation` is an Analysis, a
@@ -7,24 +7,25 @@ Most FHIR resources have a counterpart content type in SENAITE: a
 their `IContentToFHIR` adapter, so what the API returns keeps reflecting the
 current state of the object rather than the payload that created it.
 
-A `Specimen` has no such counterpart -- `SampleType` only carries its type
--- so there is nothing to rebuild it from. Resources like this one are linked
-as **secondary**: `link_fhir_resource(obj, resource, secondary=True)`
-snapshots them in the type-keyed `resources` slot of the object's FHIR
-annotation storage, and `get_fhir_resource` serves them back from there.
-
-Because the two kinds are read back differently, a resource that *does* have a
-counterpart must never end up in the `resources` slot: a stale snapshot
-would shadow the live one.
+A `Specimen` has no such counterpart -- `SampleType` only carries its type --
+so per https://www.hl7.org/fhir/http.html#create a posted `Specimen` is used
+only to resolve SENAITE state (its matching `SampleType`) and is never stored
+or served back as-is: its own `id`, and any detail the
+`AnalysisRequestToSpecimen` adapter has no SENAITE field to rebuild from (a
+SNOMED code, free-text notes, ...), do not survive the round trip. `GET`
+always synthesizes the `Specimen` from the AnalysisRequest's live data.
 
 This test covers:
 
-- `get_secondary_resources`, the hand-over that converters use to declare
-  secondary resources for the object being created or updated;
-- the `Specimen` of a posted `ServiceRequest` being linked as secondary to
-  the created sample and served back verbatim;
-- the sample's own `ServiceRequest` *not* being snapshotted as secondary;
-- secondary resources being re-linked when the resource is updated.
+- the `Specimen` of a posted `ServiceRequest` resolving the sample's
+  `SampleType` but not being linked or stored under its own posted id;
+- `get_fhir_resource`/`GET /Specimen` returning the synthesized Specimen
+  (derived from the AnalysisRequest's own identity), not the posted one;
+- the sample's `ServiceRequest` id also being the AnalysisRequest's own
+  SENAITE UID, not the one carried by the bundle, since every resource type's
+  posted id is ignored per https://www.hl7.org/fhir/http.html#create;
+- `InstrumentServiceRequest.basedOn` still correctly referencing that
+  ServiceRequest identity.
 
 Running this test from the buildout directory:
 
@@ -94,54 +95,8 @@ Load the bundle and keep its `Specimen` and `ServiceRequest` at hand:
     >>> posted_sr = entry_of("ServiceRequest")
 
 
-get_secondary_resources
-~~~~~~~~~~~~~~~~~~~~~~~
-
-Converters declare their secondary resources under the
-`SECONDARY_RESOURCES_KEY` key of the content dict, and
-`get_secondary_resources` reads them back:
-
-    >>> from senaite.fhir.config import SECONDARY_RESOURCES_KEY
-    >>> SECONDARY_RESOURCES_KEY
-    '_fhir_secondary_resources'
-
-    >>> specimen = fapi.to_fhir_resource(posted_specimen)
-    >>> data = {SECONDARY_RESOURCES_KEY: [specimen],
-    ...         "ClientSampleID": "CSID-01"}
-    >>> fapi.get_secondary_resources(data) == [specimen]
-    True
-
-The content dict is left untouched. The key is no content field name -- those
-are public, and always come with an accessor and a mutator -- so it is simply
-ignored when the rest of the dict is applied to the object:
-
-    >>> sorted(data.keys())
-    ['ClientSampleID', '_fhir_secondary_resources']
-
-A single resource is accepted as well as a list of them. FHIR resources are
-`dict` subclasses, so a bare resource has to be wrapped rather than
-iterated: iterating it would yield its *keys* instead of the resource itself:
-
-    >>> bare = {SECONDARY_RESOURCES_KEY: specimen}
-    >>> fapi.get_secondary_resources(bare) == [specimen]
-    True
-
-Missing, empty and non-resource values yield an empty list:
-
-    >>> fapi.get_secondary_resources({})
-    []
-    >>> fapi.get_secondary_resources({SECONDARY_RESOURCES_KEY: None})
-    []
-    >>> fapi.get_secondary_resources({SECONDARY_RESOURCES_KEY: []})
-    []
-    >>> fapi.get_secondary_resources({SECONDARY_RESOURCES_KEY: [None, 1]})
-    []
-
-
-The Specimen is linked as a secondary resource
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Post the bundle:
+Post the bundle
+~~~~~~~~~~~~~~~
 
     >>> browser.post("{}/Bundle".format(fhir_url), json.dumps(bundle),
     ...              content_type="application/json")
@@ -154,106 +109,114 @@ Post the bundle:
     >>> len(samples)
     1
     >>> sample = samples[0]
+
+The posted Specimen resolved the sample's SampleType:
+
     >>> sample.getSampleType() == blood
     True
 
-The Specimen's FHIR id is linked to the sample, alongside the sample's own
-`ServiceRequest` id:
 
-    >>> fapi.get_fhir_id(sample, "Specimen") == posted_specimen["id"]
-    True
+The ServiceRequest and Specimen ids both resolve to the sample's own UID
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Per https://www.hl7.org/fhir/http.html#create the posted id is ignored for
+every resource type, so `ServiceRequest`'s FHIR id is the AnalysisRequest's
+own SENAITE UID, not the one carried by the bundle:
+
     >>> fapi.get_fhir_id(sample, "ServiceRequest") == posted_sr["id"]
+    False
+    >>> fapi.get_fhir_id(sample, "ServiceRequest") == str(fapi.get_uuid(api.get_uid(sample)))  # noqa: E501
     True
 
-Only the `Specimen` is snapshotted in the `resources` slot. The sample's
-own `ServiceRequest` is not: it has a counterpart content type, so a
-snapshot of it would shadow the live one:
+`Specimen` has no counterpart content type of its own and is never linked at
+all, so its posted id is not linked to the sample either:
 
-    >>> storage = fapi.get_fhir_storage(sample)
-    >>> sorted(storage.get("resources").keys())
-    [u'Specimen']
-
-
-Reading back a secondary resource
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-`get_fhir_resource` returns the Specimen exactly as it came in, with the id,
-the SNOMED type coding, the collection body site and the notes carried by the
-bundle:
-
-    >>> stored = fapi.get_fhir_resource(sample, "Specimen")
-    >>> stored.resourceType
-    u'Specimen'
-    >>> stored.id == posted_specimen["id"]
-    True
-    >>> stored["type"]["coding"][0]["code"]
-    u'119364003'
-    >>> stored["collection"]["bodySite"]["concept"]["coding"][0]["display"]
-    u'Antecubital fossa'
-    >>> "No lipemia observed." in stored["note"][0]["text"]
+    >>> fapi.get_fhir_id(sample, "Specimen") is None
     True
 
-This is *not* what the `AnalysisRequestToSpecimen` adapter would synthesize
-from the sample. That one gets its identity from the sample and knows nothing
-about the collection details of the incoming Specimen:
+The `AnalysisRequestToSpecimen` adapter does not need such a link either: it
+derives the Specimen's id straight from the sample's own SENAITE UID:
 
     >>> synthesized = fapi.to_fhir_resource(sample, resource_type="Specimen")
     >>> synthesized.id == posted_specimen["id"]
     False
     >>> synthesized.id == str(fapi.get_uuid(api.get_uid(sample)))
     True
-    >>> "bodySite" in synthesized.get("collection", {})
+
+
+Reading back the Specimen
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`get_fhir_resource` returns the synthesized Specimen, not the one that was
+posted: the id differs, and details the adapter has no SENAITE field for
+(the SNOMED type code, the collection body site, the notes) are absent:
+
+    >>> served = fapi.get_fhir_resource(sample, "Specimen")
+    >>> served.resourceType
+    'Specimen'
+    >>> served.id == posted_specimen["id"]
+    False
+    >>> served.id == str(fapi.get_uuid(api.get_uid(sample)))
+    True
+    >>> served["type"]["coding"][0]["display"]
+    'Blood'
+    >>> "code" in served["type"]["coding"][0]
+    False
+    >>> "bodySite" in served.get("collection", {})
+    False
+    >>> "note" in served
     False
 
-The HTTP endpoint serves the stored resource as well, both by the Specimen's
-own FHIR id and through the `Specimen` listing:
+The HTTP endpoint serves the very same synthesized resource, both by the
+sample's own FHIR id and through the `Specimen` listing -- the posted id
+returns a `404`, since nothing was ever linked or stored under it:
 
-    >>> browser.open("{}/Specimen/{}".format(fhir_url, stored.id))
-    >>> served = json.loads(browser.contents)
-    >>> served["id"] == posted_specimen["id"]
+    >>> browser.open("{}/Specimen/{}".format(fhir_url, served.id))
+    >>> browser.headers["Status"]
+    '200 OK'
+    >>> served_via_http = json.loads(browser.contents)
+    >>> served_via_http["id"] == served.id
     True
-    >>> served["collection"]["bodySite"]["concept"]["coding"][0]["display"]
-    u'Antecubital fossa'
+
+    >>> browser.open("{}/Specimen/{}".format(fhir_url, posted_specimen["id"]))
+    >>> browser.headers["Status"]
+    '404 Not Found'
 
     >>> browser.open("{}/Specimen".format(fhir_url))
     >>> listing = json.loads(browser.contents)
     >>> listing["total"]
     1
-    >>> listing["entry"][0]["resource"]["id"] == posted_specimen["id"]
+    >>> listing["entry"][0]["resource"]["id"] == served.id
     True
 
 
-Secondary resources are re-linked on update
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+InstrumentServiceRequest.basedOn points to the sample's ServiceRequest
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-`fapi.update` links the secondary resources of the incoming resource the
-same way `fapi.create` does, so the snapshot is refreshed instead of going
-stale. Change the collection body site of the posted Specimen:
+Assigning an Instrument to one of the sample's Analyses links its own
+``SenaiteInstrumentServiceRequest`` identity (see ``servicerequest_read.rst``).
+That resource's ``basedOn`` points back to the sample's own ``ServiceRequest``
+identity -- its own SENAITE UID, per the section above, not the id originally
+carried by the bundle:
 
-    >>> body_site = posted_specimen["collection"]["bodySite"]
-    >>> body_site["concept"]["coding"][0]["display"] = "Dorsal hand vein"
-
-Rebuild the `ServiceRequest` out of the modified bundle. The bundle is
-attached to it under `_bundle`, which is how the endpoint lets a resource
-resolve its siblings:
-
-    >>> bundle_resource = fapi.to_fhir_resource(bundle)
-    >>> sr_resource = bundle_resource.first_entry("id", posted_sr["id"])
-    >>> sr_resource["_bundle"] = bundle_resource
-
-Update the sample with it:
-
-    >>> sample = fapi.update(sample, sr_resource)
+    >>> instr_type = api.create(setup.instrumenttypes, "InstrumentType",
+    ...                         title=u"Chemistry Analyser")
+    >>> instrument = api.create(portal.bika_setup.bika_instruments,
+    ...                        "Instrument", title=u"Cobas c311",
+    ...                        InstrumentType=instr_type)
+    >>> analysis = sample.getAnalyses(full_objects=True)[0]
+    >>> analysis.setInstrument(instrument)
     >>> transaction.commit()
 
-The snapshot carries the new body site, and no second Specimen entry was
-added -- the resource type is the key, so the same Specimen gets overwritten:
-
-    >>> updated = fapi.get_fhir_resource(sample, "Specimen")
-    >>> updated["collection"]["bodySite"]["concept"]["coding"][0]["display"]
-    'Dorsal hand vein'
-    >>> sorted(fapi.get_fhir_storage(sample).get("resources").keys())
-    [u'Specimen']
+    >>> isr_fhir_id = fapi.get_fhir_id(analysis, "ServiceRequest")
+    >>> browser.open("{}/ServiceRequest/{}".format(fhir_url, isr_fhir_id))
+    >>> isr = json.loads(browser.contents)
+    >>> isr["basedOn"][0]["reference"] == "ServiceRequest/{}".format(
+    ...     str(fapi.get_uuid(api.get_uid(sample))))
+    True
+    >>> isr["basedOn"][0]["reference"] == "ServiceRequest/{}".format(
+    ...     posted_sr["id"])
+    False
 
 
 The Specimen reference is required

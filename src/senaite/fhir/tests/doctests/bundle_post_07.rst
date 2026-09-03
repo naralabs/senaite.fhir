@@ -10,8 +10,9 @@ Specimen listing:
    whole bundle is rejected with a ``400 OperationOutcome``. As the POST is a
    single all-or-nothing transaction, no content is persisted.
 
-2. **Specimen appears in listing**: after a successful bundle POST the stored
-   Specimen annotation is returned by ``GET /Specimen``.
+2. **Specimen appears in listing**: after a successful bundle POST the
+   AnalysisRequest's synthesised Specimen is returned by ``GET /Specimen``,
+   under its own server-assigned id rather than the one carried by the bundle.
 
 3. **SampleType re-linking on update**: re-posting the same bundle with a
    different Specimen type updates the underlying AnalysisRequest's
@@ -110,8 +111,8 @@ No AnalysisRequest is created by the rejected bundle:
     0
 
 
-Initial bundle POST – Specimen stored and appears in listing
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Initial bundle POST - Specimen resolved and appears in listing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Now create the ``SampleType`` (matched by the Specimen's SNOMED display) and
 a second ``SampleType`` that will be used in the SampleType re-linking test:
@@ -141,13 +142,14 @@ status):
     >>> specimen_entries[0]["response"]["status"]
     u'201 Created'
 
-The FHIR id of the stored Specimen is the one carried by the bundle:
+The FHIR id of the Specimen is the AnalysisRequest's own server-assigned id,
+not the one carried by the bundle - per the FHIR create semantics
+(https://www.hl7.org/fhir/http.html#create) the client-supplied id is
+ignored:
 
     >>> bundle_specimen = [e["resource"] for e in bundle["entry"]
     ...                    if e["resource"]["resourceType"] == "Specimen"][0]
-    >>> stored_fhir_id = bundle_specimen["id"]
-    >>> specimen_entries[0]["fullUrl"] == "Specimen/{}".format(stored_fhir_id)
-    True
+    >>> posted_fhir_id = bundle_specimen["id"]
 
     >>> portal._p_jar.sync()
     >>> samples = client.objectValues("AnalysisRequest")
@@ -157,25 +159,36 @@ The FHIR id of the stored Specimen is the one carried by the bundle:
     >>> sample.getSampleType() == serum
     True
 
-The FHIR-backed Specimen is returned by ``GET /Specimen``:
+    >>> synthesized_fhir_id = str(fapi.get_uuid(api.get_uid(sample)))
+    >>> specimen_entries[0]["fullUrl"] == "Specimen/{}".format(synthesized_fhir_id)  # noqa: E501
+    True
+    >>> specimen_entries[0]["fullUrl"] == "Specimen/{}".format(posted_fhir_id)
+    False
+
+The synthesised Specimen is returned by ``GET /Specimen``:
 
     >>> browser.open("{}/Specimen".format(fhir_url))
     >>> listing = json.loads(browser.contents)
     >>> listing["total"]
     1
-    >>> listing["entry"][0]["fullUrl"] == "Specimen/{}".format(stored_fhir_id)
+    >>> listing["entry"][0]["fullUrl"] == "Specimen/{}".format(synthesized_fhir_id)  # noqa: E501
     True
     >>> listing["entry"][0]["resource"]["resourceType"]
     u'Specimen'
 
-Fetching the Specimen by its FHIR id also works:
+Fetching the Specimen by its server-assigned FHIR id works, the posted one
+does not:
 
-    >>> browser.open("{}/Specimen/{}".format(fhir_url, stored_fhir_id))
+    >>> browser.open("{}/Specimen/{}".format(fhir_url, synthesized_fhir_id))
     >>> single = json.loads(browser.contents)
     >>> single["resourceType"]
     u'Specimen'
-    >>> single["id"] == stored_fhir_id
+    >>> single["id"] == synthesized_fhir_id
     True
+
+    >>> browser.open("{}/Specimen/{}".format(fhir_url, posted_fhir_id))
+    >>> browser.headers["Status"]
+    '404 Not Found'
 
 
 SampleType re-linking on bundle update

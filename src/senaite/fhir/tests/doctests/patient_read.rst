@@ -180,10 +180,12 @@ resource type segment):
 Patient created from a FHIR resource
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The Patient above was created natively in SENAITE, so its FHIR ``id`` is
-derived from its own SENAITE UID. When a Patient is instead created *from* an
-incoming FHIR resource (e.g. POSTed in a Bundle), the resource's own ``id`` is
-preserved against the object as a distinct FHIR id:
+Whether a Patient is created natively in SENAITE or *from* an incoming FHIR
+resource (e.g. POSTed in a Bundle), its FHIR ``id`` is always derived from its
+own SENAITE UID. Per https://www.hl7.org/fhir/http.html#create the server
+SHALL ignore an id supplied on create, and ``PatientFinder`` (matching by MRN)
+is what lets a later re-POST of the same Patient be recognised as an update
+rather than a duplicate -- not the incoming id:
 
     >>> from senaite.fhir import api as fapi
     >>> incoming = fapi.to_fhir_resource({
@@ -204,23 +206,59 @@ FHIR id (here shown in hex form):
     >>> created_uid != "a1b2c3d4111151119111aaaaaaaaaaaa"
     True
 
-Fetching the Patient by its SENAITE UID returns a resource whose ``id`` is the
-original FHIR id (in dashed UUID form), not the underlying object's UID:
+The incoming resource itself is mutated in place by ``create()``: its ``id``
+is overwritten with the server-generated one before being linked, so it no
+longer carries the id it was posted with:
+
+    >>> incoming["id"] == "a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa"
+    False
+    >>> incoming["id"] == str(fapi.get_uuid(created_uid))
+    True
+
+Fetching the Patient by its SENAITE UID returns a resource whose ``id`` is
+that same server-generated one, not the id it was originally posted with:
 
     >>> browser.open("{}/Patient/{}".format(fhir_url, created_uid))
     >>> created_resource = json.loads(browser.contents)
-    >>> created_resource["id"]
-    u'a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa'
-
-    >>> created_resource["id"] != created_uid
+    >>> created_resource["id"] == str(fapi.get_uuid(created_uid))
     True
+    >>> created_resource["id"] == "a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa"
+    False
 
-Fetching the Patient by its original FHIR resource id (which is not a SENAITE
-UID, so it is resolved through the FHIR catalog) returns the very same
-resource:
+The original posted id was never linked anywhere, so fetching by it returns
+``404``:
 
+    >>> browser.raiseHttpErrors = False
     >>> browser.open("{}/Patient/{}".format(
     ...     fhir_url, "a1b2c3d4-1111-5111-9111-aaaaaaaaaaaa"))
-    >>> by_fhir_id = json.loads(browser.contents)
-    >>> by_fhir_id == created_resource
+    >>> browser.headers["Status"]
+    '404 Not Found'
+    >>> browser.raiseHttpErrors = True
+
+Re-posting the same Patient (matched by its MRN-equivalent external
+identifier, ``PAT-FHIR``, via ``PatientFinder``) updates the existing object
+rather than creating a duplicate, and keeps the same server-generated id:
+
+    >>> resend = fapi.to_fhir_resource({
+    ...     "resourceType": "Patient",
+    ...     "id": "ffffffff-2222-5222-9222-ffffffffffff",
+    ...     "name": [{"use": "official", "family": "Stone", "given": ["Marcus"]}],  # noqa: E501
+    ...     "gender": "male",
+    ...     "birthDate": "1970-02-03",
+    ...     "identifier": [{"use": "secondary", "value": "PAT-FHIR"}],
+    ... })
+    >>> found = fapi.find_object_for(resend)
+    >>> api.get_uid(found) == created_uid
     True
+
+    >>> updated = fapi.update(found, resend)
+    >>> transaction.commit()
+    >>> api.get_uid(updated) == created_uid
+    True
+
+    >>> browser.open("{}/Patient/{}".format(fhir_url, created_uid))
+    >>> refetched = json.loads(browser.contents)
+    >>> refetched["id"] == created_resource["id"]
+    True
+    >>> as_official_name(refetched["name"])["given"]
+    [u'Marcus']
