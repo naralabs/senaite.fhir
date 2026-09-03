@@ -139,3 +139,17 @@ DEFAULT_INSTRUMENT_SERVICE_REQUEST_CATEGORY = {
 }
 
 DEFAULT_BUNDLE_PAGE_COUNT = 10
+
+# Maps the resource type each search endpoint matches on to the `_include`
+# specs it supports, along with the reference field each spec resolves. They
+# are declared per resource type because a reference field only makes sense
+# for the resource the endpoint matches on
+INCLUDE_REFERENCE_FIELDS = (
+    ("ServiceRequest", {
+        "Patient:subject": "subject",
+        "Specimen:specimen": "specimen",
+    }),
+    ("DiagnosticReport", {
+        "Observation:result": "result",
+    }),
+)

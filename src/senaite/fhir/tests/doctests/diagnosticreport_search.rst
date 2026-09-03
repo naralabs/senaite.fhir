@@ -344,3 +344,133 @@ the sample – one Haemoglobin analysis was published:
     1
     >>> include_entries[0]["resource"]["resourceType"]
     u'Observation'
+
+Included Observations are appended after the ``DiagnosticReport`` matches,
+so ``Bundle.total`` keeps counting matches only:
+
+    >>> modes = [e["search"]["mode"] for e in bundle["entry"]]
+    >>> modes == sorted(modes, key=lambda mode: mode != "match")
+    True
+
+    >>> bundle["total"] == len(match_entries)
+    True
+
+
+Unsupported _include values are rejected
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An ``_include`` value this endpoint does not support returns a ``400``
+OperationOutcome:
+
+    >>> browser.raiseHttpErrors = False
+    >>> url = "{}/DiagnosticReport?_summary=true".format(fhir_url)
+    >>> browser.open(url + "&_include=Practitioner:performer")
+    >>> browser.headers["Status"]
+    '400 Bad Request'
+
+    >>> outcome = json.loads(browser.contents)
+    >>> outcome["issue"][0]["code"]
+    u'not-supported'
+
+    >>> outcome["issue"][0]["expression"]
+    [u'_include']
+
+The supported values are declared per endpoint. ``Patient:subject`` is
+valid for the ``ServiceRequest`` bundle, but not for this one:
+
+    >>> browser.open(url + "&_include=Patient:subject")
+    >>> browser.headers["Status"]
+    '400 Bad Request'
+
+    >>> outcome = json.loads(browser.contents)
+    >>> outcome["issue"][0]["diagnostics"]
+    u'Supported _include values for this endpoint: Observation:result'
+
+An empty ``_include`` is a no-op rather than an error:
+
+    >>> browser.open(url + "&_include=")
+    >>> browser.headers["Status"]
+    '200 OK'
+
+    >>> bundle = json.loads(browser.contents)
+    >>> set(e["search"]["mode"] for e in bundle["entry"])
+    set([u'match'])
+
+    >>> browser.raiseHttpErrors = True
+
+
+Only reportable analyses are included
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The included Observations are the ones referenced by
+``DiagnosticReport.result``, which the converter builds out of the
+reportable analyses of the sample only. Register a second sample with two
+analyses and hide one of them:
+
+    >>> Fe = api.create(portal.bika_setup.bika_analysisservices,
+    ...                 "AnalysisService", title="Iron", Keyword="Fe",
+    ...                 Category=category.UID())
+    >>> values2 = {
+    ...     "Client": client.UID(),
+    ...     "Contact": contact.UID(),
+    ...     "DateSampled": DateTime().strftime("%Y-%m-%d"),
+    ...     "SampleType": sampletype.UID(),
+    ... }
+    >>> sample2 = create_analysisrequest(
+    ...     client, request, values2, [Hb.UID(), Fe.UID()])
+    >>> _ = do_action_for(sample2, "receive")
+
+    >>> analyses2 = sample2.getAnalyses(full_objects=True)
+    >>> hidden = [an for an in analyses2 if an.getKeyword() == "Fe"][0]
+    >>> hidden.setHidden(True)
+
+    >>> for analysis in analyses2:
+    ...     analysis.setResult(5)
+    ...     _ = do_action_for(analysis, "submit")
+    ...     _ = do_action_for(analysis, "verify")
+    >>> _ = do_action_for(sample2, "publish")
+
+    >>> report2 = api.create(
+    ...     sample2, "ResultsReport",
+    ...     sample=sample2.UID(),
+    ... )
+    >>> report2.setPdf({
+    ...     "data": b"%PDF-1.4 fake iron report",
+    ...     "filename": u"report2.pdf",
+    ...     "contentType": "application/pdf",
+    ... })
+    >>> transaction.commit()
+
+The hidden analysis is not reportable:
+
+    >>> [(an.getKeyword(), fapi.is_reportable(an)) for an in analyses2]
+    [('Hb', True), ('Fe', False)]
+
+So it is not included in the bundle, even though its sample is matched:
+
+    >>> url = "{}/DiagnosticReport?_summary=true&_include=Observation:result"
+    >>> browser.open(url.format(fhir_url))
+    >>> bundle = json.loads(browser.contents)
+    >>> included = sorted(e["resource"]["id"] for e in bundle["entry"]
+    ...                   if e["search"]["mode"] == "include")
+
+    >>> str(fapi.get_uuid(hidden)) in included
+    False
+
+The includes are exactly the reportable analyses of every matched sample:
+
+    >>> expected = set()
+    >>> for entry in bundle["entry"]:
+    ...     if entry["search"]["mode"] != "match":
+    ...         continue
+    ...     dr_uid = uuid.UUID(entry["resource"]["id"]).hex
+    ...     report = api.get_object(dr_uid)
+    ...     for analysis in report.getSample().getAnalyses(full_objects=True):
+    ...         if fapi.is_reportable(analysis):
+    ...             expected.add(str(fapi.get_uuid(analysis)))
+
+    >>> included == sorted(expected)
+    True
+
+    >>> len(included)
+    2
