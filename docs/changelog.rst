@@ -6,6 +6,7 @@ Changelog
 
 - #32 Add support for _include=Specimen:specimen in ServiceRequest bundle
 - #31 Add support for _include query parameter in ServiceRequest bundle
+- #37 Expose sample ID on Specimen identifiers
 - #28 Link FHIR resources without a SENAITE counterpart as secondary resources
 - #33 Add keyword support for InstrumentServiceRequest and Observation
 - #30 Refactor Object Ids and External Ids across FHIR resources
