@@ -121,10 +121,19 @@ The ``type`` coding carries the SNOMED system code and the SampleType title:
     >>> spec["type"]["coding"][0]["display"]
     u'Whole Blood'
 
-The `identifier` list carries the sample's ClientSampleID under the
-`client-sample-id` naming system, as the `secondary` identifier:
+The ``identifier`` list carries SENAITE's sample ID as the ``usual``
+identifier and, when present, the client's sample ID as a ``secondary``
+identifier:
 
-    >>> client_identifier = spec["identifier"][0]
+    >>> sample_identifier = spec["identifier"][0]
+    >>> sample_identifier["value"] == sample.getId()
+    True
+    >>> sample_identifier["use"]
+    u'usual'
+    >>> sample_identifier["system"] == (
+    ...     "https://fhir.senaite.org/NamingSystem/sample-id")
+    True
+    >>> client_identifier = spec["identifier"][1]
     >>> client_identifier["value"]
     u'EXT-WB-0042'
     >>> client_identifier["use"]
