@@ -346,7 +346,8 @@ The included Patient entry carries ``search.mode = "include"`` and a
     1
     >>> include_entries[0]["resource"]["resourceType"]
     u'Patient'
-    >>> include_entries[0]["fullUrl"] == u"Patient/%s" % str(fapi.get_uuid(patient))
+    >>> patient_url = u"Patient/%s" % str(fapi.get_uuid(patient))
+    >>> include_entries[0]["fullUrl"] == patient_url
     True
 
 ``Bundle.total`` still only counts ServiceRequest matches, unaffected by
@@ -362,7 +363,8 @@ no Patient entries, even though that Patient exists:
     >>> url = base_url + "&_count=3&_offset=1&_include=Patient:subject"
     >>> browser.open(url)
     >>> bundle = json.loads(browser.contents)
-    >>> any(e["resource"]["resourceType"] == "Patient" for e in bundle["entry"])
+    >>> entries = bundle["entry"]
+    >>> any(e["resource"]["resourceType"] == "Patient" for e in entries)
     False
 
 
@@ -386,12 +388,19 @@ The included Specimen is appended after the page's match entries, carries
 ``search.mode = \"include\"``, and does not change ``Bundle.total``:
 
     >>> entries = bundle["entry"]
-    >>> [e["search"]["mode"] for e in entries]
-    [u'match', u'include', u'include']
+    >>> [e["search"]["mode"] for e in entries].count("match")
+    1
+
+    >>> sorted(e["resource"]["resourceType"] for e in entries
+    ...        if e["search"]["mode"] == "include")
+    [u'Patient', u'Specimen']
+
     >>> specimen_entry = next(
     ...     e for e in entries if e["resource"]["resourceType"] == "Specimen")
-    >>> specimen_entry["fullUrl"] == entries[0]["resource"]["specimen"][0]["reference"]
+    >>> specimen_ref = entries[0]["resource"]["specimen"][0]["reference"]
+    >>> specimen_entry["fullUrl"] == specimen_ref
     True
+
     >>> bundle["total"]
     4
 

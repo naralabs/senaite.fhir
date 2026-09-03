@@ -11,6 +11,7 @@ from senaite.fhir import api as fapi
 from senaite.fhir import logger
 from senaite.fhir.api import find_object_for
 from senaite.fhir.config import DEFAULT_BUNDLE_PAGE_COUNT
+from senaite.fhir.config import INCLUDE_REFERENCE_FIELDS
 from senaite.fhir.config import INSTRUMENT_SERVICE_REQUEST_STATUSES
 from senaite.fhir.converter import to_fhir_datetime
 from senaite.fhir.converter import to_fhir_profile_url
@@ -36,12 +37,6 @@ ENDPOINT_REVOKE = "%s.revoke" % ENDPOINT
 RESOURCE_TYPE_TO_CONTENT = (
     ("ServiceRequest", IAnalysisRequest),
 )
-
-# Maps `_include` specs to their reference fields.
-INCLUDE_REFERENCE_FIELDS = {
-    "Patient:subject": "subject",
-    "Specimen:specimen": "specimen",
-}
 
 
 # /<resource_type>
@@ -395,7 +390,8 @@ def get_diagnostic_report_bundle(_context, request):
     Builds a SenaiteResultsBundle (searchset) containing:
       - DiagnosticReport entries with search.mode = "match"
       - Observation entries with search.mode = "include" when
-        _include=Observation:result is requested
+        _include=Observation:result is requested, appended after the
+        matches
     """
     params = request.form
 
@@ -417,7 +413,9 @@ def get_diagnostic_report_bundle(_context, request):
         }
         return OperationOutcome({"issue": [issue]})
 
-    is_include_observations = "Observation:result" in params.get("_include", "")  # noqa: E501
+    include_specs = parse_include_params(params, "DiagnosticReport")
+    if isinstance(include_specs, OperationOutcome):
+        return include_specs
 
     query = {"portal_type": "AnalysisRequest"}
     if since:
@@ -426,7 +424,6 @@ def get_diagnostic_report_bundle(_context, request):
 
     entries = []
     total_match = 0
-    seen_obs_uids = set()
 
     for brain in brains:
         sample = api.get_object(brain, default=None)
@@ -453,26 +450,13 @@ def get_diagnostic_report_bundle(_context, request):
             "search": {"mode": "match"},
         })
 
-        if not is_include_observations:
-            continue
-
-        for analysis in sample.getAnalyses(full_objects=True):
-            if not fapi.is_reportable(analysis):
-                continue
-            obs_uid = fapi.get_uid(analysis)
-            if obs_uid in seen_obs_uids:
-                continue
-            seen_obs_uids.add(obs_uid)
-
-            obs = fapi.to_fhir_resource(analysis, default=None)
-            if not obs:
-                continue
-
-            entries.append({
-                "fullUrl": "Observation/{}".format(obs.id),
-                "resource": dict(obs),
-                "search": {"mode": "include"},
-            })
+    if include_specs:
+        # Resolve references only from the resources already matched
+        match_resources = [entry["resource"] for entry in entries]
+        entries.extend(
+            resolve_included_resources(
+                match_resources, include_specs, "DiagnosticReport")
+        )
 
     now = dtime.to_localized_time(dtime.now(), long_format=True)
     bundle_data = {
@@ -557,7 +541,7 @@ def get_service_request_bundle(_context, request):
         return pagination
     count, offset = pagination
 
-    include_specs = parse_include_params(params)
+    include_specs = parse_include_params(params, "ServiceRequest")
     if isinstance(include_specs, OperationOutcome):
         return include_specs
 
@@ -608,7 +592,8 @@ def get_service_request_bundle(_context, request):
         # Resolve references only from the resources already on this page
         page_resources = [entry["resource"] for entry in entries]
         entries.extend(
-            resolve_included_resources(page_resources, include_specs)
+            resolve_included_resources(
+                page_resources, include_specs, "ServiceRequest")
         )
 
     now = to_fhir_datetime(dtime.now())
@@ -709,24 +694,36 @@ def parse_pagination_params(params):
     return count, offset
 
 
-def parse_include_params(params):
+def get_include_reference_fields(resource_type):
+    """Returns the ``_include`` specs supported by the endpoint that matches
+    on the given resource type, mapped to the reference field each one
+    resolves.
+
+    :param resource_type: FHIR resource type the endpoint matches on
+    :returns: dict of {`_include` spec: reference field}
+    """
+    fields = dict(INCLUDE_REFERENCE_FIELDS).get(resource_type) or {}
+    # return a copy, so the constant cannot be modified by the caller
+    return dict(fields)
+
+
+def parse_include_params(params, resource_type):
     """Parse and validate the ``_include`` query parameter.
 
     Accepts a single value, a comma-separated list of values, or multiple
-    ``_include`` query parameters. Each value must be a key in
-    ``INCLUDE_REFERENCE_FIELDS``; any other value results in a 400
-    OperationOutcome.
+    ``_include`` query parameters. Each value must be one of the specs the
+    endpoint supports; any other value results in a 400 OperationOutcome.
 
     :param params: request.form-like mapping
+    :param resource_type: FHIR resource type the endpoint matches on
     :returns: list of requested include specs (str), or an OperationOutcome
     """
+    supported = get_include_reference_fields(resource_type)
     raw = params.get("_include", [])
     values = raw if isinstance(raw, (list, tuple)) else [raw]
     specs = [spec for value in values for spec in value.split(",") if spec]
 
-    unsupported = [
-        spec for spec in specs if spec not in INCLUDE_REFERENCE_FIELDS
-    ]
+    unsupported = [spec for spec in specs if spec not in supported]
     if unsupported:
         request = req.get_request()
         request.response.setStatus(400)
@@ -736,7 +733,7 @@ def parse_include_params(params):
             "details": {
                 "text": "Unsupported _include value(s): %s" % ", ".join(unsupported),  # noqa: E501
             },
-            "diagnostics": "Supported _include values for this endpoint: %s" % ", ".join(INCLUDE_REFERENCE_FIELDS),  # noqa: E501
+            "diagnostics": "Supported _include values for this endpoint: %s" % ", ".join(sorted(supported)),  # noqa: E501
             "expression": ["_include"],
         }
         return OperationOutcome({"issue": [issue]})
@@ -744,18 +741,20 @@ def parse_include_params(params):
     return specs
 
 
-def resolve_included_resources(resources, include_specs):
+def resolve_included_resources(resources, include_specs, resource_type):
     """Return include-mode Bundle entries referenced by ``resources``.
 
     :param resources: FHIR resources to scan
     :param include_specs: `_include` specs to resolve
+    :param resource_type: FHIR resource type the endpoint matches on
     :returns: Bundle entries with ``search.mode = "include"``
     """
     entries = []
-    included_ref_uids = set()
+    included_refs = set()
+    reference_fields = get_include_reference_fields(resource_type)
 
     for spec in include_specs:
-        field = INCLUDE_REFERENCE_FIELDS.get(spec)
+        field = reference_fields.get(spec)
         if not field:
             continue
         target_type = spec.split(":", 1)[0]
@@ -777,9 +776,9 @@ def resolve_included_resources(resources, include_specs):
                 # to_fhir_resource/get_object is used, rather than relying
                 # on the referenced object being indexed in the FHIR catalog
                 ref_uid = fapi.get_uuid(ref_uid).hex
-                if ref_uid in included_ref_uids:
+                if (target_type, ref_uid) in included_refs:
                     continue
-                included_ref_uids.add(ref_uid)
+                included_refs.add((target_type, ref_uid))
 
                 included = fapi.to_fhir_resource(
                     ref_uid, resource_type=target_type, default=None
