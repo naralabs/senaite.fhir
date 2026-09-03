@@ -40,6 +40,7 @@ RESOURCE_TYPE_TO_CONTENT = (
 # Maps `_include` specs to their reference fields.
 INCLUDE_REFERENCE_FIELDS = {
     "Patient:subject": "subject",
+    "Specimen:specimen": "specimen",
 }
 
 
@@ -500,7 +501,8 @@ def get_service_request_bundle(_context, request):
     "filler-order") derived from Analyses, i.e. the ones created by
     ``AnalysisToInstrumentServiceRequest``.
 
-    ``_include=Patient:subject`` includes each page's referenced Patients.
+    ``_include=Patient:subject`` and ``_include=Specimen:specimen`` include
+    each page's referenced Patients and Specimens, respectively.
     """
     params = request.form
 

@@ -365,6 +365,36 @@ no Patient entries, even though that Patient exists:
     >>> any(e["resource"]["resourceType"] == "Patient" for e in bundle["entry"])
     False
 
+
+_include=Specimen:specimen adds Specimen entries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``Specimen:specimen`` resolves the Specimen referenced by each ServiceRequest
+on the current page. Repeated ``_include`` parameters are both respected, so
+the Patient and Specimen can be requested together:
+
+    >>> url = (base_url + "&_count=1&_include=Patient:subject"
+    ...        "&_include=Specimen:specimen")
+    >>> browser.open(url)
+    >>> bundle = json.loads(browser.contents)
+    >>> resource_types = set(
+    ...     e["resource"]["resourceType"] for e in bundle["entry"])
+    >>> resource_types == {"ServiceRequest", "Patient", "Specimen"}
+    True
+
+The included Specimen is appended after the page's match entries, carries
+``search.mode = \"include\"``, and does not change ``Bundle.total``:
+
+    >>> entries = bundle["entry"]
+    >>> [e["search"]["mode"] for e in entries]
+    [u'match', u'include', u'include']
+    >>> specimen_entry = next(
+    ...     e for e in entries if e["resource"]["resourceType"] == "Specimen")
+    >>> specimen_entry["fullUrl"] == entries[0]["resource"]["specimen"][0]["reference"]
+    True
+    >>> bundle["total"]
+    4
+
 Requesting an unsupported ``_include`` value returns a ``400``
 OperationOutcome:
 
