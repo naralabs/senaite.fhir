@@ -79,13 +79,17 @@ identity and stamps ``authoredOn`` to "now"; the helper then backdates
 ``authoredOn`` in place by the given number of days so ordering can be
 verified:
 
-    >>> def new_linked_analysis(days_ago=0):
+    >>> def new_linked_analysis(days_ago=0, mrn=None):
     ...     values = {
     ...         "Client": client.UID(),
     ...         "Contact": contact.UID(),
     ...         "DateSampled": DateTime().strftime("%Y-%m-%d"),
     ...         "SampleType": sampletype.UID(),
     ...     }
+    ...     if mrn:
+    ...         values["MedicalRecordNumber"] = {
+    ...             "temporary": False, "value": mrn
+    ...         }
     ...     sample = create_analysisrequest(client, request, values, [Hb.UID()])
     ...     analysis = sample.getAnalyses(full_objects=True)[0]
     ...     analysis.setInstrument(instrument)
@@ -293,5 +297,86 @@ A malformed ``_lastUpdated`` value returns a ``400`` OperationOutcome:
     >>> outcome = json.loads(browser.contents)
     >>> outcome["issue"][0]["expression"]
     [u'_lastUpdated']
+
+
+_include=Patient:subject adds Patient entries
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Register a Patient and link it (via MRN) to a fresh Instrument-linked
+Analysis, which becomes the most recently authored one:
+
+    >>> patient = api.create(
+    ...     portal.patients, "Patient",
+    ...     mrn=u"MRN-0001",
+    ...     firstname=u"Jane",
+    ...     lastname=u"Doe",
+    ...     sex=u"f",
+    ...     birthdate="1980-01-01",
+    ... )
+    >>> transaction.commit()
+    >>> with_patient = new_linked_analysis(mrn="MRN-0001")
+
+Without ``_include``, the bundle contains only ``ServiceRequest`` entries:
+
+    >>> url = base_url + "&_count=1"
+    >>> browser.open(url)
+    >>> bundle = json.loads(browser.contents)
+    >>> resource_types = set(
+    ...     e["resource"]["resourceType"] for e in bundle["entry"])
+    >>> resource_types == {"ServiceRequest"}
+    True
+
+With ``_include=Patient:subject`` the bundle also contains the Patient
+referenced by that ServiceRequest's ``subject``:
+
+    >>> url = base_url + "&_count=1&_include=Patient:subject"
+    >>> browser.open(url)
+    >>> bundle = json.loads(browser.contents)
+    >>> resource_types = set(
+    ...     e["resource"]["resourceType"] for e in bundle["entry"])
+    >>> resource_types == {"ServiceRequest", "Patient"}
+    True
+
+The included Patient entry carries ``search.mode = "include"`` and a
+``fullUrl`` prefixed with ``Patient/``:
+
+    >>> include_entries = [
+    ...     e for e in bundle["entry"] if e["search"]["mode"] == "include"]
+    >>> len(include_entries)
+    1
+    >>> include_entries[0]["resource"]["resourceType"]
+    u'Patient'
+    >>> include_entries[0]["fullUrl"] == u"Patient/%s" % str(fapi.get_uuid(patient))
+    True
+
+``Bundle.total`` still only counts ServiceRequest matches, unaffected by
+the include:
+
+    >>> bundle["total"]
+    4
+
+Only Patients referenced from ServiceRequests on the current page are
+included: a page that excludes the Patient-linked ServiceRequest returns
+no Patient entries, even though that Patient exists:
+
+    >>> url = base_url + "&_count=3&_offset=1&_include=Patient:subject"
+    >>> browser.open(url)
+    >>> bundle = json.loads(browser.contents)
+    >>> any(e["resource"]["resourceType"] == "Patient" for e in bundle["entry"])
+    False
+
+Requesting an unsupported ``_include`` value returns a ``400``
+OperationOutcome:
+
+    >>> browser.raiseHttpErrors = False
+    >>> url = base_url + "&_include=Practitioner:performer"
+    >>> browser.open(url)
+    >>> browser.headers["Status"]
+    '400 Bad Request'
+    >>> outcome = json.loads(browser.contents)
+    >>> outcome["issue"][0]["code"]
+    u'not-supported'
+    >>> outcome["issue"][0]["expression"]
+    [u'_include']
 
     >>> browser.raiseHttpErrors = True
