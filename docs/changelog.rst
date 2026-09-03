@@ -4,6 +4,7 @@ Changelog
 1.0.0 (Unreleased)
 ------------------
 
+- #37 Expose sample ID on Specimen identifiers
 - #28 Link FHIR resources without a SENAITE counterpart as secondary resources
 - #33 Add keyword support for InstrumentServiceRequest and Observation
 - #30 Refactor Object Ids and External Ids across FHIR resources
