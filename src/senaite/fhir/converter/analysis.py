@@ -145,7 +145,10 @@ class AnalysisToInstrumentServiceRequest(object):
         patient = self.get_patient(sample)
         if not patient:
             return None
-        return {"reference": "Patient/{}".format(fapi.get_uuid(patient))}
+
+        return {"reference": "Patient/{}".format(
+            fapi.get_fhir_id(patient, resource_type="Patient")),
+        }
 
     def get_patient(self, sample):
         mrn = sample.getMedicalRecordNumberValue()
