@@ -313,6 +313,8 @@ Analysis, which becomes the most recently authored one:
     ...     sex=u"f",
     ...     birthdate="1980-01-01",
     ... )
+    >>> patient_fhir_uid = fapi.generate_UUID().hex
+    >>> fapi.set_fhir_uids(patient, Patient=patient_fhir_uid)
     >>> transaction.commit()
     >>> with_patient = new_linked_analysis(mrn="MRN-0001")
 
@@ -346,8 +348,16 @@ The included Patient entry carries ``search.mode = "include"`` and a
     1
     >>> include_entries[0]["resource"]["resourceType"]
     u'Patient'
-    >>> patient_url = u"Patient/%s" % str(fapi.get_uuid(patient))
+    >>> patient_url = u"Patient/%s" % str(fapi.get_uuid(patient_fhir_uid))
     >>> include_entries[0]["fullUrl"] == patient_url
+    True
+
+The subject reference uses the Patient's FHIR identity, even when it differs
+from the SENAITE object UID, and therefore resolves to the included entry:
+
+    >>> subject_ref = next(e for e in bundle["entry"]
+    ...                    if e["search"]["mode"] == "match")["resource"]["subject"]["reference"]
+    >>> subject_ref == include_entries[0]["fullUrl"]
     True
 
 ``Bundle.total`` still only counts ServiceRequest matches, unaffected by

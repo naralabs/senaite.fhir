@@ -127,7 +127,9 @@ class ResultsReportToResource(object):
             return None
 
         return {
-            "reference": "Patient/{}".format(fapi.get_uuid(patient)),
+            "reference": "Patient/{}".format(
+                fapi.get_fhir_id(patient, resource_type="Patient")
+            ),
         }
 
     def get_result(self):
